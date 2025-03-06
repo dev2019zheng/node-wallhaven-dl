@@ -1,0 +1,22 @@
+{
+    "name": "wh-dl",
+    "version": "1.0.0",
+    "description": "Wallpaper downloader",
+    "main": "index.js",
+    "bin": "index.js",
+    "pkg": {
+        "targets": [
+            "node18-linux-x64",
+            "node18-linux-arm64",
+            "node18-win-x64",
+            "node18-win-arm64",
+            "node18-macos-x64",
+            "node18-macos-arm64"
+        ],
+        "outputPath": "dist"
+    },
+    "scripts": {
+        "build": "pkg . && npm run sign-macos",
+        "sign-macos": "node scripts/sign-macos.js"
+    }
+}
