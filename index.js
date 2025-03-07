@@ -76,18 +76,28 @@ const httpsAgent = new https.Agent({
 
 const DOWNLOAD_TIMEOUT = 30000; // 30 seconds timeout for downloads
 
-function promptUser(message, validOptions) {
+function promptUser(message, validOptions, defaultValue) {
   return new Promise((resolve) => {
-    rl.question(message, (input) => {
-      while (validOptions && !validOptions.includes(input)) {
+    const promptMessage = defaultValue !== undefined
+      ? `${message} (default: ${defaultValue}): `
+      : message;
+
+    rl.question(promptMessage, (input) => {
+      // 如果用户直接回车且有默认值，使用默认值
+      if (input.trim() === '' && defaultValue !== undefined) {
+        input = defaultValue;
+      }
+
+      if (validOptions && !validOptions.includes(input)) {
         console.log("Invalid input. Please enter a valid option.");
-        rl.question(message, (input) => {
+        rl.question(promptMessage, (input) => {
           if (validOptions.includes(input)) {
             resolve(input);
           }
         });
+      } else {
+        resolve(input);
       }
-      resolve(input);
     });
   });
 }
@@ -104,7 +114,7 @@ ga      - For 'General' and 'Anime' wallpapers only.
 gp      - For 'General' and 'People' wallpapers only.
 ****************************************************************
 `);
-  const input = await promptUser("Enter Category: ", Object.keys(categories));
+  const input = await promptUser("Enter Category", Object.keys(categories), "all");
 
   const category = categories[input] || "111";
 
@@ -125,7 +135,7 @@ all     - For 'SFW', 'Sketchy' and 'NSFW'
 ****************************************************************
 `);
 
-  const input = await promptUser("Enter Purity: ", Object.keys(purities));
+  const input = await promptUser("Enter Purity", Object.keys(purities), "sfw");
 
   const purity = purities[input] || "100";
 
@@ -134,8 +144,9 @@ all     - For 'SFW', 'Sketchy' and 'NSFW'
 
 async function selectTopRange() {
   const input = await promptUser(
-    "Enter the range for toplist (1d, 3d, 1w, 1M, 3M, 6M, 1y): ",
-    valid_ranges
+    "Enter the range for toplist",
+    valid_ranges,
+    "1M"
   );
 
   queryObject.set("topRange", input);
@@ -199,7 +210,7 @@ async function saveImageToFile(
               const timeout = setTimeout(() => {
                 res.destroy();
                 writer.end();
-                fs.unlink(file_path, () => {}); // Clean up incomplete file
+                fs.unlink(file_path, () => { }); // Clean up incomplete file
                 onError(resolve)(new Error("Download timeout"));
               }, DOWNLOAD_TIMEOUT);
 
@@ -235,7 +246,7 @@ async function saveImageToFile(
               writer.on("error", (err) => {
                 clearTimeout(timeout);
                 writer.end();
-                fs.unlink(file_path, () => {}); // Clean up incomplete file
+                fs.unlink(file_path, () => { }); // Clean up incomplete file
                 onError(resolve)(err);
               });
             } else {
@@ -319,16 +330,15 @@ async function selectChoice() {
     Enter "latest" for downloading latest wallpapers
     Enter "toplist" for downloading top list wallpapers
     Enter "search" for downloading wallpapers from search
-    Enter choice: `,
-    ["category", "latest", "search", "toplist"]
+    Enter choice`,
+    ["category", "latest", "search", "toplist"],
+    "toplist"
   );
   return choice;
 }
 
 async function getFolderName() {
-  const folderName =
-    (await promptUser("Enter folder name (default is Wallpapers): ")) ||
-    "Wallpapers";
+  const folderName = await promptUser("Enter folder name", null, "Wallpapers");
   return path.join(process.cwd(), folderName);
 }
 
@@ -353,12 +363,12 @@ async function main() {
   }
 
   const start_page = parseInt(
-    (await promptUser("Enter the start page (default is 1): ")) || "1",
+    await promptUser("Enter the start page", null, "0"),
     10
   );
 
   const pages_to_download = parseInt(
-    (await promptUser("How many pages do you want to download: ")) || "1",
+    await promptUser("How many pages do you want to download", null, "1"),
     10
   );
 
