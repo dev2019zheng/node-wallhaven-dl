@@ -363,7 +363,7 @@ async function main() {
   }
 
   const start_page = parseInt(
-    await promptUser("Enter the start page", null, "0"),
+    await promptUser("Enter the start page", null, "1"),
     10
   );
 
