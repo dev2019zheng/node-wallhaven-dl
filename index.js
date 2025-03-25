@@ -18,12 +18,45 @@
  * 2. Choose download mode (category/latest/toplist/search)
  * 3. Select filters and options
  * 4. Specify download location and page range
+ *
+ * Command-line options:
+ * --dir <path>     Specify the directory to save wallpapers
+ * --help           Display help information
  */
 
 const fs = require("fs");
 const https = require("https");
 const readline = require("readline");
 const path = require("path");
+
+
+// Parse command-line arguments
+const args = process.argv.slice(2);
+const cmdArgs = {};
+for (let i = 0; i < args.length; i++) {
+  if (args[i].startsWith('--')) {
+    const key = args[i].substring(2);
+    if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+      cmdArgs[key] = args[i + 1];
+      i++;
+    } else {
+      cmdArgs[key] = true;
+    }
+  }
+}
+
+// Display help if requested
+if (cmdArgs.help) {
+  console.log(`
+Wallhaven Image Downloader - Command Line Options:
+--dir <path>     Specify the directory to save wallpapers
+--help           Display this help information
+  `);
+  process.exit(0);
+}
+
+// Track all user inputs
+const userInputs = {};
 
 // Constants
 const API_KEY =
@@ -88,10 +121,15 @@ function promptUser(message, validOptions, defaultValue) {
         input = defaultValue;
       }
 
+      // Store input data
+      const inputKey = message.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      userInputs[inputKey] = input;
+
       if (validOptions && !validOptions.includes(input)) {
         console.log("Invalid input. Please enter a valid option.");
         rl.question(promptMessage, (input) => {
           if (validOptions.includes(input)) {
+            userInputs[inputKey] = input; // Update with valid input
             resolve(input);
           }
         });
@@ -338,8 +376,25 @@ async function selectChoice() {
 }
 
 async function getFolderName() {
+  // If directory was specified via command line, use it
+  if (cmdArgs.dir) {
+    userInputs.folder_name = cmdArgs.dir;
+    console.log(`Using directory from command line: ${cmdArgs.dir}`);
+    return cmdArgs.dir;
+  }
+
+  // Otherwise prompt the user
   const folderName = await promptUser("Enter folder name", null, "Wallpapers");
   return path.join(process.cwd(), folderName);
+}
+
+// New function to display all user inputs
+function displayAllInputs() {
+  console.log("\n======== 所有输入数据 ========");
+  for (const [key, value] of Object.entries(userInputs)) {
+    console.log(`${key}: ${value}`);
+  }
+  console.log("================================\n");
 }
 
 async function main() {
@@ -396,6 +451,9 @@ async function main() {
   const endTime = Date.now();
   const duration = (endTime - startTime) / 1000;
   console.log(`Total download time: ${duration} seconds`);
+
+  // Display all inputs at the end
+  displayAllInputs();
 }
 
 main();
