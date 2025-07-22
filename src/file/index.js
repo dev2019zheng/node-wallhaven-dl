@@ -98,11 +98,16 @@ class FileManager {
   safeUnlink(filePath) {
     try {
       if (this.fileExists(filePath)) {
-        fs.unlinkSync(filePath);
+        const stats = fs.statSync(filePath);
+        if (stats.isFile()) {
+          fs.unlinkSync(filePath);
+        }
       }
     } catch (error) {
-      // Ignore errors when cleaning up
-      console.warn(`Warning: Could not delete file ${filePath}: ${error.message}`);
+      // Ignore errors when cleaning up - only warn for unexpected errors
+      if (error.code !== 'ENOENT') {
+        console.warn(`Warning: Could not delete file ${filePath}: ${error.message}`);
+      }
     }
   }
 
