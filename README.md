@@ -22,6 +22,16 @@ npm run tauri dev
 npm run tauri:build:dmg
 ```
 
+## Release automation
+
+Pushing a tag that starts with `v` triggers `.github/workflows/release-tauri.yml` to build platform installers and upload them to the matching GitHub Release page.
+
+Local macOS DMG verification uses the same wrapper script as CI:
+
+```bash
+npm run tauri:build:dmg
+```
+
 ## Legacy CLI reference
 
 The original Node CLI downloader remains available for migration work:
