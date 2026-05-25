@@ -1,0 +1,293 @@
+use std::error::Error;
+use std::fmt;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadStrategy {
+    pub base_dir: String,
+    pub relative_path: String,
+}
+
+impl DownloadStrategy {
+    pub fn new(base_dir: impl Into<String>, relative_path: impl Into<String>) -> Self {
+        Self {
+            base_dir: base_dir.into(),
+            relative_path: relative_path.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadTarget {
+    pub file_name: String,
+    pub relative_file_path: String,
+}
+
+impl DownloadTarget {
+    pub fn new(file_name: impl Into<String>, relative_file_path: impl Into<String>) -> Self {
+        Self {
+            file_name: file_name.into(),
+            relative_file_path: relative_file_path.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DownloadStatus {
+    Queued,
+    Running,
+    Succeeded,
+    Failed,
+    SkippedExisting,
+}
+
+impl fmt::Display for DownloadStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Queued => write!(f, "queued"),
+            Self::Running => write!(f, "running"),
+            Self::Succeeded => write!(f, "succeeded"),
+            Self::Failed => write!(f, "failed"),
+            Self::SkippedExisting => write!(f, "skipped_existing"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadTask {
+    pub id: String,
+    pub wallpaper_id: String,
+    pub source_url: String,
+    pub strategy: DownloadStrategy,
+    pub target: DownloadTarget,
+    pub status: DownloadStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure_reason: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DownloadTaskError {
+    InvalidTransition {
+        from: DownloadStatus,
+        to: DownloadStatus,
+    },
+    EmptyFailureReason,
+}
+
+impl fmt::Display for DownloadTaskError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidTransition { from, to } => {
+                write!(f, "cannot transition download task from {from} to {to}")
+            }
+            Self::EmptyFailureReason => write!(f, "failed downloads require a non-empty reason"),
+        }
+    }
+}
+
+impl Error for DownloadTaskError {}
+
+impl DownloadTask {
+    pub fn queued(
+        id: impl Into<String>,
+        wallpaper_id: impl Into<String>,
+        source_url: impl Into<String>,
+        strategy: DownloadStrategy,
+        target: DownloadTarget,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            wallpaper_id: wallpaper_id.into(),
+            source_url: source_url.into(),
+            strategy,
+            target,
+            status: DownloadStatus::Queued,
+            failure_reason: None,
+        }
+    }
+
+    pub fn mark_running(&mut self) -> Result<(), DownloadTaskError> {
+        self.transition_to(DownloadStatus::Running)
+    }
+
+    pub fn mark_succeeded(&mut self) -> Result<(), DownloadTaskError> {
+        self.transition_to(DownloadStatus::Succeeded)
+    }
+
+    pub fn mark_failed(&mut self, reason: impl AsRef<str>) -> Result<(), DownloadTaskError> {
+        let reason = reason.as_ref().trim();
+        if reason.is_empty() {
+            return Err(DownloadTaskError::EmptyFailureReason);
+        }
+
+        self.transition_to(DownloadStatus::Failed)?;
+        self.failure_reason = Some(reason.to_string());
+        Ok(())
+    }
+
+    pub fn mark_skipped_existing(&mut self) -> Result<(), DownloadTaskError> {
+        self.transition_to(DownloadStatus::SkippedExisting)
+    }
+
+    fn transition_to(&mut self, next: DownloadStatus) -> Result<(), DownloadTaskError> {
+        if !self.can_transition_to(&next) {
+            return Err(DownloadTaskError::InvalidTransition {
+                from: self.status.clone(),
+                to: next,
+            });
+        }
+
+        self.status = next;
+        self.failure_reason = None;
+        Ok(())
+    }
+
+    fn can_transition_to(&self, next: &DownloadStatus) -> bool {
+        matches!(
+            (&self.status, next),
+            (DownloadStatus::Queued, DownloadStatus::Running)
+                | (DownloadStatus::Queued, DownloadStatus::Failed)
+                | (DownloadStatus::Queued, DownloadStatus::SkippedExisting)
+                | (DownloadStatus::Running, DownloadStatus::Succeeded)
+                | (DownloadStatus::Running, DownloadStatus::Failed)
+                | (DownloadStatus::Running, DownloadStatus::SkippedExisting)
+        )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveRecord {
+    pub wallpaper_id: String,
+    pub source_url: String,
+    pub file_name: String,
+    pub relative_file_path: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ArchiveRecordError {
+    NotArchivable(DownloadStatus),
+}
+
+impl fmt::Display for ArchiveRecordError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotArchivable(status) => {
+                write!(f, "download tasks in {status} status cannot be archived")
+            }
+        }
+    }
+}
+
+impl Error for ArchiveRecordError {}
+
+impl ArchiveRecord {
+    pub fn from_task(task: &DownloadTask) -> Result<Self, ArchiveRecordError> {
+        match task.status {
+            DownloadStatus::Succeeded | DownloadStatus::SkippedExisting => Ok(Self {
+                wallpaper_id: task.wallpaper_id.clone(),
+                source_url: task.source_url.clone(),
+                file_name: task.target.file_name.clone(),
+                relative_file_path: task.target.relative_file_path.clone(),
+            }),
+            _ => Err(ArchiveRecordError::NotArchivable(task.status.clone())),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ArchiveRecord, ArchiveRecordError, DownloadStatus, DownloadStrategy, DownloadTarget,
+        DownloadTask, DownloadTaskError,
+    };
+
+    fn sample_task() -> DownloadTask {
+        DownloadTask::queued(
+            "task-1",
+            "wh-1",
+            "https://wallhaven.cc/w/wh-1",
+            DownloadStrategy::new("AppLocalData", "wallpapers"),
+            DownloadTarget::new("wh-1.jpg", "wallpapers/wh-1.jpg"),
+        )
+    }
+
+    #[test]
+    fn queued_task_starts_in_queued_state() {
+        let task = sample_task();
+
+        assert_eq!(task.status, DownloadStatus::Queued);
+        assert_eq!(task.failure_reason, None);
+    }
+
+    #[test]
+    fn download_status_rejects_transition_from_terminal_state() {
+        let mut task = sample_task();
+
+        task.mark_running().unwrap();
+        task.mark_succeeded().unwrap();
+
+        assert_eq!(
+            task.mark_failed("network timeout").unwrap_err(),
+            DownloadTaskError::InvalidTransition {
+                from: DownloadStatus::Succeeded,
+                to: DownloadStatus::Failed,
+            }
+        );
+    }
+
+    #[test]
+    fn failed_status_requires_non_empty_reason() {
+        let mut task = sample_task();
+
+        assert_eq!(
+            task.mark_failed("   ").unwrap_err(),
+            DownloadTaskError::EmptyFailureReason
+        );
+    }
+
+    #[test]
+    fn archive_record_uses_download_target_for_archivable_states() {
+        let mut task = sample_task();
+
+        task.mark_running().unwrap();
+        task.mark_succeeded().unwrap();
+
+        assert_eq!(
+            ArchiveRecord::from_task(&task).unwrap(),
+            ArchiveRecord {
+                wallpaper_id: "wh-1".into(),
+                source_url: "https://wallhaven.cc/w/wh-1".into(),
+                file_name: "wh-1.jpg".into(),
+                relative_file_path: "wallpapers/wh-1.jpg".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn archive_record_rejects_non_archivable_states() {
+        let task = sample_task();
+
+        assert_eq!(
+            ArchiveRecord::from_task(&task).unwrap_err(),
+            ArchiveRecordError::NotArchivable(DownloadStatus::Queued)
+        );
+    }
+
+    #[test]
+    fn skipped_existing_tasks_can_still_be_archived() {
+        let mut task = sample_task();
+
+        task.mark_skipped_existing().unwrap();
+
+        assert_eq!(
+            ArchiveRecord::from_task(&task).unwrap().relative_file_path,
+            "wallpapers/wh-1.jpg"
+        );
+    }
+}
