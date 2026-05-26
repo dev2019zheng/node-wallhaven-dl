@@ -1,37 +1,33 @@
 import {
-  loadDefaultDownloadStrategy,
+  loadDownloadDirectorySettings,
   loadStoredWallhavenKey,
+  saveDownloadDirectorySettings,
   saveStoredWallhavenKey,
 } from "@/infrastructure/tauri/settings-repository";
 
-import type { DownloadStrategy, SaveSettingsInput, SettingsSnapshot } from "./settings.types";
-
-const FALLBACK_DEFAULT_DOWNLOAD_STRATEGY: DownloadStrategy = {
-  baseDir: "AppLocalData",
-  relativePath: "wallpapers",
-};
-
-function getFallbackDefaultDownloadStrategy(error: unknown): DownloadStrategy {
-  console.warn(
-    "Failed to load default download strategy. Falling back to AppLocalData/wallpapers.",
-    error,
-  );
-
-  return FALLBACK_DEFAULT_DOWNLOAD_STRATEGY;
-}
+import type { SaveSettingsInput, SettingsSnapshot } from "./settings.types";
 
 export async function loadSettings(): Promise<SettingsSnapshot> {
-  const [wallhavenKey, defaultDownloadStrategy] = await Promise.all([
+  const [wallhavenKey, downloadDirectory] = await Promise.all([
     loadStoredWallhavenKey(),
-    loadDefaultDownloadStrategy().catch(getFallbackDefaultDownloadStrategy),
+    loadDownloadDirectorySettings(),
   ]);
 
   return {
     wallhavenKey,
-    defaultDownloadStrategy,
+    downloadDirectory,
   };
 }
 
-export async function saveSettings(input: SaveSettingsInput): Promise<void> {
+export async function saveSettings(input: SaveSettingsInput): Promise<SettingsSnapshot> {
+  const customDownloadDirectoryPath = input.customDownloadDirectoryPath.trim();
+  const downloadDirectory = await saveDownloadDirectorySettings(
+    customDownloadDirectoryPath ? customDownloadDirectoryPath : null,
+  );
   await saveStoredWallhavenKey(input.wallhavenKey);
+
+  return {
+    wallhavenKey: input.wallhavenKey,
+    downloadDirectory,
+  };
 }

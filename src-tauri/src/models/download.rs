@@ -5,9 +5,68 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DownloadRequest {
+    pub wallpaper_id: String,
+    pub image_url: String,
+    pub file_name: String,
+}
+
+impl DownloadRequest {
+    pub fn new(
+        wallpaper_id: impl Into<String>,
+        image_url: impl Into<String>,
+        file_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            wallpaper_id: wallpaper_id.into(),
+            image_url: image_url.into(),
+            file_name: file_name.into(),
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), DownloadRequestError> {
+        if self.wallpaper_id.trim().is_empty() {
+            return Err(DownloadRequestError::EmptyWallpaperId);
+        }
+
+        if self.image_url.trim().is_empty() {
+            return Err(DownloadRequestError::EmptyImageUrl);
+        }
+
+        if self.file_name.trim().is_empty() {
+            return Err(DownloadRequestError::EmptyFileName);
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DownloadRequestError {
+    EmptyWallpaperId,
+    EmptyImageUrl,
+    EmptyFileName,
+}
+
+impl fmt::Display for DownloadRequestError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EmptyWallpaperId => write!(f, "wallpaper id must not be empty"),
+            Self::EmptyImageUrl => write!(f, "image url must not be empty"),
+            Self::EmptyFileName => write!(f, "file name must not be empty"),
+        }
+    }
+}
+
+impl Error for DownloadRequestError {}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DownloadStrategy {
     pub base_dir: String,
     pub relative_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root_path: Option<String>,
 }
 
 impl DownloadStrategy {
@@ -15,6 +74,15 @@ impl DownloadStrategy {
         Self {
             base_dir: base_dir.into(),
             relative_path: relative_path.into(),
+            root_path: None,
+        }
+    }
+
+    pub fn absolute_directory(root_path: impl Into<String>) -> Self {
+        Self {
+            base_dir: "Absolute".into(),
+            relative_path: String::new(),
+            root_path: Some(root_path.into()),
         }
     }
 }
@@ -167,6 +235,9 @@ pub struct ArchiveRecord {
     pub source_url: String,
     pub file_name: String,
     pub relative_file_path: String,
+    pub download_base_dir: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub download_root_path: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -194,6 +265,8 @@ impl ArchiveRecord {
                 source_url: task.source_url.clone(),
                 file_name: task.target.file_name.clone(),
                 relative_file_path: task.target.relative_file_path.clone(),
+                download_base_dir: task.strategy.base_dir.clone(),
+                download_root_path: task.strategy.root_path.clone(),
             }),
             _ => Err(ArchiveRecordError::NotArchivable(task.status.clone())),
         }
@@ -203,8 +276,8 @@ impl ArchiveRecord {
 #[cfg(test)]
 mod tests {
     use super::{
-        ArchiveRecord, ArchiveRecordError, DownloadStatus, DownloadStrategy, DownloadTarget,
-        DownloadTask, DownloadTaskError,
+        ArchiveRecord, ArchiveRecordError, DownloadRequest, DownloadRequestError, DownloadStatus,
+        DownloadStrategy, DownloadTarget, DownloadTask, DownloadTaskError,
     };
 
     fn sample_task() -> DownloadTask {
@@ -223,6 +296,44 @@ mod tests {
 
         assert_eq!(task.status, DownloadStatus::Queued);
         assert_eq!(task.failure_reason, None);
+    }
+
+    #[test]
+    fn download_request_requires_non_empty_wallpaper_id() {
+        assert_eq!(
+            DownloadRequest::new("   ", "https://wallhaven.cc/w/wh-1", "wh-1.jpg")
+                .validate()
+                .unwrap_err(),
+            DownloadRequestError::EmptyWallpaperId
+        );
+    }
+
+    #[test]
+    fn download_request_requires_non_empty_image_url_and_file_name() {
+        assert_eq!(
+            DownloadRequest::new("wh-1", "   ", "wh-1.jpg")
+                .validate()
+                .unwrap_err(),
+            DownloadRequestError::EmptyImageUrl
+        );
+        assert_eq!(
+            DownloadRequest::new("wh-1", "https://wallhaven.cc/w/wh-1", "   ")
+                .validate()
+                .unwrap_err(),
+            DownloadRequestError::EmptyFileName
+        );
+    }
+
+    #[test]
+    fn absolute_directory_strategy_tracks_the_custom_root_path() {
+        assert_eq!(
+            DownloadStrategy::absolute_directory("/Users/test/Pictures/Wallhaven"),
+            DownloadStrategy {
+                base_dir: "Absolute".into(),
+                relative_path: String::new(),
+                root_path: Some("/Users/test/Pictures/Wallhaven".into()),
+            }
+        );
     }
 
     #[test]
@@ -265,6 +376,8 @@ mod tests {
                 source_url: "https://wallhaven.cc/w/wh-1".into(),
                 file_name: "wh-1.jpg".into(),
                 relative_file_path: "wallpapers/wh-1.jpg".into(),
+                download_base_dir: "AppLocalData".into(),
+                download_root_path: None,
             }
         );
     }
@@ -286,8 +399,40 @@ mod tests {
         task.mark_skipped_existing().unwrap();
 
         assert_eq!(
-            ArchiveRecord::from_task(&task).unwrap().relative_file_path,
-            "wallpapers/wh-1.jpg"
+            ArchiveRecord::from_task(&task).unwrap(),
+            ArchiveRecord {
+                wallpaper_id: "wh-1".into(),
+                source_url: "https://wallhaven.cc/w/wh-1".into(),
+                file_name: "wh-1.jpg".into(),
+                relative_file_path: "wallpapers/wh-1.jpg".into(),
+                download_base_dir: "AppLocalData".into(),
+                download_root_path: None,
+            }
+        );
+    }
+
+    #[test]
+    fn archive_record_preserves_the_custom_download_root_for_gallery_lookups() {
+        let mut task = DownloadTask::queued(
+            "task-custom",
+            "wh-custom",
+            "https://wallhaven.cc/w/wh-custom",
+            DownloadStrategy::absolute_directory("/Users/test/Pictures/Wallhaven"),
+            DownloadTarget::new("wh-custom.jpg", "wh-custom.jpg"),
+        );
+
+        task.mark_skipped_existing().unwrap();
+
+        assert_eq!(
+            ArchiveRecord::from_task(&task).unwrap(),
+            ArchiveRecord {
+                wallpaper_id: "wh-custom".into(),
+                source_url: "https://wallhaven.cc/w/wh-custom".into(),
+                file_name: "wh-custom.jpg".into(),
+                relative_file_path: "wh-custom.jpg".into(),
+                download_base_dir: "Absolute".into(),
+                download_root_path: Some("/Users/test/Pictures/Wallhaven".into()),
+            }
         );
     }
 }

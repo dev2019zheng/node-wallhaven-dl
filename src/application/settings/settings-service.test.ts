@@ -1,12 +1,14 @@
 vi.mock("@/infrastructure/tauri/settings-repository", () => ({
   loadStoredWallhavenKey: vi.fn(),
   saveStoredWallhavenKey: vi.fn(),
-  loadDefaultDownloadStrategy: vi.fn(),
+  loadDownloadDirectorySettings: vi.fn(),
+  saveDownloadDirectorySettings: vi.fn(),
 }));
 
 import {
-  loadDefaultDownloadStrategy,
+  loadDownloadDirectorySettings,
   loadStoredWallhavenKey,
+  saveDownloadDirectorySettings,
   saveStoredWallhavenKey,
 } from "@/infrastructure/tauri/settings-repository";
 
@@ -17,57 +19,69 @@ describe("settings-service", () => {
     vi.resetAllMocks();
   });
 
-  it("loads the stored key and default strategy", async () => {
+  it("loads the stored key and download directory settings", async () => {
     vi.mocked(loadStoredWallhavenKey).mockResolvedValue("stored-key");
-    vi.mocked(loadDefaultDownloadStrategy).mockResolvedValue({
-      baseDir: "AppLocalData",
-      relativePath: "wallpapers",
+    vi.mocked(loadDownloadDirectorySettings).mockResolvedValue({
+      customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      defaultDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      isUsingDefaultDirectory: false,
     });
 
     await expect(loadSettings()).resolves.toEqual({
       wallhavenKey: "stored-key",
-      defaultDownloadStrategy: {
-        baseDir: "AppLocalData",
-        relativePath: "wallpapers",
+      downloadDirectory: {
+        customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        defaultDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        isUsingDefaultDirectory: false,
       },
     });
   });
 
-  it("falls back to AppLocalData/wallpapers when default strategy loading fails", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("fails when the download directory settings cannot be loaded", async () => {
     vi.mocked(loadStoredWallhavenKey).mockResolvedValue("stored-key");
-    vi.mocked(loadDefaultDownloadStrategy).mockRejectedValue(new Error("default strategy unavailable"));
-
-    await expect(loadSettings()).resolves.toEqual({
-      wallhavenKey: "stored-key",
-      defaultDownloadStrategy: {
-        baseDir: "AppLocalData",
-        relativePath: "wallpapers",
-      },
-    });
-    expect(warnSpy).toHaveBeenCalledWith(
-      "Failed to load default download strategy. Falling back to AppLocalData/wallpapers.",
-      expect.any(Error),
+    vi.mocked(loadDownloadDirectorySettings).mockRejectedValue(
+      new Error("download directory unavailable"),
     );
 
-    warnSpy.mockRestore();
+    await expect(loadSettings()).rejects.toThrow("download directory unavailable");
   });
 
   it("still fails when the stored key cannot be loaded", async () => {
     vi.mocked(loadStoredWallhavenKey).mockRejectedValue(new Error("key load failed"));
-    vi.mocked(loadDefaultDownloadStrategy).mockResolvedValue({
-      baseDir: "AppLocalData",
-      relativePath: "wallpapers",
+    vi.mocked(loadDownloadDirectorySettings).mockResolvedValue({
+      customDirectoryPath: "",
+      effectiveDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      defaultDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      isUsingDefaultDirectory: true,
     });
 
     await expect(loadSettings()).rejects.toThrow("key load failed");
   });
 
-  it("persists the stored key through saveSettings", async () => {
+  it("persists the stored key and custom download directory through saveSettings", async () => {
     vi.mocked(saveStoredWallhavenKey).mockResolvedValue(undefined);
+    vi.mocked(saveDownloadDirectorySettings).mockResolvedValue({
+      customDirectoryPath: "/Users/test/Pictures/Curated",
+      effectiveDirectoryPath: "/Users/test/Pictures/Curated",
+      defaultDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      isUsingDefaultDirectory: false,
+    });
 
-    await saveSettings({ wallhavenKey: "updated-key" });
+    await saveSettings({
+      wallhavenKey: "updated-key",
+      customDownloadDirectoryPath: "/Users/test/Pictures/Curated",
+    });
 
     expect(saveStoredWallhavenKey).toHaveBeenCalledWith("updated-key");
+    expect(saveDownloadDirectorySettings).toHaveBeenCalledWith(
+      "/Users/test/Pictures/Curated",
+    );
   });
 });

@@ -57,9 +57,12 @@ impl Error for ArchiveStoreError {}
 
 pub trait ArchiveStore {
     fn upsert(&mut self, record: ArchiveRecord) -> ArchiveStoreResult<ArchiveWriteOutcome>;
-    fn find_by_wallpaper_id(&self, wallpaper_id: &str) -> ArchiveStoreResult<Option<ArchiveRecord>>;
-    fn find_by_relative_file_path(
+    fn find_by_wallpaper_id(&self, wallpaper_id: &str)
+        -> ArchiveStoreResult<Option<ArchiveRecord>>;
+    fn find_by_download_target(
         &self,
+        download_base_dir: &str,
+        download_root_path: Option<&str>,
         relative_file_path: &str,
     ) -> ArchiveStoreResult<Option<ArchiveRecord>>;
     fn list(&self) -> ArchiveStoreResult<Vec<ArchiveRecord>>;
@@ -68,15 +71,18 @@ pub trait ArchiveStore {
 #[derive(Clone, Debug, Default)]
 pub struct InMemoryArchiveStore {
     records_by_wallpaper_id: BTreeMap<String, ArchiveRecord>,
-    wallpaper_id_by_relative_file_path: BTreeMap<String, String>,
+    wallpaper_id_by_download_target: BTreeMap<String, String>,
 }
 
 impl ArchiveStore for InMemoryArchiveStore {
     fn upsert(&mut self, record: ArchiveRecord) -> ArchiveStoreResult<ArchiveWriteOutcome> {
-        if let Some(existing_wallpaper_id) = self
-            .wallpaper_id_by_relative_file_path
-            .get(&record.relative_file_path)
-        {
+        let record_key = download_target_key(
+            &record.download_base_dir,
+            record.download_root_path.as_deref(),
+            &record.relative_file_path,
+        );
+
+        if let Some(existing_wallpaper_id) = self.wallpaper_id_by_download_target.get(&record_key) {
             if existing_wallpaper_id != &record.wallpaper_id {
                 return Err(ArchiveStoreError::RelativeFilePathConflict {
                     relative_file_path: record.relative_file_path.clone(),
@@ -91,16 +97,18 @@ impl ArchiveStore for InMemoryArchiveStore {
             .insert(record.wallpaper_id.clone(), record.clone());
 
         if let Some(previous_record) = previous_record.as_ref() {
-            if previous_record.relative_file_path != record.relative_file_path {
-                self.wallpaper_id_by_relative_file_path
-                    .remove(&previous_record.relative_file_path);
+            let previous_key = download_target_key(
+                &previous_record.download_base_dir,
+                previous_record.download_root_path.as_deref(),
+                &previous_record.relative_file_path,
+            );
+            if previous_key != record_key {
+                self.wallpaper_id_by_download_target.remove(&previous_key);
             }
         }
 
-        self.wallpaper_id_by_relative_file_path.insert(
-            record.relative_file_path.clone(),
-            record.wallpaper_id.clone(),
-        );
+        self.wallpaper_id_by_download_target
+            .insert(record_key, record.wallpaper_id.clone());
 
         Ok(if previous_record.is_some() {
             ArchiveWriteOutcome::Updated
@@ -109,18 +117,21 @@ impl ArchiveStore for InMemoryArchiveStore {
         })
     }
 
-    fn find_by_wallpaper_id(&self, wallpaper_id: &str) -> ArchiveStoreResult<Option<ArchiveRecord>> {
+    fn find_by_wallpaper_id(
+        &self,
+        wallpaper_id: &str,
+    ) -> ArchiveStoreResult<Option<ArchiveRecord>> {
         Ok(self.records_by_wallpaper_id.get(wallpaper_id).cloned())
     }
 
-    fn find_by_relative_file_path(
+    fn find_by_download_target(
         &self,
+        download_base_dir: &str,
+        download_root_path: Option<&str>,
         relative_file_path: &str,
     ) -> ArchiveStoreResult<Option<ArchiveRecord>> {
-        let Some(wallpaper_id) = self
-            .wallpaper_id_by_relative_file_path
-            .get(relative_file_path)
-        else {
+        let key = download_target_key(download_base_dir, download_root_path, relative_file_path);
+        let Some(wallpaper_id) = self.wallpaper_id_by_download_target.get(&key) else {
             return Ok(None);
         };
 
@@ -138,11 +149,22 @@ impl ArchiveStore for InMemoryArchiveStore {
     }
 }
 
+fn download_target_key(
+    download_base_dir: &str,
+    download_root_path: Option<&str>,
+    relative_file_path: &str,
+) -> String {
+    format!(
+        "{}\0{}\0{}",
+        download_base_dir,
+        download_root_path.unwrap_or_default(),
+        relative_file_path,
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{
-        ArchiveStore, ArchiveStoreError, ArchiveWriteOutcome, InMemoryArchiveStore,
-    };
+    use super::{ArchiveStore, ArchiveStoreError, ArchiveWriteOutcome, InMemoryArchiveStore};
     use crate::models::download::ArchiveRecord;
 
     fn sample_record() -> ArchiveRecord {
@@ -151,6 +173,8 @@ mod tests {
             source_url: "https://wallhaven.cc/w/wh-1".into(),
             file_name: "wh-1.jpg".into(),
             relative_file_path: "wallpapers/wh-1.jpg".into(),
+            download_base_dir: "AppLocalData".into(),
+            download_root_path: None,
         }
     }
 
@@ -160,6 +184,8 @@ mod tests {
             source_url: "https://wallhaven.cc/w/wh-2".into(),
             file_name: "wh-2.jpg".into(),
             relative_file_path: "wallpapers/wh-2.jpg".into(),
+            download_base_dir: "AppLocalData".into(),
+            download_root_path: None,
         }
     }
 
@@ -175,7 +201,10 @@ mod tests {
                 message: "sqlite busy".into(),
             }
         );
-        assert_eq!(error.to_string(), "archive store persistence error: sqlite busy");
+        assert_eq!(
+            error.to_string(),
+            "archive store persistence error: sqlite busy"
+        );
     }
 
     #[test]
@@ -183,20 +212,63 @@ mod tests {
         let mut store = InMemoryArchiveStore::default();
         let record = sample_record();
 
-        assert_eq!(store.upsert(record.clone()).unwrap(), ArchiveWriteOutcome::Inserted);
+        assert_eq!(
+            store.upsert(record.clone()).unwrap(),
+            ArchiveWriteOutcome::Inserted
+        );
         assert_eq!(store.find_by_wallpaper_id("wh-1").unwrap(), Some(record));
     }
 
     #[test]
-    fn in_memory_archive_store_reads_records_by_relative_path() {
+    fn in_memory_archive_store_reads_records_by_download_target() {
         let mut store = InMemoryArchiveStore::default();
         let record = sample_record();
 
         store.upsert(record.clone()).unwrap();
 
         assert_eq!(
-            store.find_by_relative_file_path("wallpapers/wh-1.jpg").unwrap(),
+            store
+                .find_by_download_target("AppLocalData", None, "wallpapers/wh-1.jpg")
+                .unwrap(),
             Some(record)
+        );
+    }
+
+    #[test]
+    fn in_memory_archive_store_allows_same_relative_path_in_different_roots() {
+        let mut store = InMemoryArchiveStore::default();
+        let default_record = ArchiveRecord {
+            relative_file_path: "shared.jpg".into(),
+            download_base_dir: "AppLocalData".into(),
+            ..sample_record()
+        };
+        let custom_record = ArchiveRecord {
+            wallpaper_id: "wh-2".into(),
+            source_url: "https://wallhaven.cc/w/wh-2".into(),
+            file_name: "shared.jpg".into(),
+            relative_file_path: "shared.jpg".into(),
+            download_base_dir: "Absolute".into(),
+            download_root_path: Some("/Users/test/Pictures/Wallhaven".into()),
+        };
+
+        store.upsert(default_record.clone()).unwrap();
+        store.upsert(custom_record.clone()).unwrap();
+
+        assert_eq!(
+            store
+                .find_by_download_target("AppLocalData", None, "shared.jpg")
+                .unwrap(),
+            Some(default_record)
+        );
+        assert_eq!(
+            store
+                .find_by_download_target(
+                    "Absolute",
+                    Some("/Users/test/Pictures/Wallhaven"),
+                    "shared.jpg"
+                )
+                .unwrap(),
+            Some(custom_record)
         );
     }
 
@@ -217,20 +289,28 @@ mod tests {
         let mut updated_record = record.clone();
         updated_record.relative_file_path = "wallpapers/updated/wh-1.jpg".into();
 
-        assert_eq!(store.upsert(record.clone()).unwrap(), ArchiveWriteOutcome::Inserted);
-        assert_eq!(store.upsert(updated_record.clone()).unwrap(), ArchiveWriteOutcome::Updated);
+        assert_eq!(
+            store.upsert(record.clone()).unwrap(),
+            ArchiveWriteOutcome::Inserted
+        );
+        assert_eq!(
+            store.upsert(updated_record.clone()).unwrap(),
+            ArchiveWriteOutcome::Updated
+        );
 
         assert_eq!(
             store.find_by_wallpaper_id("wh-1").unwrap(),
             Some(updated_record.clone())
         );
         assert_eq!(
-            store.find_by_relative_file_path("wallpapers/wh-1.jpg").unwrap(),
+            store
+                .find_by_download_target("AppLocalData", None, "wallpapers/wh-1.jpg")
+                .unwrap(),
             None
         );
         assert_eq!(
             store
-                .find_by_relative_file_path("wallpapers/updated/wh-1.jpg")
+                .find_by_download_target("AppLocalData", None, "wallpapers/updated/wh-1.jpg")
                 .unwrap(),
             Some(updated_record)
         );
@@ -254,7 +334,9 @@ mod tests {
             }
         );
         assert_eq!(
-            store.find_by_relative_file_path("wallpapers/wh-1.jpg").unwrap(),
+            store
+                .find_by_download_target("AppLocalData", None, "wallpapers/wh-1.jpg")
+                .unwrap(),
             Some(record)
         );
         assert_eq!(store.find_by_wallpaper_id("wh-2").unwrap(), None);

@@ -1,7 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
 
-import type { DownloadStrategy } from "@/application/settings/settings.types";
+import type {
+  DownloadDirectorySettings,
+  SettingsCommandError,
+} from "@/application/settings/settings.types";
+import { toSettingsCommandError } from "@/application/settings/settings.types";
 
 const SETTINGS_STORE_PATH = "settings.json";
 const WALLHAVEN_KEY_STORAGE_KEY = "WALLHAVEN_KEY";
@@ -30,6 +34,24 @@ export async function saveStoredWallhavenKey(wallhavenKey: string): Promise<void
   });
 }
 
-export async function loadDefaultDownloadStrategy(): Promise<DownloadStrategy> {
-  return invoke<DownloadStrategy>("get_default_download_strategy");
+export async function loadDownloadDirectorySettings(): Promise<DownloadDirectorySettings> {
+  try {
+    return await invoke<DownloadDirectorySettings>("get_download_directory_settings");
+  } catch (error) {
+    throw toSettingsCommandError(error) as SettingsCommandError;
+  }
+}
+
+export async function saveDownloadDirectorySettings(
+  customDirectoryPath: string | null,
+): Promise<DownloadDirectorySettings> {
+  try {
+    return await invoke<DownloadDirectorySettings>("save_download_directory_settings", {
+      request: {
+        customDirectoryPath,
+      },
+    });
+  } catch (error) {
+    throw toSettingsCommandError(error) as SettingsCommandError;
+  }
 }

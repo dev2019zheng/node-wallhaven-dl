@@ -11,9 +11,12 @@ vi.mock("@tauri-apps/plugin-store", () => ({
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
 
+import { SettingsCommandError } from "@/application/settings/settings.types";
+
 import {
-  loadDefaultDownloadStrategy,
+  loadDownloadDirectorySettings,
   loadStoredWallhavenKey,
+  saveDownloadDirectorySettings,
   saveStoredWallhavenKey,
 } from "./settings-repository";
 
@@ -85,17 +88,63 @@ describe("settings-repository", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
-  it("invokes the Rust default strategy command by name", async () => {
+  it("invokes the Rust download directory settings command by name", async () => {
     vi.mocked(invoke).mockResolvedValue({
-      baseDir: "AppLocalData",
-      relativePath: "wallpapers",
+      customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      defaultDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      isUsingDefaultDirectory: false,
     });
 
-    await expect(loadDefaultDownloadStrategy()).resolves.toEqual({
-      baseDir: "AppLocalData",
-      relativePath: "wallpapers",
+    await expect(loadDownloadDirectorySettings()).resolves.toEqual({
+      customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      defaultDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      isUsingDefaultDirectory: false,
     });
 
-    expect(invoke).toHaveBeenCalledWith("get_default_download_strategy");
+    expect(invoke).toHaveBeenCalledWith("get_download_directory_settings");
+  });
+
+  it("saves the custom download directory through the Rust settings command", async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      customDirectoryPath: "/Users/test/Pictures/Curated",
+      effectiveDirectoryPath: "/Users/test/Pictures/Curated",
+      defaultDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      isUsingDefaultDirectory: false,
+    });
+
+    await expect(
+      saveDownloadDirectorySettings("/Users/test/Pictures/Curated"),
+    ).resolves.toEqual({
+      customDirectoryPath: "/Users/test/Pictures/Curated",
+      effectiveDirectoryPath: "/Users/test/Pictures/Curated",
+      defaultDirectoryPath:
+        "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+      isUsingDefaultDirectory: false,
+    });
+
+    expect(invoke).toHaveBeenCalledWith("save_download_directory_settings", {
+      request: {
+        customDirectoryPath: "/Users/test/Pictures/Curated",
+      },
+    });
+  });
+
+  it("preserves structured settings command failures for invalid custom directories", async () => {
+    vi.mocked(invoke).mockRejectedValue({
+      kind: "invalidRequest",
+      message: "custom download directory must be an absolute path",
+    });
+
+    await expect(saveDownloadDirectorySettings("relative/path")).rejects.toEqual(
+      new SettingsCommandError({
+        kind: "invalidRequest",
+        message: "custom download directory must be an absolute path",
+      }),
+    );
   });
 });
