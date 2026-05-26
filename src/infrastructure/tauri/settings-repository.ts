@@ -3,6 +3,7 @@ import { Store } from "@tauri-apps/plugin-store";
 
 import type {
   DownloadDirectorySettings,
+  NetworkProxySettings,
   SettingsCommandError,
 } from "@/application/settings/settings.types";
 import { toSettingsCommandError } from "@/application/settings/settings.types";
@@ -49,6 +50,28 @@ export async function saveDownloadDirectorySettings(
     return await invoke<DownloadDirectorySettings>("save_download_directory_settings", {
       request: {
         customDirectoryPath,
+      },
+    });
+  } catch (error) {
+    throw toSettingsCommandError(error) as SettingsCommandError;
+  }
+}
+
+export async function loadNetworkProxySettings(): Promise<NetworkProxySettings | null> {
+  try {
+    return await invoke<NetworkProxySettings | null>("get_network_proxy_settings");
+  } catch (error) {
+    throw toSettingsCommandError(error) as SettingsCommandError;
+  }
+}
+
+export async function saveNetworkProxySettings(
+  proxy: NetworkProxySettings | null,
+): Promise<NetworkProxySettings | null> {
+  try {
+    return await invoke<NetworkProxySettings | null>("save_network_proxy_settings", {
+      request: {
+        proxy,
       },
     });
   } catch (error) {

@@ -15,8 +15,10 @@ import { SettingsCommandError } from "@/application/settings/settings.types";
 
 import {
   loadDownloadDirectorySettings,
+  loadNetworkProxySettings,
   loadStoredWallhavenKey,
   saveDownloadDirectorySettings,
+  saveNetworkProxySettings,
   saveStoredWallhavenKey,
 } from "./settings-repository";
 
@@ -134,6 +136,58 @@ describe("settings-repository", () => {
     });
   });
 
+  it("loads the saved network proxy settings through the Rust settings command", async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      scheme: "socks5",
+      address: "127.0.0.1:7897",
+    });
+
+    await expect(loadNetworkProxySettings()).resolves.toEqual({
+      scheme: "socks5",
+      address: "127.0.0.1:7897",
+    });
+
+    expect(invoke).toHaveBeenCalledWith("get_network_proxy_settings");
+  });
+
+  it("saves the network proxy settings through the Rust settings command", async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      scheme: "http",
+      address: "127.0.0.1:7897",
+    });
+
+    await expect(
+      saveNetworkProxySettings({
+        scheme: "http",
+        address: "127.0.0.1:7897",
+      }),
+    ).resolves.toEqual({
+      scheme: "http",
+      address: "127.0.0.1:7897",
+    });
+
+    expect(invoke).toHaveBeenCalledWith("save_network_proxy_settings", {
+      request: {
+        proxy: {
+          scheme: "http",
+          address: "127.0.0.1:7897",
+        },
+      },
+    });
+  });
+
+  it("clears the saved network proxy settings when the user disables the proxy", async () => {
+    vi.mocked(invoke).mockResolvedValue(null);
+
+    await expect(saveNetworkProxySettings(null)).resolves.toBeNull();
+
+    expect(invoke).toHaveBeenCalledWith("save_network_proxy_settings", {
+      request: {
+        proxy: null,
+      },
+    });
+  });
+
   it("preserves structured settings command failures for invalid custom directories", async () => {
     vi.mocked(invoke).mockRejectedValue({
       kind: "invalidRequest",
@@ -144,6 +198,25 @@ describe("settings-repository", () => {
       new SettingsCommandError({
         kind: "invalidRequest",
         message: "custom download directory must be an absolute path",
+      }),
+    );
+  });
+
+  it("preserves structured settings command failures for invalid proxy addresses", async () => {
+    vi.mocked(invoke).mockRejectedValue({
+      kind: "invalidRequest",
+      message: "proxy address must not include a scheme",
+    });
+
+    await expect(
+      saveNetworkProxySettings({
+        scheme: "http",
+        address: "http://127.0.0.1:7897",
+      }),
+    ).rejects.toEqual(
+      new SettingsCommandError({
+        kind: "invalidRequest",
+        message: "proxy address must not include a scheme",
       }),
     );
   });

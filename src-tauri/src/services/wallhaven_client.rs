@@ -7,6 +7,7 @@ use reqwest::{Client, Url};
 use crate::models::search::{
     WallhavenRequestError, WallhavenSearchRequest, WallhavenSearchResponse,
 };
+use crate::models::settings::NetworkProxySettings;
 
 const DEFAULT_BASE_URL: &str = "https://wallhaven.cc";
 const SEARCH_PATH: &str = "/api/v1/search";
@@ -17,6 +18,7 @@ const USER_AGENT: &str = "wallhaven-desktop/0.1.0";
 #[derive(Debug)]
 pub enum WallhavenClientError {
     InvalidBaseUrl(String),
+    InvalidProxy(String),
     InvalidRequest(WallhavenRequestError),
     Request(reqwest::Error),
 }
@@ -25,6 +27,7 @@ impl fmt::Display for WallhavenClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidBaseUrl(message) => write!(f, "{message}"),
+            Self::InvalidProxy(message) => write!(f, "{message}"),
             Self::InvalidRequest(error) => write!(f, "{error}"),
             Self::Request(error) => write!(f, "{error}"),
         }
@@ -53,19 +56,40 @@ pub struct WallhavenClient {
 
 impl WallhavenClient {
     pub fn new() -> Self {
-        Self::with_base_url(DEFAULT_BASE_URL)
-            .expect("default wallhaven base URL should always be valid")
+        Self::with_proxy(None).expect("default wallhaven base URL should always be valid")
+    }
+
+    pub fn with_proxy(
+        proxy_settings: Option<&NetworkProxySettings>,
+    ) -> Result<Self, WallhavenClientError> {
+        Self::with_base_url_and_proxy(DEFAULT_BASE_URL, proxy_settings)
     }
 
     pub fn with_base_url(base_url: impl AsRef<str>) -> Result<Self, WallhavenClientError> {
+        Self::with_base_url_and_proxy(base_url, None)
+    }
+
+    pub fn with_base_url_and_proxy(
+        base_url: impl AsRef<str>,
+        proxy_settings: Option<&NetworkProxySettings>,
+    ) -> Result<Self, WallhavenClientError> {
         let base_url = Url::parse(base_url.as_ref())
             .map_err(|error| WallhavenClientError::InvalidBaseUrl(error.to_string()))?;
 
-        let http_client = Client::builder()
+        let mut http_client_builder = Client::builder()
             .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECONDS))
             .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECONDS))
-            .user_agent(USER_AGENT)
-            .build()?;
+            .user_agent(USER_AGENT);
+
+        if let Some(proxy_settings) = proxy_settings {
+            http_client_builder = http_client_builder.proxy(
+                proxy_settings
+                    .to_reqwest_proxy()
+                    .map_err(|error| WallhavenClientError::InvalidProxy(error.to_string()))?,
+            );
+        }
+
+        let http_client = http_client_builder.build()?;
 
         Ok(Self {
             base_url,
@@ -108,8 +132,23 @@ mod tests {
         WallhavenCategoryFilter, WallhavenPurityFilter, WallhavenSearchRequest, WallhavenSorting,
         WallhavenToplistRange,
     };
+    use crate::models::settings::{NetworkProxyScheme, NetworkProxySettings};
 
     use super::WallhavenClient;
+
+    #[test]
+    fn wallhaven_client_accepts_socks5_proxy_settings() {
+        let client = WallhavenClient::with_base_url_and_proxy(
+            "https://wallhaven.cc",
+            Some(&NetworkProxySettings {
+                scheme: NetworkProxyScheme::Socks5,
+                address: "127.0.0.1:7897".into(),
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(client.base_url.as_str(), "https://wallhaven.cc/");
+    }
 
     #[test]
     fn search_requests_include_query_params_and_api_key_header() {

@@ -5,14 +5,24 @@ export type DownloadDirectorySettings = {
   isUsingDefaultDirectory: boolean;
 };
 
+export type NetworkProxyScheme = "http" | "https" | "socks5";
+
+export type NetworkProxySettings = {
+  scheme: NetworkProxyScheme;
+  address: string;
+};
+
 export type SettingsSnapshot = {
   wallhavenKey: string;
   downloadDirectory: DownloadDirectorySettings;
+  networkProxy: NetworkProxySettings | null;
 };
 
 export type SaveSettingsInput = {
   wallhavenKey: string;
   customDownloadDirectoryPath: string;
+  networkProxyScheme: NetworkProxyScheme;
+  networkProxyAddress: string;
 };
 
 export type SettingsCommandErrorKind =

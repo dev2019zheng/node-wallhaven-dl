@@ -34,7 +34,9 @@ pub fn run() {
             commands::gallery::list_gallery_items,
             commands::search::search_wallpapers,
             commands::settings::get_download_directory_settings,
-            commands::settings::save_download_directory_settings
+            commands::settings::save_download_directory_settings,
+            commands::settings::get_network_proxy_settings,
+            commands::settings::save_network_proxy_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -8,6 +8,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::db::settings_repository::SettingsStoreError;
 use crate::db::DatabaseState;
 use crate::models::download::{DownloadRequest, DownloadTask};
+use crate::models::settings::{NetworkProxySettings, NetworkProxySettingsError};
 use crate::services::download_events::AppHandleDownloadEventEmitter;
 use crate::services::download_manager::{
     download_wallpaper_to_directory_with_strategy_and_emitter, DownloadManagerError,
@@ -59,6 +60,15 @@ impl From<SettingsStoreError> for DownloadCommandError {
     }
 }
 
+impl From<NetworkProxySettingsError> for DownloadCommandError {
+    fn from(error: NetworkProxySettingsError) -> Self {
+        Self {
+            kind: DownloadCommandErrorKind::InvalidRequest,
+            message: error.to_string(),
+        }
+    }
+}
+
 impl From<DownloadManagerError> for DownloadCommandError {
     fn from(error: DownloadManagerError) -> Self {
         match error {
@@ -97,6 +107,21 @@ impl From<DownloadManagerError> for DownloadCommandError {
     }
 }
 
+fn build_download_http_client(
+    network_proxy: Option<&NetworkProxySettings>,
+) -> Result<Client, DownloadCommandError> {
+    let mut client_builder = Client::builder().timeout(Duration::from_secs(60));
+
+    if let Some(network_proxy) = network_proxy {
+        client_builder = client_builder.proxy(network_proxy.to_reqwest_proxy()?);
+    }
+
+    client_builder.build().map_err(|error| DownloadCommandError {
+        kind: DownloadCommandErrorKind::Internal,
+        message: error.to_string(),
+    })
+}
+
 #[tauri::command]
 pub async fn download_wallpaper(
     app: AppHandle,
@@ -115,15 +140,13 @@ pub async fn download_wallpaper(
         .settings_repository()
         .load_custom_download_directory()
         .await?;
+    let network_proxy = database
+        .settings_repository()
+        .load_network_proxy_settings()
+        .await?;
     let strategy = strategy_from_custom_download_directory(custom_download_directory.as_deref())?;
 
-    let client = Client::builder()
-        .timeout(Duration::from_secs(60))
-        .build()
-        .map_err(|error| DownloadCommandError {
-            kind: DownloadCommandErrorKind::Internal,
-            message: error.to_string(),
-        })?;
+    let client = build_download_http_client(network_proxy.as_ref())?;
 
     let event_emitter = AppHandleDownloadEventEmitter::new(app);
 

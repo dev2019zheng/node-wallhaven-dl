@@ -4,7 +4,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { loadSettings, saveSettings } from "@/application/settings/settings-service";
-import type { DownloadDirectorySettings } from "@/application/settings/settings.types";
+import type {
+  DownloadDirectorySettings,
+  NetworkProxyScheme,
+} from "@/application/settings/settings.types";
 import { Button } from "@/components/ui/button";
 
 const settingsSchema = z.object({
@@ -12,6 +15,8 @@ const settingsSchema = z.object({
   customDownloadDirectoryPath: z
     .string()
     .max(4096, "Download directory path is unexpectedly long."),
+  networkProxyScheme: z.enum(["http", "https", "socks5"]),
+  networkProxyAddress: z.string().max(2048, "Proxy address is unexpectedly long."),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -20,6 +25,12 @@ type SaveFeedback = {
   tone: "success" | "error";
   message: string;
 };
+
+const networkProxyOptions: Array<{ value: NetworkProxyScheme; label: string }> = [
+  { value: "http", label: "HTTP" },
+  { value: "https", label: "HTTPS" },
+  { value: "socks5", label: "SOCKS5" },
+];
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error && error.message) {
@@ -61,6 +72,8 @@ export function SettingsPage() {
     defaultValues: {
       wallhavenKey: "",
       customDownloadDirectoryPath: "",
+      networkProxyScheme: "http",
+      networkProxyAddress: "",
     },
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +95,8 @@ export function SettingsPage() {
         reset({
           wallhavenKey: snapshot.wallhavenKey,
           customDownloadDirectoryPath: snapshot.downloadDirectory.customDirectoryPath,
+          networkProxyScheme: snapshot.networkProxy?.scheme ?? "http",
+          networkProxyAddress: snapshot.networkProxy?.address ?? "",
         });
         setDownloadDirectory(snapshot.downloadDirectory);
         setLoadError(null);
@@ -106,6 +121,7 @@ export function SettingsPage() {
 
   const wallhavenKeyError = formState.errors.wallhavenKey?.message;
   const customDirectoryError = formState.errors.customDownloadDirectoryPath?.message;
+  const networkProxyAddressError = formState.errors.networkProxyAddress?.message;
 
   const onSubmit = handleSubmit(async (values) => {
     setSaveFeedback(null);
@@ -114,11 +130,15 @@ export function SettingsPage() {
       const snapshot = await saveSettings({
         wallhavenKey: values.wallhavenKey,
         customDownloadDirectoryPath: values.customDownloadDirectoryPath,
+        networkProxyScheme: values.networkProxyScheme,
+        networkProxyAddress: values.networkProxyAddress,
       });
 
       reset({
         wallhavenKey: snapshot.wallhavenKey,
         customDownloadDirectoryPath: snapshot.downloadDirectory.customDirectoryPath,
+        networkProxyScheme: snapshot.networkProxy?.scheme ?? "http",
+        networkProxyAddress: snapshot.networkProxy?.address ?? "",
       });
       setDownloadDirectory(snapshot.downloadDirectory);
       setSaveFeedback({
@@ -143,8 +163,8 @@ export function SettingsPage() {
           <div className="space-y-2">
             <h2 className="text-3xl font-semibold tracking-tight text-foreground">Settings</h2>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Manage the local Wallhaven API key and choose whether future desktop downloads stay in
-              the app-managed default directory or move into a custom absolute folder.
+              Manage the local Wallhaven API key, download directory, and optional proxy settings for
+              future Wallhaven desktop requests.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
@@ -243,6 +263,62 @@ export function SettingsPage() {
               </p>
             ) : null}
           </div>
+
+          <div className="space-y-2 border-t border-border/80 pt-6">
+            <h3 className="text-lg font-semibold text-foreground">Network proxy</h3>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Route Wallhaven search and downloads through a local proxy when direct requests fail.
+              Leave the proxy address blank to keep using a direct connection.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
+            <label className="space-y-2 text-sm font-medium text-foreground" htmlFor="networkProxyScheme">
+              <span>Proxy type</span>
+              <select
+                className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+                id="networkProxyScheme"
+                {...register("networkProxyScheme", {
+                  onChange: () => {
+                    setSaveFeedback(null);
+                  },
+                })}
+              >
+                {networkProxyOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-foreground" htmlFor="networkProxyAddress">
+              <span>Proxy address</span>
+              <input
+                autoComplete="off"
+                className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+                id="networkProxyAddress"
+                placeholder="127.0.0.1:7897"
+                spellCheck={false}
+                type="text"
+                {...register("networkProxyAddress", {
+                  onChange: () => {
+                    setSaveFeedback(null);
+                  },
+                })}
+              />
+            </label>
+          </div>
+
+          <p className="text-xs leading-5 text-muted-foreground">
+            Choose the proxy protocol separately and enter only the host and port, for example
+            <code className="ml-1 rounded bg-background/80 px-1 py-0.5 text-xs">127.0.0.1:7897</code>.
+          </p>
+          {networkProxyAddressError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {networkProxyAddressError}
+            </p>
+          ) : null}
 
           {loadError ? (
             <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">

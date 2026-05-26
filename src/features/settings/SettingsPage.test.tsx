@@ -16,7 +16,7 @@ describe("SettingsPage", () => {
     vi.resetAllMocks();
   });
 
-  it("loads the saved WALLHAVEN_KEY and custom download directory, then saves edits with success feedback", async () => {
+  it("loads the saved WALLHAVEN_KEY, custom download directory, and proxy settings, then saves edits with success feedback", async () => {
     vi.mocked(loadSettings).mockResolvedValue({
       wallhavenKey: "existing-key",
       downloadDirectory: {
@@ -25,6 +25,10 @@ describe("SettingsPage", () => {
         defaultDirectoryPath:
           "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
         isUsingDefaultDirectory: false,
+      },
+      networkProxy: {
+        scheme: "socks5",
+        address: "127.0.0.1:7897",
       },
     });
     vi.mocked(saveSettings).mockResolvedValue({
@@ -36,15 +40,23 @@ describe("SettingsPage", () => {
           "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
         isUsingDefaultDirectory: false,
       },
+      networkProxy: {
+        scheme: "http",
+        address: "127.0.0.1:8899",
+      },
     });
 
     render(<SettingsPage />);
 
     const wallhavenKeyInput = await screen.findByLabelText(/Wallhaven API key/i);
     const customDirectoryInput = screen.getByLabelText(/Custom download directory/i);
+    const proxyTypeInput = screen.getByLabelText(/Proxy type/i);
+    const proxyAddressInput = screen.getByLabelText(/Proxy address/i);
 
     expect(wallhavenKeyInput).toHaveValue("existing-key");
     expect(customDirectoryInput).toHaveValue("/Users/test/Pictures/Wallhaven");
+    expect(proxyTypeInput).toHaveValue("socks5");
+    expect(proxyAddressInput).toHaveValue("127.0.0.1:7897");
     expect(screen.getByText("/Users/test/Pictures/Wallhaven")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -57,12 +69,17 @@ describe("SettingsPage", () => {
     await user.type(wallhavenKeyInput, "updated-key");
     await user.clear(customDirectoryInput);
     await user.type(customDirectoryInput, "/Users/test/Pictures/Curated");
+    await user.selectOptions(proxyTypeInput, "http");
+    await user.clear(proxyAddressInput);
+    await user.type(proxyAddressInput, "127.0.0.1:8899");
     await user.click(screen.getByRole("button", { name: /save settings/i }));
 
     await waitFor(() => {
       expect(saveSettings).toHaveBeenCalledWith({
         wallhavenKey: "updated-key",
         customDownloadDirectoryPath: "/Users/test/Pictures/Curated",
+        networkProxyScheme: "http",
+        networkProxyAddress: "127.0.0.1:8899",
       });
     });
     expect(await screen.findByText(/Settings saved/i)).toBeInTheDocument();
@@ -78,6 +95,7 @@ describe("SettingsPage", () => {
           "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
         isUsingDefaultDirectory: false,
       },
+      networkProxy: null,
     });
     vi.mocked(saveSettings).mockResolvedValue({
       wallhavenKey: "existing-key",
@@ -89,6 +107,7 @@ describe("SettingsPage", () => {
           "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
         isUsingDefaultDirectory: true,
       },
+      networkProxy: null,
     });
 
     render(<SettingsPage />);
@@ -112,6 +131,7 @@ describe("SettingsPage", () => {
           "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
         isUsingDefaultDirectory: true,
       },
+      networkProxy: null,
     });
     vi.mocked(saveSettings).mockRejectedValue(
       new SettingsCommandError({
@@ -129,6 +149,40 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: /save settings/i }));
 
     expect(await screen.findByText(/custom download directory must be an absolute path/i)).toBeInTheDocument();
+  });
+
+  it("shows the backend validation message for invalid proxy addresses", async () => {
+    vi.mocked(loadSettings).mockResolvedValue({
+      wallhavenKey: "existing-key",
+      downloadDirectory: {
+        customDirectoryPath: "",
+        effectiveDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        defaultDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        isUsingDefaultDirectory: true,
+      },
+      networkProxy: {
+        scheme: "http",
+        address: "127.0.0.1:7897",
+      },
+    });
+    vi.mocked(saveSettings).mockRejectedValue(
+      new SettingsCommandError({
+        kind: "invalidRequest",
+        message: "proxy address must not include a scheme",
+      }),
+    );
+
+    render(<SettingsPage />);
+
+    const proxyAddressInput = await screen.findByLabelText(/Proxy address/i);
+    const user = userEvent.setup();
+    await user.clear(proxyAddressInput);
+    await user.type(proxyAddressInput, "http://127.0.0.1:7897");
+    await user.click(screen.getByRole("button", { name: /save settings/i }));
+
+    expect(await screen.findByText(/proxy address must not include a scheme/i)).toBeInTheDocument();
   });
 
   it("replaces loading summaries with unavailable copy when settings fail to load", async () => {

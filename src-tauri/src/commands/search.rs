@@ -1,5 +1,8 @@
 use serde::Serialize;
+use tauri::State;
 
+use crate::db::settings_repository::SettingsStoreError;
+use crate::db::DatabaseState;
 use crate::models::search::{
     WallhavenSearchMeta, WallhavenSearchRequest, WallhavenSearchResponse, WallhavenWallpaper,
     WallhavenWallpaperCategory, WallhavenWallpaperPurity, WallhavenWallpaperThumbs,
@@ -121,11 +124,20 @@ impl From<WallhavenClientError> for SearchWallpapersError {
             WallhavenClientError::InvalidBaseUrl(message) => {
                 Self::new(SearchWallpapersErrorKind::Internal, message)
             }
+            WallhavenClientError::InvalidProxy(message) => {
+                Self::new(SearchWallpapersErrorKind::InvalidRequest, message)
+            }
             WallhavenClientError::InvalidRequest(error) => {
                 Self::new(SearchWallpapersErrorKind::InvalidRequest, error.to_string())
             }
             WallhavenClientError::Request(error) => Self::from_reqwest_error(error),
         }
+    }
+}
+
+impl From<SettingsStoreError> for SearchWallpapersError {
+    fn from(error: SettingsStoreError) -> Self {
+        Self::new(SearchWallpapersErrorKind::Internal, error.to_string())
     }
 }
 
@@ -196,9 +208,11 @@ fn map_search_result(
 
 #[tauri::command]
 pub async fn search_wallpapers(
+    database: State<'_, DatabaseState>,
     request: WallhavenSearchRequest,
 ) -> Result<SearchWallpapersResponse, SearchWallpapersError> {
-    let client = WallhavenClient::new();
+    let network_proxy = database.settings_repository().load_network_proxy_settings().await?;
+    let client = WallhavenClient::with_proxy(network_proxy.as_ref())?;
     map_search_result(client.search(&request).await)
 }
 
