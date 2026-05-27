@@ -8,6 +8,7 @@ import type {
   DownloadDirectorySettings,
   NetworkProxyScheme,
 } from "@/application/settings/settings.types";
+import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 
 const settingsSchema = z.object({
@@ -155,24 +156,12 @@ export function SettingsPage() {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">
-          Application settings
-        </p>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Settings</h2>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Manage the local Wallhaven API key, download directory, and optional proxy settings for
-              future Wallhaven desktop requests.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            Tauri Store + SQLite backed
-          </div>
-        </div>
-      </header>
+      <PageHeading
+        badge="Tauri Store + SQLite backed"
+        description="Manage the local Wallhaven API key, download directory, and optional proxy settings for future Wallhaven desktop requests."
+        eyebrow="Application settings"
+        title="Settings"
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <form className="space-y-6 rounded-3xl border border-border/80 bg-card/50 p-6 shadow-sm" onSubmit={onSubmit}>

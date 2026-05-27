@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react"
 
 import { loadInitialGalleryItems } from "@/application/gallery/gallery-service"
 import type { GalleryListResponse } from "@/application/gallery/gallery.types"
+import { PageHeading } from "@/components/page-heading"
 
 import { GalleryGrid } from "./components/GalleryGrid"
 
@@ -76,24 +77,12 @@ export function GalleryPage() {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">
-          Local wallpaper library
-        </p>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Gallery</h2>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Browse archived wallpapers from the SQLite library and preview the local files that are
-              already stored on disk, including downloads that were moved into a custom directory.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            SQLite archive + local asset backed
-          </div>
-        </div>
-      </header>
+      <PageHeading
+        badge="SQLite archive + local asset backed"
+        description="Browse archived wallpapers from the SQLite library and preview the local files that are already stored on disk, including downloads that were moved into a custom directory."
+        eyebrow="Local wallpaper library"
+        title="Gallery"
+      />
 
       <section className="space-y-4 rounded-3xl border border-border/80 bg-card/40 p-6 shadow-sm">
         <div className="space-y-2">

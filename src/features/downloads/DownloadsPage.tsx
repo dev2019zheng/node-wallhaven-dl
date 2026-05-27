@@ -14,6 +14,7 @@ import {
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
 } from "@/infrastructure/tauri/download-events"
+import { PageHeading } from "@/components/page-heading"
 
 const statusBadgeClasses: Record<DownloadTaskStatus, string> = {
   queued: "border-slate-400/20 bg-slate-400/10 text-slate-200",
@@ -178,26 +179,12 @@ export function DownloadsPage() {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">
-          Wallpaper transfer queue
-        </p>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">
-              Downloads
-            </h2>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              Review queued, running, completed, and failed wallpaper transfers from the
-              Rust download manager without leaving the desktop shell.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            Live command + event stream backed
-          </div>
-        </div>
-      </header>
+      <PageHeading
+        badge="Live command + event stream backed"
+        description="Review queued, running, completed, and failed wallpaper transfers from the Rust download manager without leaving the desktop shell."
+        eyebrow="Wallpaper transfer queue"
+        title="Downloads"
+      />
 
       <section className="space-y-4 rounded-3xl border border-border/80 bg-card/40 p-6 shadow-sm">
         <div className="space-y-2">

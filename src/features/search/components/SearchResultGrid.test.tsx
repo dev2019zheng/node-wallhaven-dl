@@ -46,8 +46,10 @@ describe("SearchResultGrid", () => {
       "https://th.wallhaven.cc/lg/kx/kxpkmm.jpg",
     );
     expect(screen.getByText("1966x3000")).toBeInTheDocument();
-    expect(screen.getByText(/79 favorites/i)).toBeInTheDocument();
-    expect(screen.getByText(/2572 views/i)).toBeInTheDocument();
+    expect(screen.getByText("79")).toBeInTheDocument();
+    expect(screen.getByText("2572")).toBeInTheDocument();
+    expect(screen.getByText("Favorites")).toBeInTheDocument();
+    expect(screen.getByText("Views")).toBeInTheDocument();
   });
 
   it("opens a preview lightbox for the selected wallpaper", async () => {
