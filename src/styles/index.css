@@ -1,6 +1,29 @@
 @import "tailwindcss";
 
 :root {
+  --background: oklch(0.96 0.01 247.86);
+  --foreground: oklch(0.18 0.015 247.86);
+  --card: oklch(0.985 0.006 247.86);
+  --card-foreground: oklch(0.18 0.015 247.86);
+  --popover: oklch(0.995 0.004 247.86);
+  --popover-foreground: oklch(0.18 0.015 247.86);
+  --primary: oklch(0.62 0.17 254);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.92 0.01 247.86);
+  --secondary-foreground: oklch(0.26 0.02 247.86);
+  --muted: oklch(0.93 0.008 247.86);
+  --muted-foreground: oklch(0.42 0.018 247.86);
+  --accent: oklch(0.9 0.015 247.86);
+  --accent-foreground: oklch(0.22 0.02 247.86);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.84 0.012 247.86);
+  --input: oklch(0.86 0.012 247.86);
+  --ring: oklch(0.62 0.17 254);
+  --radius: 0.875rem;
+}
+
+.dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -20,7 +43,6 @@
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
   --ring: oklch(0.685 0.169 237.323);
-  --radius: 0.875rem;
 }
 
 @theme inline {
@@ -69,9 +91,15 @@
     margin: 0;
     min-height: 100vh;
     background-image:
+      radial-gradient(circle at top, rgb(56 189 248 / 0.12), transparent 34%),
+      linear-gradient(180deg, rgb(248 250 252) 0%, rgb(226 232 240) 100%);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .dark body {
+    background-image:
       radial-gradient(circle at top, rgb(56 189 248 / 0.18), transparent 36%),
       linear-gradient(180deg, rgb(15 23 42) 0%, rgb(2 6 23) 100%);
-    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   a {

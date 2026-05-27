@@ -2,6 +2,7 @@ import { Download, Images, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type NavigationItem = {
@@ -40,7 +41,7 @@ export function AppShell() {
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-full border border-sky-400/30 bg-sky-500/10 p-2 text-sky-300">
+              <div className="rounded-full border border-sky-500/35 bg-sky-500/12 p-2 text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-300">
                 <Images className="h-4 w-4" />
               </div>
               <div>
@@ -68,7 +69,7 @@ export function AppShell() {
                       key={item.to}
                       to={item.to}
                     >
-                      <Icon className="h-4 w-4 text-sky-300 transition-colors group-hover:text-sky-200" />
+                      <Icon className="h-4 w-4 text-sky-700 transition-colors group-hover:text-sky-600 dark:text-sky-300 dark:group-hover:text-sky-200" />
                       <span>{item.label}</span>
                     </NavLink>
                   );
@@ -76,7 +77,9 @@ export function AppShell() {
               </div>
             </nav>
 
-            <div aria-hidden="true" />
+            <div className="flex justify-end">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>

@@ -181,7 +181,7 @@ export function DownloadsPage() {
     <section className="space-y-6">
       <PageHeading
         badge="Live command + event stream backed"
-        description="Review queued, running, completed, and failed wallpaper transfers from the Rust download manager without leaving the desktop shell."
+        description="Track queued, running, completed, and failed transfers."
         eyebrow="Wallpaper transfer queue"
         title="Downloads"
       />

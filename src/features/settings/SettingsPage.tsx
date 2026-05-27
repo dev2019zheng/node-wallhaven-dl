@@ -158,7 +158,7 @@ export function SettingsPage() {
     <section className="space-y-6">
       <PageHeading
         badge="Tauri Store + SQLite backed"
-        description="Manage the local Wallhaven API key, download directory, and optional proxy settings for future Wallhaven desktop requests."
+        description="Manage API access, storage, and proxy defaults."
         eyebrow="Application settings"
         title="Settings"
       />

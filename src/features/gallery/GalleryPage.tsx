@@ -79,7 +79,7 @@ export function GalleryPage() {
     <section className="space-y-6">
       <PageHeading
         badge="SQLite archive + local asset backed"
-        description="Browse archived wallpapers from the SQLite library and preview the local files that are already stored on disk, including downloads that were moved into a custom directory."
+        description="Browse archived local wallpapers."
         eyebrow="Local wallpaper library"
         title="Gallery"
       />

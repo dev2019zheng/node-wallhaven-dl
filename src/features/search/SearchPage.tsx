@@ -399,7 +399,7 @@ export function SearchPage() {
     <section className="space-y-6">
       <PageHeading
         badge="Search + batch download backed"
-        description="Search Wallhaven, keep the filter model explicit, and download the current query in one pass instead of managing every card by hand."
+        description="Search and batch download the current query."
         eyebrow="Wallpaper discovery"
         title="Search"
       />
@@ -542,7 +542,7 @@ export function SearchPage() {
           </div>
           {result && result.data.length > 0 ? (
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-full border border-border/80 bg-background/70 px-3 py-1 text-xs text-muted-foreground">
+              <div className="rounded-full border border-border/80 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground">
                 Starting at page {activeFilters?.page ?? result.meta.currentPage} · downloading {pagesToDownload} page{pagesToDownload === 1 ? "" : "s"}
               </div>
               <Button
@@ -572,7 +572,7 @@ export function SearchPage() {
             className={
               downloadFeedback.tone === "error"
                 ? "rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-                : "rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+                : "rounded-2xl border border-emerald-500/35 bg-emerald-500/12 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200"
             }
             role={downloadFeedback.tone === "error" ? "alert" : "status"}
           >
@@ -581,7 +581,7 @@ export function SearchPage() {
         ) : null}
 
         {!searchError && resultCountLabel ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/12 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
             {resultCountLabel}
           </div>
         ) : null}
