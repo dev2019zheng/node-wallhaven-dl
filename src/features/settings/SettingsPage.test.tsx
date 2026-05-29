@@ -124,6 +124,37 @@ describe("SettingsPage", () => {
     expect(await screen.findByText(/设置已保存/i)).toBeInTheDocument();
   });
 
+  it("updates the effective destination summary and marks unsaved changes while editing", async () => {
+    vi.mocked(loadSettings).mockResolvedValue({
+      wallhavenKey: "existing-key",
+      downloadDirectory: {
+        customDirectoryPath: "",
+        effectiveDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        defaultDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        isUsingDefaultDirectory: true,
+      },
+      networkProxy: null,
+    });
+
+    render(<SettingsPage />);
+
+    const customDirectoryInput = await screen.findByLabelText(/下载目录/i);
+    const proxyTypeInput = screen.getByLabelText(/代理类型/i);
+    const proxyAddressInput = screen.getByLabelText(/代理地址/i);
+    const user = userEvent.setup();
+
+    await user.type(customDirectoryInput, "/Users/test/Pictures/Curated");
+    await user.selectOptions(proxyTypeInput, "socks5");
+    await user.type(proxyAddressInput, "127.0.0.1:7897");
+
+    expect(screen.getByText("未保存更改")).toBeInTheDocument();
+    expect(screen.getByText("/Users/test/Pictures/Curated")).toBeInTheDocument();
+    expect(screen.getByText("自定义目录")).toBeInTheDocument();
+    expect(screen.getByText("SOCKS5 · 127.0.0.1:7897")).toBeInTheDocument();
+  });
+
   it("shows a store-backed status toast after settings save successfully", async () => {
     vi.mocked(loadSettings).mockResolvedValue({
       wallhavenKey: "existing-key",

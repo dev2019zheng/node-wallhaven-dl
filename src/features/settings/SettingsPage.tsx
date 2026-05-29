@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -40,6 +40,12 @@ const networkProxyOptions: Array<{ value: NetworkProxyScheme; label: string }> =
   { value: "socks5", label: "SOCKS5" },
 ];
 
+const networkProxyLabelByScheme: Record<NetworkProxyScheme, string> = {
+  http: "HTTP",
+  https: "HTTPS",
+  socks5: "SOCKS5",
+};
+
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -49,7 +55,7 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 }
 
 export function SettingsPage() {
-  const { formState, handleSubmit, register, reset, setValue } = useForm<SettingsFormValues>({
+  const { formState, handleSubmit, register, reset, setValue, watch } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       wallhavenKey: "",
@@ -107,6 +113,30 @@ export function SettingsPage() {
   const networkProxyAddressError = formState.errors.networkProxyAddress?.message;
   const hasLoadError = loadError !== null;
   const isSaveDisabled = isLoading || formState.isSubmitting || hasLoadError;
+  const customDownloadDirectoryPath = watch("customDownloadDirectoryPath");
+  const networkProxyScheme = watch("networkProxyScheme");
+  const networkProxyAddress = watch("networkProxyAddress");
+
+  const effectiveDestination = useMemo(() => {
+    if (!downloadDirectory) {
+      return null;
+    }
+
+    const nextCustomDirectoryPath = customDownloadDirectoryPath.trim();
+    const nextProxyAddress = networkProxyAddress.trim();
+    const isUsingDefaultDirectory = nextCustomDirectoryPath.length === 0;
+
+    return {
+      effectiveDirectoryPath: isUsingDefaultDirectory
+        ? downloadDirectory.defaultDirectoryPath
+        : nextCustomDirectoryPath,
+      defaultDirectoryPath: downloadDirectory.defaultDirectoryPath,
+      modeLabel: isUsingDefaultDirectory ? "应用默认目录" : "自定义目录",
+      proxyLabel: nextProxyAddress
+        ? `${networkProxyLabelByScheme[networkProxyScheme]} · ${nextProxyAddress}`
+        : "直连",
+    };
+  }, [customDownloadDirectoryPath, downloadDirectory, networkProxyAddress, networkProxyScheme]);
 
   const clearSaveFeedback = () => {
     setSaveFeedback(null);
@@ -216,7 +246,12 @@ export function SettingsPage() {
         </form>
 
         <aside className="space-y-4 rounded-3xl border border-border/80 bg-card/40 p-6 shadow-sm">
-          <StorageAboutCard downloadDirectory={downloadDirectory} hasLoadError={loadError !== null} />
+          <StorageAboutCard
+            downloadDirectory={downloadDirectory}
+            effectiveDestination={effectiveDestination}
+            hasLoadError={loadError !== null}
+            hasUnsavedChanges={formState.isDirty}
+          />
         </aside>
       </div>
     </section>

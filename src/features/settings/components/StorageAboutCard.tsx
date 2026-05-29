@@ -4,20 +4,30 @@ import { LoadingSkeleton } from "@/components/loading-skeleton";
 
 import { SettingsPanel } from "./SettingsPanel";
 
-type StorageAboutCardProps = {
-  downloadDirectory: DownloadDirectorySettings | null;
-  hasLoadError: boolean;
+type EffectiveDestinationSummary = {
+  effectiveDirectoryPath: string;
+  defaultDirectoryPath: string;
+  modeLabel: string;
+  proxyLabel: string;
 };
 
-function getModeLabel(downloadDirectory: DownloadDirectorySettings): string {
-  return downloadDirectory.isUsingDefaultDirectory ? "应用默认目录" : "自定义路径";
-}
+type StorageAboutCardProps = {
+  downloadDirectory: DownloadDirectorySettings | null;
+  effectiveDestination: EffectiveDestinationSummary | null;
+  hasLoadError: boolean;
+  hasUnsavedChanges: boolean;
+};
 
-export function StorageAboutCard({ downloadDirectory, hasLoadError }: StorageAboutCardProps) {
+export function StorageAboutCard({
+  downloadDirectory,
+  effectiveDestination,
+  hasLoadError,
+  hasUnsavedChanges,
+}: StorageAboutCardProps) {
   const isLoading = !downloadDirectory && !hasLoadError;
 
   return (
-    <SettingsPanel description="Storage & about" title="Storage and about">
+    <SettingsPanel description="Effective destination" title="生效结果">
       {isLoading ? <LoadingSkeleton label="Loading storage details..." /> : null}
 
       {!downloadDirectory && hasLoadError ? (
@@ -27,36 +37,54 @@ export function StorageAboutCard({ downloadDirectory, hasLoadError }: StorageAbo
         />
       ) : null}
 
-      {downloadDirectory ? (
+      {downloadDirectory && effectiveDestination ? (
         <div className="space-y-4">
           <div className="rounded-2xl border border-primary/18 bg-primary/8 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">下载目录</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Next downloads</p>
+                <p className="mt-2 text-sm font-medium text-foreground">下一次下载会写入以下目录</p>
+              </div>
+              {hasUnsavedChanges ? (
+                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-400/12 px-3 py-1 text-xs font-medium text-amber-200">
+                  未保存更改
+                </span>
+              ) : null}
+            </div>
             <code className="mt-3 block break-all rounded-xl bg-background/80 px-3 py-3 text-sm text-foreground">
-              {downloadDirectory.effectiveDirectoryPath}
+              {effectiveDestination.effectiveDirectoryPath}
             </code>
           </div>
 
           <div className="space-y-3 text-sm text-muted-foreground">
-            <div className="grid gap-2 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start rounded-xl border border-border/85 bg-background/45 px-3 py-3">
+            <div className="grid gap-2 rounded-xl border border-border/85 bg-background/45 px-3 py-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">模式</div>
-              <div className="font-medium text-foreground">{getModeLabel(downloadDirectory)}</div>
+              <div className="font-medium text-foreground">{effectiveDestination.modeLabel}</div>
             </div>
-            <div className="grid gap-2 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start rounded-xl border border-border/85 bg-background/45 px-3 py-3">
+            <div className="grid gap-2 rounded-xl border border-border/85 bg-background/45 px-3 py-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">默认路径</div>
-              <div className="break-all font-medium text-foreground">{downloadDirectory.defaultDirectoryPath}</div>
+              <div className="break-all font-medium text-foreground">{effectiveDestination.defaultDirectoryPath}</div>
             </div>
-            <div className="grid gap-2 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start rounded-xl border border-border/85 bg-background/45 px-3 py-3">
+            <div className="grid gap-2 rounded-xl border border-border/85 bg-background/45 px-3 py-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">代理</div>
+              <div className="font-medium text-foreground">{effectiveDestination.proxyLabel}</div>
+            </div>
+            <div className="grid gap-2 rounded-xl border border-border/85 bg-background/45 px-3 py-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">兼容性</div>
               <div>
                 Gallery 会按归档记录中的路径元数据定位文件，因此修改下载目录只影响未来下载。
               </div>
+            </div>
+            <div className="grid gap-2 rounded-xl border border-border/85 bg-background/45 px-3 py-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">缓存</div>
+              <div>当前未暴露缓存大小与清理操作，现有下载原图不会被此摘要卡删除。</div>
             </div>
           </div>
         </div>
       ) : null}
 
       <div className="rounded-2xl border border-dashed border-border/80 bg-background/60 px-4 py-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">当前页面未暴露更多桌面控制项。</p>
+        <p className="font-medium text-foreground">当前页面仍保留事实性边界说明。</p>
         <ul className="mt-3 list-disc space-y-2 pl-5 leading-6">
           <li>文件命名规则和并发下载数仍沿用后端默认值。</li>
           <li>缓存大小、缓存清理和 SQLite 状态暂未暴露。</li>
