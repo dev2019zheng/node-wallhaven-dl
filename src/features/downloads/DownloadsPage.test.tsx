@@ -116,7 +116,7 @@ describe("DownloadsPage", () => {
     })
 
     expect(screen.getByText("wallhaven-ab1234.png")).toBeInTheDocument()
-    expect(screen.getAllByText(/Running/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/下载中/i).length).toBeGreaterThan(0)
 
     act(() => {
       progressHandler?.({
@@ -144,7 +144,7 @@ describe("DownloadsPage", () => {
       })
     })
 
-    expect(screen.getAllByText(/Succeeded/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/已完成/i).length).toBeGreaterThan(0)
   })
 
   it("filters the queue when switching tabs", async () => {
@@ -173,7 +173,7 @@ describe("DownloadsPage", () => {
     expect(await screen.findByText("wallhaven-run123.jpg")).toBeInTheDocument()
     expect(screen.getByText("wallhaven-fail123.jpg")).toBeInTheDocument()
 
-    await user.click(screen.getByRole("tab", { name: /failed/i }))
+    await user.click(screen.getByRole("tab", { name: /失败/i }))
 
     expect(screen.getByText("wallhaven-fail123.jpg")).toBeInTheDocument()
     expect(screen.queryByText("wallhaven-run123.jpg")).not.toBeInTheDocument()
@@ -302,7 +302,7 @@ describe("DownloadsPage", () => {
       },
     ])
 
-    expect(await screen.findAllByText(/Succeeded/i)).not.toHaveLength(0)
+    expect(await screen.findAllByText(/已完成/i)).not.toHaveLength(0)
     expect(screen.queryByText("Connecting...")).not.toBeInTheDocument()
   })
 })

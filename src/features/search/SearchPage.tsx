@@ -196,7 +196,7 @@ function chunkWallpapers(wallpapers: SearchWallpaper[], chunkSize: number): Sear
 }
 
 function formatWallpaperCount(count: number): string {
-  return `${count} wallpaper${count === 1 ? "" : "s"}`;
+  return `${count} 张壁纸`;
 }
 
 function filterOutDownloadingWallpapers(
@@ -303,18 +303,18 @@ export function SearchPage() {
       return null;
     }
 
-    return `Loaded ${formatWallpaperCount(result.data.length)} from Wallhaven.`;
+    return `当前页已加载 ${formatWallpaperCount(result.data.length)}。`;
   }, [result]);
   const bulkDownloadLabel = useMemo(() => {
     if (isBulkDownloading) {
-      return "Downloading current query...";
+      return "下载当前查询中...";
     }
 
     if (pagesToDownload > 1) {
-      return `Download ${pagesToDownload} pages`;
+      return `下载 ${pagesToDownload} 页`;
     }
 
-    return "Download current query";
+    return "下载当前查询";
   }, [isBulkDownloading, pagesToDownload]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -363,7 +363,7 @@ export function SearchPage() {
     );
     setDownloadFeedback({
       tone: "success",
-      message: `${downloadRequest.fileName} download started. Open Downloads to monitor live progress.`,
+      message: `${downloadRequest.fileName} 已开始下载，请前往 Downloads 查看进度。`,
     });
 
     try {
@@ -375,7 +375,7 @@ export function SearchPage() {
 
       setDownloadFeedback({
         tone: "success",
-        message: `${downloadRequest.fileName} finished downloading. Open Downloads to review task history.`,
+        message: `${downloadRequest.fileName} 下载完成，请前往 Downloads 查看任务记录。`,
       });
     } catch (error) {
       if (!isActiveRef.current) {
@@ -450,8 +450,8 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection. Open Downloads to review task history.`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection; ${failedDownloads} failed. Open Downloads to review task history.`;
+            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection. 前往 Downloads 查看 review task history.`
+            : `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection; ${failedDownloads} failed. 前往 Downloads 查看 review task history.`;
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -540,8 +540,8 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)}. Open Downloads to review task history.`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)}; ${failedDownloads} failed. Open Downloads to review task history.`;
+            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)}. 前往 Downloads 查看 review task history.`
+            : `Finished downloading ${formatWallpaperCount(successfulDownloads)}; ${failedDownloads} failed. 前往 Downloads 查看 review task history.`;
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -568,13 +568,13 @@ export function SearchPage() {
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="Search + batch download backed"
-        description="Search and batch download the current query."
+        badge="搜索工作台"
+        description="支持搜索、筛选与当前查询批量下载。"
         eyebrow="Wallpaper discovery"
-        title="Search"
+        title="搜索"
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] xl:items-start">
+      <div className="grid gap-5 xl:grid-cols-[18rem_minmax(0,1fr)] xl:items-start">
         <SearchFilters
           errors={formState.errors}
           isBulkDownloading={isBulkDownloading}
@@ -586,14 +586,13 @@ export function SearchPage() {
 
         <section
           aria-label="Search results"
-          className="space-y-4 rounded-3xl border border-border/80 bg-card/40 p-6 shadow-sm"
+          className="app-panel space-y-4 border-border/90 p-4 lg:p-5"
         >
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground">Results</h3>
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                Preview the current page, then download the active query across one or more pages
-                with a single action.
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">结果</h3>
+              <p className="text-sm text-muted-foreground">
+                当前查询共展示一页结果，可直接预览或发起批量下载。
               </p>
             </div>
             {result && result.data.length > 0 ? (
@@ -668,7 +667,7 @@ export function SearchPage() {
           {!searchError && !result ? (
             <EmptyState
               description="Then use the bulk action to download the current query."
-              title="Submit the form to load results from the Rust search command."
+              title="提交筛选条件后即可从搜索命令加载结果。"
             />
           ) : null}
         </section>

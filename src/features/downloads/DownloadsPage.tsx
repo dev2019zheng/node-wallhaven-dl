@@ -123,38 +123,37 @@ export function DownloadsPage() {
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="Live command + event stream backed"
-        description="Track queued, running, completed, and failed transfers."
+        badge="实时任务队列"
+        description="追踪下载中、已完成与失败任务。"
         eyebrow="Wallpaper transfer queue"
-        title="Downloads"
+        title="下载"
       />
 
-      <section className="space-y-4 rounded-3xl border border-border/80 bg-card/40 p-6 shadow-sm">
+      <section className="app-panel space-y-4 border-border/90 p-4 lg:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-foreground">Queue workspace</h3>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Existing tasks load on page entry, then status and byte progress continue to stream in
-              over the shared Tauri download events.
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">下载任务</h3>
+            <p className="text-sm text-muted-foreground">
+              进入页面后先拉取已有任务，再持续接收状态与进度事件。
             </p>
           </div>
 
           <dl className="grid gap-3 sm:grid-cols-3 xl:min-w-[24rem]">
             <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
               <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                In progress
+                下载中
               </dt>
               <dd className="mt-2 text-xl font-semibold text-foreground">{summary.activeCount}</dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
               <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Completed
+                已完成
               </dt>
               <dd className="mt-2 text-xl font-semibold text-foreground">{summary.completedCount}</dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
               <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Failed
+                失败
               </dt>
               <dd className="mt-2 text-xl font-semibold text-foreground">{summary.failedCount}</dd>
             </div>

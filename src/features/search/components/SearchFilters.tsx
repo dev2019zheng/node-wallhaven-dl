@@ -66,22 +66,47 @@ export function SearchFilters({
   return (
     <section
       aria-label="Search filters"
-      className="rounded-3xl border border-border/80 bg-card/50 p-6 shadow-sm"
+      className="app-panel overflow-hidden border-border/90 bg-card/88 p-4 lg:p-5"
     >
-      <form className="space-y-6" onSubmit={onSubmit}>
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-foreground">Filters</h3>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Keep the current page for previewing results, then choose how many pages the bulk
-            action should download from the same query.
-          </p>
+      <form className="space-y-4" onSubmit={onSubmit}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Search filters
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              预览当前页结果，并控制批量下载范围。
+            </p>
+          </div>
+          <Button className="min-w-[8rem] rounded-xl" disabled={isSubmitting || isBulkDownloading} type="submit">
+            {isSubmitting ? "搜索中..." : "搜索"}
+          </Button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+        <label className="space-y-2 text-sm font-medium text-foreground">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            关键词
+          </span>
+          <input
+            aria-invalid={errors.q ? true : undefined}
+            className="h-11 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
+            placeholder="输入关键词、颜色、分辨率..."
+            {...register("q")}
+          />
+          {errors.q ? (
+            <p className="text-sm text-destructive" role="alert">
+              {errors.q.message}
+            </p>
+          ) : null}
+        </label>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
           <label className="space-y-2 text-sm font-medium text-foreground">
-            <span>Category</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              分类
+            </span>
             <select
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+              className="h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
               {...register("category")}
             >
               {categoryOptions.map((option) => (
@@ -93,9 +118,11 @@ export function SearchFilters({
           </label>
 
           <label className="space-y-2 text-sm font-medium text-foreground">
-            <span>Purity</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              纯净度
+            </span>
             <select
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+              className="h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
               {...register("purityPreset")}
             >
               {purityOptions.map((option) => (
@@ -107,9 +134,11 @@ export function SearchFilters({
           </label>
 
           <label className="space-y-2 text-sm font-medium text-foreground">
-            <span>Sorting</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              排序
+            </span>
             <select
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+              className="h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
               {...register("sorting")}
             >
               {sortingOptions.map((option) => (
@@ -121,9 +150,11 @@ export function SearchFilters({
           </label>
 
           <label className="space-y-2 text-sm font-medium text-foreground">
-            <span>Page</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              起始页
+            </span>
             <input
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+              className="h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
               min={1}
               onFocus={(event) => event.currentTarget.select()}
               step={1}
@@ -133,9 +164,11 @@ export function SearchFilters({
           </label>
 
           <label className="space-y-2 text-sm font-medium text-foreground">
-            <span>Pages to download</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              批量页数
+            </span>
             <input
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+              className="h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
               min={1}
               onFocus={(event) => event.currentTarget.select()}
               step={1}
@@ -144,26 +177,13 @@ export function SearchFilters({
             />
           </label>
 
-          <label className="space-y-2 text-sm font-medium text-foreground sm:col-span-2 xl:col-span-1">
-            <span>Query</span>
-            <input
-              aria-invalid={errors.q ? true : undefined}
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
-              placeholder="Optional keyword search"
-              {...register("q")}
-            />
-            {errors.q ? (
-              <p className="text-sm text-destructive" role="alert">
-                {errors.q.message}
-              </p>
-            ) : null}
-          </label>
-
           {topRangeVisible ? (
-            <label className="space-y-2 text-sm font-medium text-foreground sm:col-span-2 xl:col-span-1">
-              <span>Toplist range</span>
+            <label className="space-y-2 text-sm font-medium text-foreground">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                热榜范围
+              </span>
               <select
-                className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+                className="h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
                 {...register("topRange")}
               >
                 {toplistOptions.map((option) => (
@@ -186,15 +206,6 @@ export function SearchFilters({
             {errors.pagesToDownload.message}
           </p>
         ) : null}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button disabled={isSubmitting || isBulkDownloading} type="submit">
-            {isSubmitting ? "Searching..." : "Search wallpapers"}
-          </Button>
-          <p aria-live="polite" className="text-sm text-muted-foreground">
-            {isSubmitting ? "Submitting search request..." : ""}
-          </p>
-        </div>
       </form>
     </section>
   );
