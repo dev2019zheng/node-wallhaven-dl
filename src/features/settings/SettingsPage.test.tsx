@@ -32,7 +32,7 @@ describe("SettingsPage", () => {
     useUiShellStore.setState({ toasts: [], confirm: null });
   });
 
-  it("renders grouped cards for wallhaven access, download settings, and network controls", async () => {
+  it("renders grouped settings cards for access, download settings, and network controls", async () => {
     vi.mocked(loadSettings).mockResolvedValue({
       wallhavenKey: "existing-key",
       downloadDirectory: {
@@ -87,10 +87,10 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    const wallhavenKeyInput = await screen.findByLabelText(/Wallhaven API key/i);
-    const customDirectoryInput = screen.getByLabelText(/Custom download directory/i);
-    const proxyTypeInput = screen.getByLabelText(/Proxy type/i);
-    const proxyAddressInput = screen.getByLabelText(/Proxy address/i);
+    const wallhavenKeyInput = await screen.findByLabelText(/API Key/i);
+    const customDirectoryInput = screen.getByLabelText(/下载目录/i);
+    const proxyTypeInput = screen.getByLabelText(/代理类型/i);
+    const proxyAddressInput = screen.getByLabelText(/代理地址/i);
 
     expect(wallhavenKeyInput).toHaveValue("existing-key");
     expect(customDirectoryInput).toHaveValue("/Users/test/Pictures/Wallhaven");
@@ -111,7 +111,7 @@ describe("SettingsPage", () => {
     await user.selectOptions(proxyTypeInput, "http");
     await user.clear(proxyAddressInput);
     await user.type(proxyAddressInput, "127.0.0.1:8899");
-    await user.click(screen.getByRole("button", { name: /save settings/i }));
+    await user.click(screen.getByRole("button", { name: /保存设置/i }));
 
     await waitFor(() => {
       expect(saveSettings).toHaveBeenCalledWith({
@@ -121,7 +121,7 @@ describe("SettingsPage", () => {
         networkProxyAddress: "127.0.0.1:8899",
       });
     });
-    expect(await screen.findByText(/Settings saved/i)).toBeInTheDocument();
+    expect(await screen.findByText(/设置已保存/i)).toBeInTheDocument();
   });
 
   it("shows a store-backed status toast after settings save successfully", async () => {
@@ -155,12 +155,12 @@ describe("SettingsPage", () => {
       </>,
     );
 
-    await screen.findByLabelText(/Wallhaven API key/i);
+    await screen.findByLabelText(/API Key/i);
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /save settings/i }));
+    await user.click(screen.getByRole("button", { name: /保存设置/i }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/Settings saved/i);
+    expect(await screen.findByRole("status")).toHaveTextContent(/设置已保存/i);
   });
 
   it("clears the custom directory field when switching back to the app default", async () => {
@@ -190,10 +190,10 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    const customDirectoryInput = await screen.findByLabelText(/Custom download directory/i);
+    const customDirectoryInput = await screen.findByLabelText(/下载目录/i);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: /use app default directory/i }));
+    await user.click(screen.getByRole("button", { name: /恢复默认/i }));
 
     expect(customDirectoryInput).toHaveValue("");
   });
@@ -220,11 +220,11 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    const customDirectoryInput = await screen.findByLabelText(/Custom download directory/i);
+    const customDirectoryInput = await screen.findByLabelText(/下载目录/i);
     const user = userEvent.setup();
     await user.clear(customDirectoryInput);
     await user.type(customDirectoryInput, "relative/path");
-    await user.click(screen.getByRole("button", { name: /save settings/i }));
+    await user.click(screen.getByRole("button", { name: /保存设置/i }));
 
     expect(await screen.findByText(/custom download directory must be an absolute path/i)).toBeInTheDocument();
   });
@@ -254,11 +254,11 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
 
-    const proxyAddressInput = await screen.findByLabelText(/Proxy address/i);
+    const proxyAddressInput = await screen.findByLabelText(/代理地址/i);
     const user = userEvent.setup();
     await user.clear(proxyAddressInput);
     await user.type(proxyAddressInput, "http://127.0.0.1:7897");
-    await user.click(screen.getByRole("button", { name: /save settings/i }));
+    await user.click(screen.getByRole("button", { name: /保存设置/i }));
 
     expect(await screen.findByText(/proxy address must not include a scheme/i)).toBeInTheDocument();
   });
@@ -271,13 +271,8 @@ describe("SettingsPage", () => {
     expect(
       await screen.findByText(/Cannot read properties of undefined \(reading 'invoke'\)/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Storage details unavailable")).toBeInTheDocument();
-    expect(
-      screen.getByText("Settings failed to load, so storage information is unavailable."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Loading effective directory...")).not.toBeInTheDocument();
-    expect(screen.queryByText("Loading default directory...")).not.toBeInTheDocument();
-    expect(screen.queryByText("Loading saved mode...")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /save settings/i })).toBeDisabled();
+    expect(screen.getByText("存储信息不可用")).toBeInTheDocument();
+    expect(screen.getByText("设置加载失败，因此当前无法显示存储摘要。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /保存设置/i })).toBeDisabled();
   });
 });

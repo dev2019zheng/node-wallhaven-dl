@@ -10,63 +10,57 @@ type StorageAboutCardProps = {
 };
 
 function getModeLabel(downloadDirectory: DownloadDirectorySettings): string {
-  return downloadDirectory.isUsingDefaultDirectory ? "App default directory" : "Custom override";
+  return downloadDirectory.isUsingDefaultDirectory ? "应用默认目录" : "自定义路径";
 }
 
 export function StorageAboutCard({ downloadDirectory, hasLoadError }: StorageAboutCardProps) {
   const isLoading = !downloadDirectory && !hasLoadError;
 
   return (
-    <SettingsPanel
-      description="Storage details stay read-only here because this page only reflects capabilities currently exposed by the backend."
-      title="Storage and about"
-    >
+    <SettingsPanel description="Storage & about" title="Storage and about">
       {isLoading ? <LoadingSkeleton label="Loading storage details..." /> : null}
 
       {!downloadDirectory && hasLoadError ? (
         <ErrorState
-          message="Settings failed to load, so storage information is unavailable."
-          title="Storage details unavailable"
+          message="设置加载失败，因此当前无法显示存储摘要。"
+          title="存储信息不可用"
         />
       ) : null}
 
       {downloadDirectory ? (
-        <>
-          <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Next downloads</p>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-primary/18 bg-primary/8 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">下载目录</p>
             <code className="mt-3 block break-all rounded-xl bg-background/80 px-3 py-3 text-sm text-foreground">
               {downloadDirectory.effectiveDirectoryPath}
             </code>
           </div>
 
-          <dl className="space-y-3 text-sm text-muted-foreground">
-            <div className="rounded-2xl border border-border/80 bg-card/30 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Mode</dt>
-              <dd className="mt-2 font-medium text-foreground">{getModeLabel(downloadDirectory)}</dd>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <div className="grid gap-2 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start rounded-xl border border-border/85 bg-background/45 px-3 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">模式</div>
+              <div className="font-medium text-foreground">{getModeLabel(downloadDirectory)}</div>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-card/30 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Default app directory</dt>
-              <dd className="mt-2 break-all font-medium text-foreground">
-                {downloadDirectory.defaultDirectoryPath}
-              </dd>
+            <div className="grid gap-2 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start rounded-xl border border-border/85 bg-background/45 px-3 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">默认路径</div>
+              <div className="break-all font-medium text-foreground">{downloadDirectory.defaultDirectoryPath}</div>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-card/30 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Gallery compatibility</dt>
-              <dd className="mt-2 leading-6">
-                Gallery now resolves archived files from the path metadata saved with each record, so
-                changing this setting only affects future downloads.
-              </dd>
+            <div className="grid gap-2 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-start rounded-xl border border-border/85 bg-background/45 px-3 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">兼容性</div>
+              <div>
+                Gallery 会按归档记录中的路径元数据定位文件，因此修改下载目录只影响未来下载。
+              </div>
             </div>
-          </dl>
-        </>
+          </div>
+        </div>
       ) : null}
 
-      <div className="rounded-2xl border border-dashed border-border/80 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Additional desktop controls are not exposed on this page.</p>
+      <div className="rounded-2xl border border-dashed border-border/80 bg-background/60 px-4 py-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">当前页面未暴露更多桌面控制项。</p>
         <ul className="mt-3 list-disc space-y-2 pl-5 leading-6">
-          <li>File naming rules and concurrent download limits follow backend defaults.</li>
-          <li>Cache size, cache cleanup, and SQLite state inspection are not exposed on this page.</li>
-          <li>API connectivity tests and update checks are omitted because the backend does not expose them here.</li>
+          <li>文件命名规则和并发下载数仍沿用后端默认值。</li>
+          <li>缓存大小、缓存清理和 SQLite 状态暂未暴露。</li>
+          <li>API 连通性测试和检查更新当前不在此页面提供。</li>
         </ul>
       </div>
     </SettingsPanel>

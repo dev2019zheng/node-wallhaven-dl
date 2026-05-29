@@ -27,34 +27,39 @@ export function DownloadSettingsCard({
   register,
 }: DownloadSettingsCardProps) {
   return (
-    <SettingsPanel
-      description="Leave this blank to keep using the app-managed default directory. Enter an absolute path to move future downloads somewhere else without changing how Gallery tracks already archived files."
-      title="Download settings"
-    >
-      <div className="space-y-3">
-        <label className="text-sm font-medium text-foreground" htmlFor="customDownloadDirectoryPath">
-          Custom download directory
-        </label>
-        <input
-          autoComplete="off"
-          className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
-          id="customDownloadDirectoryPath"
-          placeholder="/Users/you/Pictures/Wallhaven"
-          spellCheck={false}
-          type="text"
-          {...register("customDownloadDirectoryPath", {
-            onChange: onInputChange,
-          })}
-        />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-muted-foreground">
-            Use an absolute folder path. The backend validates and persists the preference; Search,
-            Downloads, and Gallery keep using the Rust path rules.
-          </p>
-          <Button disabled={isDisabled} onClick={onUseDefaultDirectory} type="button" variant="outline">
-            Use app default directory
+    <SettingsPanel description="Download settings" title="Download settings">
+      <div className="space-y-4">
+        <div className="grid gap-3 lg:grid-cols-[120px_minmax(0,1fr)_auto] lg:items-center">
+          <label className="text-sm font-medium text-foreground" htmlFor="customDownloadDirectoryPath">
+            下载目录
+          </label>
+          <input
+            autoComplete="off"
+            className="h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
+            id="customDownloadDirectoryPath"
+            placeholder="/Users/you/Pictures/Wallhaven"
+            spellCheck={false}
+            type="text"
+            {...register("customDownloadDirectoryPath", {
+              onChange: onInputChange,
+            })}
+          />
+          <Button className="rounded-xl" disabled={isDisabled} onClick={onUseDefaultDirectory} type="button" variant="outline">
+            恢复默认
           </Button>
         </div>
+
+        <div className="grid gap-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-center">
+          <div className="text-sm font-medium text-foreground">批量页数</div>
+          <div className="rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm text-muted-foreground">
+            当前由搜索页内的批量下载页数字段控制。
+          </div>
+        </div>
+
+        <p className="text-xs leading-6 text-muted-foreground">
+          使用绝对路径即可让未来下载落到指定目录，Gallery 仍按 Rust 侧路径元数据定位已归档文件。
+        </p>
+
         {customDirectoryError ? (
           <p className="text-sm text-destructive" role="alert">
             {customDirectoryError}

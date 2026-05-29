@@ -73,7 +73,7 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     expect(loadInitialGalleryItems).toHaveBeenCalledTimes(1)
-    expect(await screen.findByText(/No archived wallpapers yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/暂无归档壁纸/i)).toBeInTheDocument()
   })
 
   it("renders archived wallpaper cards using local asset URLs", async () => {
@@ -97,10 +97,10 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     expect(
-      await screen.findByRole("searchbox", { name: /search local gallery/i }),
+      await screen.findByRole("searchbox", { name: /Search local gallery/i }),
     ).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /grid view/i })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /compact view/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /网格视图/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /紧凑视图/i })).toBeInTheDocument()
   })
 
   it("filters the loaded archive locally from the gallery toolbar", async () => {
@@ -110,7 +110,7 @@ describe("GalleryPage", () => {
 
     const user = userEvent.setup()
     await user.type(
-      await screen.findByRole("searchbox", { name: /search local gallery/i }),
+      await screen.findByRole("searchbox", { name: /Search local gallery/i }),
       "forest",
     )
 
@@ -124,7 +124,7 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole("button", { name: /compact view/i }))
+    await user.click(await screen.findByRole("button", { name: /紧凑视图/i }))
 
     expect(useUiShellStore.getState().galleryView).toBe("compact")
   })

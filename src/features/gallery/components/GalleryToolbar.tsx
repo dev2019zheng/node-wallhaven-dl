@@ -14,14 +14,14 @@ type GalleryToolbarProps = {
 
 function getResultsLabel(query: string, visibleCount: number, totalCount: number): string {
   if (totalCount === 0) {
-    return "Archive is empty"
+    return "暂无归档壁纸"
   }
 
   if (query.trim()) {
-    return `Showing ${visibleCount} of ${totalCount} loaded`
+    return `显示 ${visibleCount} / ${totalCount}`
   }
 
-  return `${visibleCount} loaded`
+  return `已载入 ${visibleCount} 张`
 }
 
 export function GalleryToolbar({
@@ -34,23 +34,23 @@ export function GalleryToolbar({
   onViewChange,
 }: GalleryToolbarProps) {
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-background/70 p-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-4 rounded-2xl border border-border/85 bg-background/55 p-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
         <input
           aria-label="Search local gallery"
           autoComplete="off"
-          className="h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-sm text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={disabled}
           onChange={(event) => {
             onQueryChange(event.currentTarget.value)
           }}
-          placeholder="Search file name, wallpaper id, or saved path"
+          placeholder="搜索本地壁纸"
           type="search"
           value={query}
         />
         <div
           aria-live="polite"
-          className="inline-flex h-11 items-center rounded-full border border-border/80 bg-card/60 px-4 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
+          className="inline-flex h-11 items-center rounded-full border border-border bg-card/60 px-4 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
         >
           {getResultsLabel(query, visibleCount, totalCount)}
         </div>
@@ -59,7 +59,7 @@ export function GalleryToolbar({
       <div aria-label="Gallery view" className="flex items-center gap-2" role="group">
         <Button
           aria-pressed={view === "grid"}
-          className={cn(view === "grid" ? "shadow-sm" : "")}
+          className={cn(view === "grid" ? "rounded-xl shadow-sm" : "rounded-xl")}
           disabled={disabled}
           onClick={() => {
             onViewChange("grid")
@@ -68,11 +68,11 @@ export function GalleryToolbar({
           type="button"
           variant={view === "grid" ? "default" : "outline"}
         >
-          Grid view
+          网格视图
         </Button>
         <Button
           aria-pressed={view === "compact"}
-          className={cn(view === "compact" ? "shadow-sm" : "")}
+          className={cn(view === "compact" ? "rounded-xl shadow-sm" : "rounded-xl")}
           disabled={disabled}
           onClick={() => {
             onViewChange("compact")
@@ -81,7 +81,7 @@ export function GalleryToolbar({
           type="button"
           variant={view === "compact" ? "default" : "outline"}
         >
-          Compact view
+          紧凑视图
         </Button>
       </div>
     </div>

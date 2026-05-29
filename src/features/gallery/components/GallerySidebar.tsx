@@ -16,69 +16,40 @@ export function GallerySidebar({
   hasActiveSearch,
 }: GallerySidebarProps) {
   return (
-    <aside
-      aria-label="Gallery sidebar"
-      className="space-y-4 rounded-3xl border border-border/80 bg-card/50 p-6 shadow-sm"
-    >
+    <aside aria-label="Gallery sidebar" className="app-panel space-y-4 border-border/90 p-4 lg:p-5">
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-foreground">Workspace</h3>
-        <p className="text-sm leading-6 text-muted-foreground">
-          The gallery stays backed by the Rust archive command. This sidebar only surfaces the local
-          signals the client already has.
-        </p>
+        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">本地图库</h3>
+        <p className="text-sm text-muted-foreground">聚合已归档壁纸，并保留当前设备上的检索与预览入口。</p>
       </div>
 
-      <dl className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-        <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
-          <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Loaded now
-          </dt>
-          <dd className="mt-2 text-xl font-semibold text-foreground">{loadedCount}</dd>
+      <div className="space-y-1.5 rounded-2xl border border-border/85 bg-background/35 p-3">
+        <div className="flex items-center justify-between rounded-xl bg-primary/12 px-3 py-2 text-sm text-foreground shadow-[inset_0_0_0_1px_rgb(30_155_255_/_0.16)]">
+          <span>全部壁纸</span>
+          <span className="text-xs font-semibold text-primary">{visibleCount}</span>
         </div>
-        <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
-          <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Archived total
-          </dt>
-          <dd className="mt-2 text-xl font-semibold text-foreground">{archivedCount}</dd>
+        <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground">
+          <span>已归档</span>
+          <span className="text-xs font-medium">{archivedCount}</span>
         </div>
-        <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
-          <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Layout
-          </dt>
-          <dd className="mt-2 text-xl font-semibold text-foreground">
-            {view === "grid" ? "Grid" : "Compact"}
-          </dd>
+        <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground">
+          <span>当前已载入</span>
+          <span className="text-xs font-medium">{loadedCount}</span>
         </div>
-      </dl>
-
-      <div className="space-y-3 rounded-2xl border border-border/80 bg-background/60 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Collections
-        </p>
-        <ul className="space-y-3 text-sm text-foreground">
-          <li className="flex items-center justify-between gap-3 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-3 py-2">
-            <span>All archived</span>
-            <span className="text-xs font-medium uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
-              {visibleCount}
-            </span>
-          </li>
-          <li className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/60 px-3 py-2 text-muted-foreground">
-            <span>Local search</span>
-            <span className="text-xs font-medium uppercase tracking-[0.18em]">
-              {hasActiveSearch ? "Active" : "Off"}
-            </span>
-          </li>
-        </ul>
+        <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground">
+          <span>视图模式</span>
+          <span className="text-xs font-medium">{view === "grid" ? "网格" : "紧凑"}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground">
+          <span>本地搜索</span>
+          <span className="text-xs font-medium">{hasActiveSearch ? "已启用" : "未启用"}</span>
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Metadata currently shown
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Cards stay grounded in the archive fields already returned today: filename, wallpaper id,
-          saved path, source link, and archived timestamp. Extra file metadata remains hidden until
-          the gallery command provides it.
+      <div className="rounded-2xl border border-border/85 bg-background/35 p-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">当前信息</p>
+        <p className="mt-2 leading-6">
+          图库卡片当前展示文件名、保存路径、来源链接与归档时间。更多文件元数据仍取决于
+          Gallery command 返回的字段。
         </p>
       </div>
     </aside>

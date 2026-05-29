@@ -25,15 +25,14 @@ export function NetworkCard({
   register,
 }: NetworkCardProps) {
   return (
-    <SettingsPanel
-      description="Route Wallhaven search and downloads through a local proxy when direct requests fail. Leave the proxy address blank to keep using a direct connection."
-      title="Network"
-    >
-      <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
-        <label className="space-y-2 text-sm font-medium text-foreground" htmlFor="networkProxyScheme">
-          <span>Proxy type</span>
+    <SettingsPanel description="Network & proxy" title="Network">
+      <div className="space-y-4">
+        <div className="grid gap-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-center">
+          <label className="text-sm font-medium text-foreground" htmlFor="networkProxyScheme">
+            代理类型
+          </label>
           <select
-            className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+            className="h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
             id="networkProxyScheme"
             {...register("networkProxyScheme", {
               onChange: onInputChange,
@@ -45,13 +44,15 @@ export function NetworkCard({
               </option>
             ))}
           </select>
-        </label>
+        </div>
 
-        <label className="space-y-2 text-sm font-medium text-foreground" htmlFor="networkProxyAddress">
-          <span>Proxy address</span>
+        <div className="grid gap-3 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-center">
+          <label className="text-sm font-medium text-foreground" htmlFor="networkProxyAddress">
+            代理地址
+          </label>
           <input
             autoComplete="off"
-            className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+            className="h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-primary/55 focus:ring-2 focus:ring-primary/12"
             id="networkProxyAddress"
             placeholder="127.0.0.1:7897"
             spellCheck={false}
@@ -60,18 +61,18 @@ export function NetworkCard({
               onChange: onInputChange,
             })}
           />
-        </label>
-      </div>
+        </div>
 
-      <p className="text-xs leading-5 text-muted-foreground">
-        Choose the proxy protocol separately and enter only the host and port, for example
-        <code className="ml-1 rounded bg-background/80 px-1 py-0.5 text-xs">127.0.0.1:7897</code>.
-      </p>
-      {networkProxyAddressError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {networkProxyAddressError}
+        <p className="text-xs leading-6 text-muted-foreground">
+          当前仅保存代理协议和 host:port 文本，不在此页面提供实时连通性测试。
         </p>
-      ) : null}
+
+        {networkProxyAddressError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {networkProxyAddressError}
+          </p>
+        ) : null}
+      </div>
     </SettingsPanel>
   );
 }

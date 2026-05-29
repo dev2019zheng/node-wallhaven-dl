@@ -136,11 +136,11 @@ export function SettingsPage() {
       setDownloadDirectory(snapshot.downloadDirectory);
       setSaveFeedback({
         tone: "success",
-        message: "Settings saved.",
+        message: "设置已保存。",
       });
       enqueueToast({
         id: `settings-saved-${Date.now()}`,
-        title: "Settings saved",
+        title: "设置已保存",
         description: "Your desktop defaults are ready for future searches and downloads.",
         tone: "success",
       });
@@ -155,22 +155,18 @@ export function SettingsPage() {
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="Tauri Store + SQLite backed"
-        description="Manage API access, storage, and proxy defaults."
+        badge="应用设置"
+        description="管理访问、下载路径与网络代理。"
         eyebrow="Application settings"
-        title="Settings"
+        title="设置"
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-start">
-        <form
-          className="space-y-4 rounded-3xl border border-border/80 bg-card/50 p-6 shadow-sm"
-          onSubmit={onSubmit}
-        >
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-foreground">Settings workspace</h3>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Group related controls into focused cards while keeping the same validation, load, and
-              save contract behind the page.
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-start">
+        <form className="app-panel space-y-4 border-border/90 p-4 lg:p-5" onSubmit={onSubmit}>
+          <div className="space-y-2 border-b border-border/80 pb-3">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">设置面板</h3>
+            <p className="text-sm text-muted-foreground">
+              使用分组卡片管理常用配置，同时保持现有验证与保存契约不变。
             </p>
           </div>
 
@@ -205,16 +201,16 @@ export function SettingsPage() {
 
           <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Persist desktop defaults</p>
+              <p className="text-sm font-medium text-foreground">保存桌面默认配置</p>
               <p
                 aria-live="polite"
                 className={saveFeedback?.tone === "error" ? "text-sm text-destructive" : "text-sm text-emerald-300"}
               >
-                {saveFeedback ? saveFeedback.message : isLoading ? "Loading saved settings..." : ""}
+                {saveFeedback ? saveFeedback.message : isLoading ? "正在加载已保存配置..." : ""}
               </p>
             </div>
-            <Button disabled={isSaveDisabled} type="submit">
-              {formState.isSubmitting ? "Saving..." : "Save settings"}
+            <Button className="rounded-xl" disabled={isSaveDisabled} type="submit">
+              {formState.isSubmitting ? "保存中..." : "保存设置"}
             </Button>
           </div>
         </form>
