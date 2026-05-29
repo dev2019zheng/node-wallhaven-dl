@@ -10,10 +10,49 @@ vi.mock("@/application/settings/settings-service", () => ({
 
 import { SettingsCommandError } from "@/application/settings/settings.types";
 import { loadSettings, saveSettings } from "@/application/settings/settings-service";
+import { useUiShellStore } from "@/features/shell/ui-shell-store";
+
+function ToastProbe() {
+  const toasts = useUiShellStore((state) => state.toasts);
+
+  return (
+    <>
+      {toasts.map((toast) => (
+        <div key={toast.id} role={toast.tone === "error" ? "alert" : "status"}>
+          {toast.title}
+        </div>
+      ))}
+    </>
+  );
+}
 
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    useUiShellStore.setState({ toasts: [], confirm: null });
+  });
+
+  it("renders grouped cards for wallhaven access, download settings, and network controls", async () => {
+    vi.mocked(loadSettings).mockResolvedValue({
+      wallhavenKey: "existing-key",
+      downloadDirectory: {
+        customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        defaultDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        isUsingDefaultDirectory: false,
+      },
+      networkProxy: {
+        scheme: "socks5",
+        address: "127.0.0.1:7897",
+      },
+    });
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByRole("region", { name: /wallhaven access/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /download settings/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /network/i })).toBeInTheDocument();
   });
 
   it("loads the saved WALLHAVEN_KEY, custom download directory, and proxy settings, then saves edits with success feedback", async () => {
@@ -83,6 +122,45 @@ describe("SettingsPage", () => {
       });
     });
     expect(await screen.findByText(/Settings saved/i)).toBeInTheDocument();
+  });
+
+  it("shows a store-backed status toast after settings save successfully", async () => {
+    vi.mocked(loadSettings).mockResolvedValue({
+      wallhavenKey: "existing-key",
+      downloadDirectory: {
+        customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        defaultDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        isUsingDefaultDirectory: false,
+      },
+      networkProxy: null,
+    });
+    vi.mocked(saveSettings).mockResolvedValue({
+      wallhavenKey: "existing-key",
+      downloadDirectory: {
+        customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+        defaultDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        isUsingDefaultDirectory: false,
+      },
+      networkProxy: null,
+    });
+
+    render(
+      <>
+        <SettingsPage />
+        <ToastProbe />
+      </>,
+    );
+
+    await screen.findByLabelText(/Wallhaven API key/i);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /save settings/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/Settings saved/i);
   });
 
   it("clears the custom directory field when switching back to the app default", async () => {
@@ -185,7 +263,7 @@ describe("SettingsPage", () => {
     expect(await screen.findByText(/proxy address must not include a scheme/i)).toBeInTheDocument();
   });
 
-  it("replaces loading summaries with unavailable copy when settings fail to load", async () => {
+  it("shows the shared storage error state and disables saving when settings fail to load", async () => {
     vi.mocked(loadSettings).mockRejectedValue(new Error("Cannot read properties of undefined (reading 'invoke')"));
 
     render(<SettingsPage />);
@@ -193,9 +271,13 @@ describe("SettingsPage", () => {
     expect(
       await screen.findByText(/Cannot read properties of undefined \(reading 'invoke'\)/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Unavailable because settings failed to load")).toHaveLength(3);
+    expect(screen.getByText("Storage details unavailable")).toBeInTheDocument();
+    expect(
+      screen.getByText("Settings failed to load, so storage information is unavailable."),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Loading effective directory...")).not.toBeInTheDocument();
     expect(screen.queryByText("Loading default directory...")).not.toBeInTheDocument();
     expect(screen.queryByText("Loading saved mode...")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save settings/i })).toBeDisabled();
   });
 });

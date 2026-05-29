@@ -18,7 +18,10 @@ vi.mock("@/infrastructure/tauri/download-events", () => ({
   listenForDownloadStatusEvents,
 }))
 
-import { act, render, screen } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+
+import { useUiShellStore } from "@/features/shell/ui-shell-store"
 
 import { DownloadsPage } from "./DownloadsPage"
 
@@ -63,6 +66,13 @@ describe("DownloadsPage", () => {
     statusHandler = undefined
     progressHandler = undefined
     vi.resetAllMocks()
+    useUiShellStore.setState({
+      downloadSummary: {
+        activeCount: 0,
+        completedCount: 0,
+        failedCount: 0,
+      },
+    })
 
     vi.mocked(listenForDownloadStatusEvents).mockImplementation(async (handler) => {
       statusHandler = handler as typeof statusHandler
@@ -137,6 +147,116 @@ describe("DownloadsPage", () => {
     expect(screen.getAllByText(/Succeeded/i).length).toBeGreaterThan(0)
   })
 
+  it("filters the queue when switching tabs", async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-running",
+        wallpaperId: "run123",
+        fileName: "wallhaven-run123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-run123.jpg",
+        status: "running",
+      },
+      {
+        id: "download-failed",
+        wallpaperId: "fail123",
+        fileName: "wallhaven-fail123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-fail123.jpg",
+        status: "failed",
+        failureReason: "Connection reset",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-run123.jpg")).toBeInTheDocument()
+    expect(screen.getByText("wallhaven-fail123.jpg")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("tab", { name: /failed/i }))
+
+    expect(screen.getByText("wallhaven-fail123.jpg")).toBeInTheDocument()
+    expect(screen.queryByText("wallhaven-run123.jpg")).not.toBeInTheDocument()
+  })
+
+  it("syncs the aggregated download summary into the shell store", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-running-summary",
+        wallpaperId: "run999",
+        fileName: "wallhaven-run999.jpg",
+        relativeFilePath: "wallpapers/wallhaven-run999.jpg",
+        status: "running",
+      },
+      {
+        id: "download-succeeded-summary",
+        wallpaperId: "done999",
+        fileName: "wallhaven-done999.jpg",
+        relativeFilePath: "wallpapers/wallhaven-done999.jpg",
+        status: "succeeded",
+      },
+      {
+        id: "download-failed-summary",
+        wallpaperId: "fail999",
+        fileName: "wallhaven-fail999.jpg",
+        relativeFilePath: "wallpapers/wallhaven-fail999.jpg",
+        status: "failed",
+        failureReason: "timeout",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    await screen.findByText("wallhaven-run999.jpg")
+
+    await waitFor(() => {
+      expect(useUiShellStore.getState().downloadSummary).toEqual({
+        activeCount: 1,
+        completedCount: 1,
+        failedCount: 1,
+      })
+    })
+  })
+
+  it("keeps the last aggregated shell summary after the page unmounts", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-queued-summary",
+        wallpaperId: "queue999",
+        fileName: "wallhaven-queue999.jpg",
+        relativeFilePath: "wallpapers/wallhaven-queue999.jpg",
+        status: "queued",
+      },
+      {
+        id: "download-skipped-summary",
+        wallpaperId: "skip999",
+        fileName: "wallhaven-skip999.jpg",
+        relativeFilePath: "wallpapers/wallhaven-skip999.jpg",
+        status: "skipped_existing",
+      },
+    ])
+
+    const { unmount } = render(<DownloadsPage />)
+
+    await screen.findByText("wallhaven-queue999.jpg")
+
+    await waitFor(() => {
+      expect(useUiShellStore.getState().downloadSummary).toEqual({
+        activeCount: 1,
+        completedCount: 1,
+        failedCount: 0,
+      })
+    })
+
+    unmount()
+
+    expect(useUiShellStore.getState().downloadSummary).toEqual({
+      activeCount: 1,
+      completedCount: 1,
+      failedCount: 0,
+    })
+  })
+
   it("renders an empty state when there are no downloads yet", async () => {
     vi.mocked(listDownloads).mockResolvedValue([])
 
@@ -183,6 +303,6 @@ describe("DownloadsPage", () => {
     ])
 
     expect(await screen.findAllByText(/Succeeded/i)).not.toHaveLength(0)
-    expect(screen.queryByText(/^Running$/)).not.toBeInTheDocument()
+    expect(screen.queryByText("Connecting...")).not.toBeInTheDocument()
   })
 })

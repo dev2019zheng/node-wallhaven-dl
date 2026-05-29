@@ -2,7 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App";
+import { ConfirmDialog } from "./components/confirm-dialog";
 import { ThemeProvider } from "./components/theme-provider";
+import { ToastProvider } from "./components/toast-provider";
 import "./styles/index.css";
 
 const rootElement = document.getElementById("root");
@@ -15,6 +17,8 @@ createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider>
       <App />
+      <ToastProvider />
+      <ConfirmDialog />
     </ThemeProvider>
   </StrictMode>,
 );

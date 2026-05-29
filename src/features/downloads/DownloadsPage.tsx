@@ -1,28 +1,25 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import {
   applyDownloadProgressEvent,
   applyDownloadStatusEvent,
+  filterDownloads,
   listDownloads as listDownloadsInService,
   mergeLoadedDownloads,
+  summarizeDownloads,
+  type DownloadQueueFilter,
 } from "@/application/downloads/downloads-service"
-import type {
-  DownloadListItem,
-  DownloadTaskStatus,
-} from "@/application/downloads/downloads.types"
+import type { DownloadListItem } from "@/application/downloads/downloads.types"
+import { ErrorState } from "@/components/error-state"
+import { PageHeading } from "@/components/page-heading"
+import { useUiShellStore } from "@/features/shell/ui-shell-store"
 import {
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
 } from "@/infrastructure/tauri/download-events"
-import { PageHeading } from "@/components/page-heading"
 
-const statusBadgeClasses: Record<DownloadTaskStatus, string> = {
-  queued: "border-slate-400/20 bg-slate-400/10 text-slate-200",
-  running: "border-sky-400/20 bg-sky-400/10 text-sky-200",
-  succeeded: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
-  failed: "border-destructive/40 bg-destructive/10 text-destructive",
-  skipped_existing: "border-amber-400/20 bg-amber-400/10 text-amber-200",
-}
+import { DownloadQueue } from "./components/DownloadQueue"
+import { QueueTabs } from "./components/QueueTabs"
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error && error.message) {
@@ -32,80 +29,12 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return fallbackMessage
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`
-  }
-
-  const units = ["KB", "MB", "GB", "TB"]
-  let value = bytes / 1024
-  let unitIndex = 0
-
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024
-    unitIndex += 1
-  }
-
-  const formatter = new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: value >= 10 ? 0 : 1,
-  })
-
-  return `${formatter.format(value)} ${units[unitIndex]}`
-}
-
-function formatStatus(status: DownloadTaskStatus): string {
-  switch (status) {
-    case "queued":
-      return "Queued"
-    case "running":
-      return "Running"
-    case "succeeded":
-      return "Succeeded"
-    case "failed":
-      return "Failed"
-    case "skipped_existing":
-      return "Skipped existing"
-  }
-}
-
-function getProgressLabel(download: DownloadListItem): string {
-  if (download.downloadedBytes > 0 && download.totalBytes) {
-    return `${formatBytes(download.downloadedBytes)} / ${formatBytes(download.totalBytes)}`
-  }
-
-  if (download.downloadedBytes > 0) {
-    return `${formatBytes(download.downloadedBytes)} downloaded`
-  }
-
-  switch (download.status) {
-    case "queued":
-      return "Waiting to start"
-    case "running":
-      return "Connecting..."
-    case "succeeded":
-    case "skipped_existing":
-      return "Completed"
-    case "failed":
-      return "Failed before transfer"
-  }
-}
-
-function getProgressPercent(download: DownloadListItem): number | null {
-  if (download.totalBytes && download.totalBytes > 0) {
-    return Math.min(100, Math.round((download.downloadedBytes / download.totalBytes) * 100))
-  }
-
-  if (download.status === "succeeded" || download.status === "skipped_existing") {
-    return 100
-  }
-
-  return null
-}
-
 export function DownloadsPage() {
   const [downloads, setDownloads] = useState<DownloadListItem[]>([])
+  const [activeFilter, setActiveFilter] = useState<DownloadQueueFilter>("all")
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const setDownloadSummary = useUiShellStore((state) => state.setDownloadSummary)
 
   useEffect(() => {
     let isActive = true
@@ -177,6 +106,20 @@ export function DownloadsPage() {
     }
   }, [])
 
+  const summary = useMemo(() => summarizeDownloads(downloads), [downloads])
+  const filteredDownloads = useMemo(
+    () => filterDownloads(downloads, activeFilter),
+    [activeFilter, downloads],
+  )
+
+  useEffect(() => {
+    setDownloadSummary({
+      activeCount: summary.activeCount,
+      completedCount: summary.completedCount,
+      failedCount: summary.failedCount,
+    })
+  }, [setDownloadSummary, summary.activeCount, summary.completedCount, summary.failedCount])
+
   return (
     <section className="space-y-6">
       <PageHeading
@@ -187,102 +130,46 @@ export function DownloadsPage() {
       />
 
       <section className="space-y-4 rounded-3xl border border-border/80 bg-card/40 p-6 shadow-sm">
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-foreground">Tasks</h3>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Existing tasks load on page entry, then status and byte progress continue to stream in
-            over the shared Tauri download events.
-          </p>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-foreground">Queue workspace</h3>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Existing tasks load on page entry, then status and byte progress continue to stream in
+              over the shared Tauri download events.
+            </p>
+          </div>
+
+          <dl className="grid gap-3 sm:grid-cols-3 xl:min-w-[24rem]">
+            <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
+              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                In progress
+              </dt>
+              <dd className="mt-2 text-xl font-semibold text-foreground">{summary.activeCount}</dd>
+            </div>
+            <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
+              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Completed
+              </dt>
+              <dd className="mt-2 text-xl font-semibold text-foreground">{summary.completedCount}</dd>
+            </div>
+            <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
+              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Failed
+              </dt>
+              <dd className="mt-2 text-xl font-semibold text-foreground">{summary.failedCount}</dd>
+            </div>
+          </dl>
         </div>
 
-        {loadError ? (
-          <div
-            className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-            role="alert"
-          >
-            {loadError}
-          </div>
-        ) : null}
+        {loadError ? <ErrorState message={loadError} /> : null}
 
-        {isLoading && downloads.length === 0 ? (
-          <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-6 text-sm text-muted-foreground">
-            Loading existing downloads...
-          </div>
-        ) : null}
+        <QueueTabs activeFilter={activeFilter} onChange={setActiveFilter} summary={summary} />
 
-        {!isLoading && downloads.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/80 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-            No downloads yet. Start one from Search and track progress here.
-          </div>
-        ) : null}
-
-        {downloads.length > 0 ? (
-          <div className="space-y-3">
-            {downloads.map((download) => {
-              const progressLabel = getProgressLabel(download)
-              const progressPercent = getProgressPercent(download)
-
-              return (
-                <article
-                  className="rounded-2xl border border-border/80 bg-background/80 p-5 shadow-sm"
-                  key={download.id}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        {download.fileName}
-                      </h4>
-                      <p className="break-all text-xs text-muted-foreground">
-                        {download.relativeFilePath || "Path pending until task metadata syncs."}
-                      </p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-xs font-medium ${statusBadgeClasses[download.status]}`}
-                    >
-                      {formatStatus(download.status)}
-                    </span>
-                  </div>
-
-                  <dl className="mt-4 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-                    <div className="rounded-2xl border border-border/80 bg-card/40 px-4 py-3">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
-                        Wallpaper ID
-                      </dt>
-                      <dd className="mt-2 font-medium text-foreground">{download.wallpaperId}</dd>
-                    </div>
-                    <div className="rounded-2xl border border-border/80 bg-card/40 px-4 py-3">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
-                        Progress
-                      </dt>
-                      <dd className="mt-2 font-medium text-foreground">{progressLabel}</dd>
-                    </div>
-                  </dl>
-
-                  {progressPercent !== null ? (
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Transfer completion</span>
-                        <span>{progressPercent}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-background/80">
-                        <div
-                          className="h-full rounded-full bg-sky-400 transition-[width]"
-                          style={{ width: `${progressPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {download.status === "failed" && download.failureReason ? (
-                    <div className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                      Failure reason: {download.failureReason}
-                    </div>
-                  ) : null}
-                </article>
-              )
-            })}
-          </div>
-        ) : null}
+        <DownloadQueue
+          downloads={filteredDownloads}
+          filter={activeFilter}
+          isLoading={isLoading}
+        />
       </section>
     </section>
   )

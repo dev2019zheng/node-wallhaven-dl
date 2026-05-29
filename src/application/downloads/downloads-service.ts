@@ -1,4 +1,7 @@
-import type { DownloadProgressEventPayload, DownloadTaskStatusEventPayload } from "@/infrastructure/tauri/download-events"
+import type {
+  DownloadProgressEventPayload,
+  DownloadTaskStatusEventPayload,
+} from "@/infrastructure/tauri/download-events"
 import {
   downloadWallpaper as downloadWallpaperInRepository,
   listDownloads as listDownloadsInRepository,
@@ -10,6 +13,15 @@ import type {
   DownloadWallpaperInput,
 } from "./downloads.types"
 
+export type DownloadQueueFilter = "all" | "running" | "completed" | "failed"
+
+export type DownloadsSummary = {
+  totalCount: number
+  activeCount: number
+  completedCount: number
+  failedCount: number
+}
+
 const statusPrecedence: Record<DownloadListItem["status"], number> = {
   queued: 0,
   running: 1,
@@ -17,6 +29,12 @@ const statusPrecedence: Record<DownloadListItem["status"], number> = {
   failed: 2,
   skipped_existing: 2,
 }
+
+const activeStatuses = new Set<DownloadListItem["status"]>(["queued", "running"])
+const completedStatuses = new Set<DownloadListItem["status"]>([
+  "succeeded",
+  "skipped_existing",
+])
 
 function mergeStatus(
   existing: DownloadListItem | undefined,
@@ -60,22 +78,24 @@ function toDownloadListItem(
   }
 }
 
-function sortDownloads(downloads: DownloadListItem[]): DownloadListItem[] {
-  return [...downloads].sort((left, right) => right.id.localeCompare(left.id))
-}
-
 function upsertDownload(
   downloads: DownloadListItem[],
   nextDownload: DownloadListItem,
 ): DownloadListItem[] {
-  const downloadsById = new Map(downloads.map((download) => [download.id, download]))
-  downloadsById.set(nextDownload.id, nextDownload)
-  return sortDownloads([...downloadsById.values()])
+  const existingIndex = downloads.findIndex((download) => download.id === nextDownload.id)
+
+  if (existingIndex === -1) {
+    return [nextDownload, ...downloads]
+  }
+
+  const nextDownloads = [...downloads]
+  nextDownloads[existingIndex] = nextDownload
+  return nextDownloads
 }
 
 export async function listDownloads(): Promise<DownloadListItem[]> {
   const downloads = await listDownloadsInRepository()
-  return sortDownloads(downloads.map((download) => toDownloadListItem(download)))
+  return downloads.map((download) => toDownloadListItem(download))
 }
 
 export async function downloadWallpaper(
@@ -85,22 +105,74 @@ export async function downloadWallpaper(
   return toDownloadListItem(download)
 }
 
+export function summarizeDownloads(downloads: DownloadListItem[]): DownloadsSummary {
+  const summary: DownloadsSummary = {
+    totalCount: downloads.length,
+    activeCount: 0,
+    completedCount: 0,
+    failedCount: 0,
+  }
+
+  for (const download of downloads) {
+    if (activeStatuses.has(download.status)) {
+      summary.activeCount += 1
+      continue
+    }
+
+    if (completedStatuses.has(download.status)) {
+      summary.completedCount += 1
+      continue
+    }
+
+    if (download.status === "failed") {
+      summary.failedCount += 1
+    }
+  }
+
+  return summary
+}
+
+export function filterDownloads(
+  downloads: DownloadListItem[],
+  filter: DownloadQueueFilter,
+): DownloadListItem[] {
+  switch (filter) {
+    case "all":
+      return downloads
+    case "running":
+      return downloads.filter((download) => activeStatuses.has(download.status))
+    case "completed":
+      return downloads.filter((download) => completedStatuses.has(download.status))
+    case "failed":
+      return downloads.filter((download) => download.status === "failed")
+  }
+}
+
 export function mergeLoadedDownloads(
   currentDownloads: DownloadListItem[],
   loadedDownloads: Array<DownloadRecord | DownloadListItem>,
 ): DownloadListItem[] {
-  const downloadsById = new Map(
-    currentDownloads.map((download) => [download.id, download]),
+  const nextDownloads = [...currentDownloads]
+  const downloadIndexById = new Map(
+    nextDownloads.map((download, index) => [download.id, index]),
   )
 
   for (const loadedDownload of loadedDownloads) {
-    downloadsById.set(
-      loadedDownload.id,
-      toDownloadListItem(loadedDownload, downloadsById.get(loadedDownload.id)),
-    )
+    const existingIndex = downloadIndexById.get(loadedDownload.id)
+    const existingDownload =
+      existingIndex === undefined ? undefined : nextDownloads[existingIndex]
+    const nextDownload = toDownloadListItem(loadedDownload, existingDownload)
+
+    if (existingIndex === undefined) {
+      downloadIndexById.set(loadedDownload.id, nextDownloads.length)
+      nextDownloads.push(nextDownload)
+      continue
+    }
+
+    nextDownloads[existingIndex] = nextDownload
   }
 
-  return sortDownloads([...downloadsById.values()])
+  return nextDownloads
 }
 
 export function applyDownloadStatusEvent(

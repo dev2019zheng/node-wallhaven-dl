@@ -12,8 +12,10 @@ import {
   applyDownloadProgressEvent,
   applyDownloadStatusEvent,
   downloadWallpaper,
+  filterDownloads,
   listDownloads,
   mergeLoadedDownloads,
+  summarizeDownloads,
 } from "./downloads-service"
 
 const sampleTask = {
@@ -29,23 +31,26 @@ describe("downloads-service", () => {
     vi.resetAllMocks()
   })
 
-  it("loads repository tasks into sortable list items with zeroed progress", async () => {
+  it("loads repository tasks into list items with zeroed progress while keeping repository order", async () => {
     vi.mocked(listDownloadsInRepository).mockResolvedValue([
-      sampleTask,
       {
         ...sampleTask,
-        id: "download-000010",
+        id: "download-a-uuid",
         wallpaperId: "ab1234",
         fileName: "wallhaven-ab1234.png",
         relativeFilePath: "wallpapers/wallhaven-ab1234.png",
         status: "failed",
         failureReason: "503 Service Unavailable",
       },
+      {
+        ...sampleTask,
+        id: "download-z-uuid",
+      },
     ])
 
     await expect(listDownloads()).resolves.toEqual([
       {
-        id: "download-000010",
+        id: "download-a-uuid",
         wallpaperId: "ab1234",
         fileName: "wallhaven-ab1234.png",
         relativeFilePath: "wallpapers/wallhaven-ab1234.png",
@@ -54,7 +59,7 @@ describe("downloads-service", () => {
         downloadedBytes: 0,
       },
       {
-        id: "download-000001",
+        id: "download-z-uuid",
         wallpaperId: "kxpkmm",
         fileName: "wallhaven-kxpkmm.jpg",
         relativeFilePath: "wallpapers/wallhaven-kxpkmm.jpg",
@@ -162,5 +167,102 @@ describe("downloads-service", () => {
       id: "download-live",
       status: "succeeded",
     })
+  })
+
+  it("keeps existing snapshot order and prepends newly observed live tasks", () => {
+    const loadedDownloads = mergeLoadedDownloads([], [
+      {
+        ...sampleTask,
+        id: "download-a-uuid",
+        wallpaperId: "a-task",
+        fileName: "wallhaven-a-task.jpg",
+        relativeFilePath: "wallpapers/wallhaven-a-task.jpg",
+        status: "running",
+      },
+      {
+        ...sampleTask,
+        id: "download-z-uuid",
+        wallpaperId: "z-task",
+        fileName: "wallhaven-z-task.jpg",
+        relativeFilePath: "wallpapers/wallhaven-z-task.jpg",
+        status: "queued",
+      },
+    ])
+
+    expect(loadedDownloads.map((download) => download.id)).toEqual([
+      "download-a-uuid",
+      "download-z-uuid",
+    ])
+
+    const updatedDownloads = applyDownloadStatusEvent(loadedDownloads, {
+      taskId: "download-z-uuid",
+      wallpaperId: "z-task",
+      fileName: "wallhaven-z-task.jpg",
+      relativeFilePath: "wallpapers/wallhaven-z-task.jpg",
+      status: "running",
+    })
+
+    expect(updatedDownloads.map((download) => download.id)).toEqual([
+      "download-a-uuid",
+      "download-z-uuid",
+    ])
+
+    const downloadsWithNewLiveTask = applyDownloadStatusEvent(updatedDownloads, {
+      taskId: "download-m-uuid",
+      wallpaperId: "m-task",
+      fileName: "wallhaven-m-task.jpg",
+      relativeFilePath: "wallpapers/wallhaven-m-task.jpg",
+      status: "running",
+    })
+
+    expect(downloadsWithNewLiveTask.map((download) => download.id)).toEqual([
+      "download-m-uuid",
+      "download-a-uuid",
+      "download-z-uuid",
+    ])
+  })
+
+  it("treats queued as active and skipped_existing as completed in summaries and filters", () => {
+    const downloads = [
+      {
+        id: "download-queued",
+        wallpaperId: "queued-id",
+        fileName: "wallhaven-queued.jpg",
+        relativeFilePath: "wallpapers/wallhaven-queued.jpg",
+        status: "queued" as const,
+        downloadedBytes: 0,
+      },
+      {
+        id: "download-skipped",
+        wallpaperId: "skipped-id",
+        fileName: "wallhaven-skipped.jpg",
+        relativeFilePath: "wallpapers/wallhaven-skipped.jpg",
+        status: "skipped_existing" as const,
+        downloadedBytes: 0,
+      },
+      {
+        id: "download-failed",
+        wallpaperId: "failed-id",
+        fileName: "wallhaven-failed.jpg",
+        relativeFilePath: "wallpapers/wallhaven-failed.jpg",
+        status: "failed" as const,
+        failureReason: "network",
+        downloadedBytes: 0,
+      },
+    ]
+
+    expect(summarizeDownloads(downloads)).toEqual({
+      totalCount: 3,
+      activeCount: 1,
+      completedCount: 1,
+      failedCount: 1,
+    })
+
+    expect(filterDownloads(downloads, "running").map((download) => download.id)).toEqual([
+      "download-queued",
+    ])
+    expect(filterDownloads(downloads, "completed").map((download) => download.id)).toEqual([
+      "download-skipped",
+    ])
   })
 })

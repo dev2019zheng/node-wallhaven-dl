@@ -8,8 +8,15 @@ import type {
   DownloadDirectorySettings,
   NetworkProxyScheme,
 } from "@/application/settings/settings.types";
+import { ErrorState } from "@/components/error-state";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
+import { useUiShellStore } from "@/features/shell/ui-shell-store";
+
+import { DownloadSettingsCard } from "./components/DownloadSettingsCard";
+import { NetworkCard } from "./components/NetworkCard";
+import { StorageAboutCard } from "./components/StorageAboutCard";
+import { WallhavenAccessCard } from "./components/WallhavenAccessCard";
 
 const settingsSchema = z.object({
   wallhavenKey: z.string().max(512, "WALLHAVEN_KEY is unexpectedly long."),
@@ -41,32 +48,6 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return fallbackMessage;
 }
 
-function getEffectiveDirectoryLabel(
-  downloadDirectory: DownloadDirectorySettings | null,
-  hasLoadError: boolean,
-): string {
-  if (!downloadDirectory) {
-    return hasLoadError
-      ? "Unavailable because settings failed to load"
-      : "Loading effective directory...";
-  }
-
-  return downloadDirectory.effectiveDirectoryPath;
-}
-
-function getDefaultDirectoryLabel(
-  downloadDirectory: DownloadDirectorySettings | null,
-  hasLoadError: boolean,
-): string {
-  if (!downloadDirectory) {
-    return hasLoadError
-      ? "Unavailable because settings failed to load"
-      : "Loading default directory...";
-  }
-
-  return downloadDirectory.defaultDirectoryPath;
-}
-
 export function SettingsPage() {
   const { formState, handleSubmit, register, reset, setValue } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -82,6 +63,7 @@ export function SettingsPage() {
     useState<DownloadDirectorySettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
+  const enqueueToast = useUiShellStore((state) => state.enqueueToast);
 
   useEffect(() => {
     let isActive = true;
@@ -123,8 +105,18 @@ export function SettingsPage() {
   const wallhavenKeyError = formState.errors.wallhavenKey?.message;
   const customDirectoryError = formState.errors.customDownloadDirectoryPath?.message;
   const networkProxyAddressError = formState.errors.networkProxyAddress?.message;
+  const hasLoadError = loadError !== null;
+  const isSaveDisabled = isLoading || formState.isSubmitting || hasLoadError;
+
+  const clearSaveFeedback = () => {
+    setSaveFeedback(null);
+  };
 
   const onSubmit = handleSubmit(async (values) => {
+    if (hasLoadError) {
+      return;
+    }
+
     setSaveFeedback(null);
 
     try {
@@ -146,6 +138,12 @@ export function SettingsPage() {
         tone: "success",
         message: "Settings saved.",
       });
+      enqueueToast({
+        id: `settings-saved-${Date.now()}`,
+        title: "Settings saved",
+        description: "Your desktop defaults are ready for future searches and downloads.",
+        tone: "success",
+      });
     } catch (error) {
       setSaveFeedback({
         tone: "error",
@@ -163,214 +161,66 @@ export function SettingsPage() {
         title="Settings"
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <form className="space-y-6 rounded-3xl border border-border/80 bg-card/50 p-6 shadow-sm" onSubmit={onSubmit}>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-start">
+        <form
+          className="space-y-4 rounded-3xl border border-border/80 bg-card/50 p-6 shadow-sm"
+          onSubmit={onSubmit}
+        >
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-foreground">Wallhaven access</h3>
+            <h3 className="text-lg font-semibold text-foreground">Settings workspace</h3>
             <p className="text-sm leading-6 text-muted-foreground">
-              Save the optional <code className="rounded bg-background/80 px-1 py-0.5 text-xs">WALLHAVEN_KEY</code> locally so future desktop flows can reuse it.
+              Group related controls into focused cards while keeping the same validation, load, and
+              save contract behind the page.
             </p>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground" htmlFor="wallhavenKey">
-              Wallhaven API key
-            </label>
-            <input
-              autoComplete="off"
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
-              id="wallhavenKey"
-              placeholder="Paste your WALLHAVEN_KEY"
-              spellCheck={false}
-              type="password"
-              {...register("wallhavenKey", {
-                onChange: () => {
-                  setSaveFeedback(null);
-                },
-              })}
-            />
-            <p className="text-xs leading-5 text-muted-foreground">
-              The value is persisted through the Tauri Store plugin and can be cleared by saving an
-              empty field.
-            </p>
-            {wallhavenKeyError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {wallhavenKeyError}
-              </p>
-            ) : null}
-          </div>
+          <WallhavenAccessCard
+            onInputChange={clearSaveFeedback}
+            register={register}
+            wallhavenKeyError={wallhavenKeyError}
+          />
 
-          <div className="space-y-2 border-t border-border/80 pt-6">
-            <h3 className="text-lg font-semibold text-foreground">Download directory</h3>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Leave this blank to keep using the app-managed default directory. Enter an absolute
-              path to move future downloads somewhere else without changing how Gallery tracks
-              already archived files.
-            </p>
-          </div>
+          <DownloadSettingsCard
+            customDirectoryError={customDirectoryError}
+            isDisabled={isLoading || formState.isSubmitting}
+            onInputChange={clearSaveFeedback}
+            onUseDefaultDirectory={() => {
+              setValue("customDownloadDirectoryPath", "", {
+                shouldDirty: true,
+                shouldTouch: true,
+              });
+              clearSaveFeedback();
+            }}
+            register={register}
+          />
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground" htmlFor="customDownloadDirectoryPath">
-              Custom download directory
-            </label>
-            <input
-              autoComplete="off"
-              className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
-              id="customDownloadDirectoryPath"
-              placeholder="/Users/you/Pictures/Wallhaven"
-              spellCheck={false}
-              type="text"
-              {...register("customDownloadDirectoryPath", {
-                onChange: () => {
-                  setSaveFeedback(null);
-                },
-              })}
-            />
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs leading-5 text-muted-foreground">
-                Use an absolute folder path. The backend validates and persists the preference;
-                Search, Downloads, and Gallery keep using the Rust path rules.
-              </p>
-              <Button
-                disabled={isLoading || formState.isSubmitting}
-                onClick={() => {
-                  setValue("customDownloadDirectoryPath", "", {
-                    shouldDirty: true,
-                    shouldTouch: true,
-                  });
-                  setSaveFeedback(null);
-                }}
-                type="button"
-                variant="outline"
+          <NetworkCard
+            networkProxyAddressError={networkProxyAddressError}
+            onInputChange={clearSaveFeedback}
+            proxyOptions={networkProxyOptions}
+            register={register}
+          />
+
+          {loadError ? <ErrorState message={loadError} /> : null}
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Persist desktop defaults</p>
+              <p
+                aria-live="polite"
+                className={saveFeedback?.tone === "error" ? "text-sm text-destructive" : "text-sm text-emerald-300"}
               >
-                Use app default directory
-              </Button>
-            </div>
-            {customDirectoryError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {customDirectoryError}
+                {saveFeedback ? saveFeedback.message : isLoading ? "Loading saved settings..." : ""}
               </p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2 border-t border-border/80 pt-6">
-            <h3 className="text-lg font-semibold text-foreground">Network proxy</h3>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Route Wallhaven search and downloads through a local proxy when direct requests fail.
-              Leave the proxy address blank to keep using a direct connection.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
-            <label className="space-y-2 text-sm font-medium text-foreground" htmlFor="networkProxyScheme">
-              <span>Proxy type</span>
-              <select
-                className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm font-normal text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
-                id="networkProxyScheme"
-                {...register("networkProxyScheme", {
-                  onChange: () => {
-                    setSaveFeedback(null);
-                  },
-                })}
-              >
-                {networkProxyOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm font-medium text-foreground" htmlFor="networkProxyAddress">
-              <span>Proxy address</span>
-              <input
-                autoComplete="off"
-                className="h-11 w-full rounded-xl border border-border/80 bg-background/80 px-3 text-sm text-foreground outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
-                id="networkProxyAddress"
-                placeholder="127.0.0.1:7897"
-                spellCheck={false}
-                type="text"
-                {...register("networkProxyAddress", {
-                  onChange: () => {
-                    setSaveFeedback(null);
-                  },
-                })}
-              />
-            </label>
-          </div>
-
-          <p className="text-xs leading-5 text-muted-foreground">
-            Choose the proxy protocol separately and enter only the host and port, for example
-            <code className="ml-1 rounded bg-background/80 px-1 py-0.5 text-xs">127.0.0.1:7897</code>.
-          </p>
-          {networkProxyAddressError ? (
-            <p className="text-sm text-destructive" role="alert">
-              {networkProxyAddressError}
-            </p>
-          ) : null}
-
-          {loadError ? (
-            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
-              {loadError}
             </div>
-          ) : null}
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button disabled={isLoading || formState.isSubmitting} type="submit">
+            <Button disabled={isSaveDisabled} type="submit">
               {formState.isSubmitting ? "Saving..." : "Save settings"}
             </Button>
-            <p
-              aria-live="polite"
-              className={saveFeedback?.tone === "error" ? "text-sm text-destructive" : "text-sm text-emerald-300"}
-            >
-              {saveFeedback ? saveFeedback.message : isLoading ? "Loading saved settings..." : ""}
-            </p>
           </div>
         </form>
 
         <aside className="space-y-4 rounded-3xl border border-border/80 bg-card/40 p-6 shadow-sm">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-foreground">Effective download destination</h3>
-            <p className="text-sm leading-6 text-muted-foreground">
-              This summary reflects where the next successful download will land. Existing gallery
-              records keep their original paths even after you switch directories.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Next downloads</p>
-            <code className="mt-3 block break-all rounded-xl bg-background/80 px-3 py-3 text-sm text-foreground">
-              {getEffectiveDirectoryLabel(downloadDirectory, loadError !== null)}
-            </code>
-          </div>
-
-          <dl className="space-y-3 text-sm text-muted-foreground">
-            <div className="rounded-2xl border border-border/80 bg-card/30 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Mode</dt>
-              <dd className="mt-2 font-medium text-foreground">
-                {downloadDirectory === null
-                  ? loadError !== null
-                    ? "Unavailable because settings failed to load"
-                    : "Loading saved mode..."
-                  : downloadDirectory.isUsingDefaultDirectory
-                    ? "App default directory"
-                    : "Custom override"}
-              </dd>
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-card/30 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Default app directory</dt>
-              <dd className="mt-2 break-all font-medium text-foreground">
-                {getDefaultDirectoryLabel(downloadDirectory, loadError !== null)}
-              </dd>
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-card/30 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">Gallery compatibility</dt>
-              <dd className="mt-2 leading-6">
-                Gallery now resolves archived files from the path metadata saved with each record,
-                so changing this setting only affects future downloads.
-              </dd>
-            </div>
-          </dl>
+          <StorageAboutCard downloadDirectory={downloadDirectory} hasLoadError={loadError !== null} />
         </aside>
       </div>
     </section>

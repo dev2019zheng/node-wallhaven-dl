@@ -5,7 +5,7 @@ import type {
   WallhavenToplistRange,
 } from "@/domain/wallhaven/models";
 
-type SearchPageSessionFormValues = {
+export type SearchPageFormValues = {
   category: WallhavenCategoryFilter;
   purityPreset: "sfw" | "sketchy" | "nsfw" | "ws" | "wn" | "sn" | "all";
   sorting: "date_added" | "toplist";
@@ -15,8 +15,9 @@ type SearchPageSessionFormValues = {
   pagesToDownload: number;
 };
 
-type SearchPageSessionSnapshot = {
-  formValues: SearchPageSessionFormValues;
+export type SearchPageSessionSnapshot = {
+  formValues: SearchPageFormValues;
+  submittedFormValues: SearchPageFormValues | null;
   result: SearchWallpapersResponse | null;
   searchError: string | null;
   activeFilters: WallhavenQueryFilters | null;

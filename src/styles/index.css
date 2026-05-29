@@ -1,48 +1,52 @@
 @import "tailwindcss";
 
 :root {
-  --background: oklch(0.96 0.01 247.86);
-  --foreground: oklch(0.18 0.015 247.86);
-  --card: oklch(0.985 0.006 247.86);
-  --card-foreground: oklch(0.18 0.015 247.86);
-  --popover: oklch(0.995 0.004 247.86);
-  --popover-foreground: oklch(0.18 0.015 247.86);
-  --primary: oklch(0.62 0.17 254);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.92 0.01 247.86);
-  --secondary-foreground: oklch(0.26 0.02 247.86);
-  --muted: oklch(0.93 0.008 247.86);
-  --muted-foreground: oklch(0.42 0.018 247.86);
-  --accent: oklch(0.9 0.015 247.86);
-  --accent-foreground: oklch(0.22 0.02 247.86);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.84 0.012 247.86);
-  --input: oklch(0.86 0.012 247.86);
-  --ring: oklch(0.62 0.17 254);
+  --background: #eef3f8;
+  --foreground: #111821;
+  --card: #ffffff;
+  --card-foreground: #111821;
+  --popover: #ffffff;
+  --popover-foreground: #111821;
+  --primary: #1e9bff;
+  --primary-foreground: #f4f7fa;
+  --secondary: #dde6f0;
+  --secondary-foreground: #1f2a36;
+  --muted: #e6edf5;
+  --muted-foreground: #556270;
+  --accent: #dde6f0;
+  --accent-foreground: #111821;
+  --destructive: #ff5c5c;
+  --destructive-foreground: #f4f7fa;
+  --border: #d5deea;
+  --input: #d5deea;
+  --ring: #1e9bff;
+  --panel: #ffffff;
+  --app-shell: #f6f9fc;
   --radius: 0.875rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.685 0.169 237.323);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.685 0.169 237.323);
+  --background: #0b0f14;
+  --foreground: #f4f7fa;
+  --card: #151d27;
+  --card-foreground: #f4f7fa;
+  --popover: #151d27;
+  --popover-foreground: #f4f7fa;
+  --primary: #1e9bff;
+  --primary-foreground: #f4f7fa;
+  --secondary: #101722;
+  --secondary-foreground: #f4f7fa;
+  --muted: #111821;
+  --muted-foreground: #9aa7b2;
+  --accent: #111821;
+  --accent-foreground: #f4f7fa;
+  --destructive: #ff5c5c;
+  --destructive-foreground: #f4f7fa;
+  --border: #263241;
+  --input: #263241;
+  --ring: #1e9bff;
+  --panel: #111821;
+  --app-shell: #090d12;
 }
 
 @theme inline {
@@ -86,24 +90,66 @@
     min-height: 100%;
   }
 
+  #root {
+    isolation: isolate;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     margin: 0;
     min-height: 100vh;
-    background-image:
-      radial-gradient(circle at top, rgb(56 189 248 / 0.12), transparent 34%),
-      linear-gradient(180deg, rgb(248 250 252) 0%, rgb(226 232 240) 100%);
+    min-width: 320px;
+    background:
+      radial-gradient(circle at top left, rgb(30 155 255 / 0.14), transparent 26%),
+      linear-gradient(180deg, var(--app-shell) 0%, var(--background) 100%);
     font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   .dark body {
-    background-image:
-      radial-gradient(circle at top, rgb(56 189 248 / 0.18), transparent 36%),
-      linear-gradient(180deg, rgb(15 23 42) 0%, rgb(2 6 23) 100%);
+    background:
+      radial-gradient(circle at top left, rgb(30 155 255 / 0.14), transparent 24%),
+      linear-gradient(180deg, var(--app-shell) 0%, var(--background) 100%);
   }
 
   a {
     color: inherit;
     text-decoration: none;
+  }
+}
+
+@layer components {
+  .app-shell-grid {
+    position: relative;
+  }
+
+  .app-shell-sidebar,
+  .app-shell-topbar {
+    box-shadow: 0 24px 48px rgb(2 6 23 / 0.22);
+  }
+
+  .app-shell-main {
+    position: relative;
+  }
+
+  .app-panel {
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    box-shadow: 0 18px 42px rgb(2 6 23 / 0.18);
+  }
+
+  @media (min-width: 1024px) {
+    .app-shell-sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .app-shell-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
   }
 }
