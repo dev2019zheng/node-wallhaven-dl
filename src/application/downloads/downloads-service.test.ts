@@ -222,7 +222,7 @@ describe("downloads-service", () => {
     ])
   })
 
-  it("treats queued as active and skipped_existing as completed in summaries and filters", () => {
+  it("tracks queued and running tasks separately while still treating queued as active", () => {
     const downloads = [
       {
         id: "download-queued",
@@ -231,6 +231,15 @@ describe("downloads-service", () => {
         relativeFilePath: "wallpapers/wallhaven-queued.jpg",
         status: "queued" as const,
         downloadedBytes: 0,
+      },
+      {
+        id: "download-running",
+        wallpaperId: "running-id",
+        fileName: "wallhaven-running.jpg",
+        relativeFilePath: "wallpapers/wallhaven-running.jpg",
+        status: "running" as const,
+        downloadedBytes: 256,
+        totalBytes: 1024,
       },
       {
         id: "download-skipped",
@@ -252,14 +261,19 @@ describe("downloads-service", () => {
     ]
 
     expect(summarizeDownloads(downloads)).toEqual({
-      totalCount: 3,
-      activeCount: 1,
+      totalCount: 4,
+      queuedCount: 1,
+      runningCount: 1,
+      activeCount: 2,
       completedCount: 1,
       failedCount: 1,
     })
 
-    expect(filterDownloads(downloads, "running").map((download) => download.id)).toEqual([
+    expect(filterDownloads(downloads, "queued").map((download) => download.id)).toEqual([
       "download-queued",
+    ])
+    expect(filterDownloads(downloads, "running").map((download) => download.id)).toEqual([
+      "download-running",
     ])
     expect(filterDownloads(downloads, "completed").map((download) => download.id)).toEqual([
       "download-skipped",

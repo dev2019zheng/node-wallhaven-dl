@@ -15,8 +15,10 @@ function getEmptyStateCopy(filter: DownloadQueueFilter): string {
   switch (filter) {
     case "all":
       return "No downloads yet. Start one from Search and track progress here."
+    case "queued":
+      return "No queued transfers right now."
     case "running":
-      return "No queued or running transfers right now."
+      return "No running transfers right now."
     case "completed":
       return "No completed downloads yet."
     case "failed":

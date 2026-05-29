@@ -14,9 +14,14 @@ const queueTabs: QueueTabConfig[] = [
     count: (summary) => summary.totalCount,
   },
   {
+    filter: "queued",
+    label: "排队中",
+    count: (summary) => summary.queuedCount,
+  },
+  {
     filter: "running",
     label: "下载中",
-    count: (summary) => summary.activeCount,
+    count: (summary) => summary.runningCount,
   },
   {
     filter: "completed",

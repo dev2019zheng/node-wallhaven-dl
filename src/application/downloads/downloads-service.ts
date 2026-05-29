@@ -13,10 +13,12 @@ import type {
   DownloadWallpaperInput,
 } from "./downloads.types"
 
-export type DownloadQueueFilter = "all" | "running" | "completed" | "failed"
+export type DownloadQueueFilter = "all" | "queued" | "running" | "completed" | "failed"
 
 export type DownloadsSummary = {
   totalCount: number
+  queuedCount: number
+  runningCount: number
   activeCount: number
   completedCount: number
   failedCount: number
@@ -30,7 +32,8 @@ const statusPrecedence: Record<DownloadListItem["status"], number> = {
   skipped_existing: 2,
 }
 
-const activeStatuses = new Set<DownloadListItem["status"]>(["queued", "running"])
+const queuedStatuses = new Set<DownloadListItem["status"]>(["queued"])
+const runningStatuses = new Set<DownloadListItem["status"]>(["running"])
 const completedStatuses = new Set<DownloadListItem["status"]>([
   "succeeded",
   "skipped_existing",
@@ -108,13 +111,22 @@ export async function downloadWallpaper(
 export function summarizeDownloads(downloads: DownloadListItem[]): DownloadsSummary {
   const summary: DownloadsSummary = {
     totalCount: downloads.length,
+    queuedCount: 0,
+    runningCount: 0,
     activeCount: 0,
     completedCount: 0,
     failedCount: 0,
   }
 
   for (const download of downloads) {
-    if (activeStatuses.has(download.status)) {
+    if (queuedStatuses.has(download.status)) {
+      summary.queuedCount += 1
+      summary.activeCount += 1
+      continue
+    }
+
+    if (runningStatuses.has(download.status)) {
+      summary.runningCount += 1
       summary.activeCount += 1
       continue
     }
@@ -139,8 +151,10 @@ export function filterDownloads(
   switch (filter) {
     case "all":
       return downloads
+    case "queued":
+      return downloads.filter((download) => queuedStatuses.has(download.status))
     case "running":
-      return downloads.filter((download) => activeStatuses.has(download.status))
+      return downloads.filter((download) => runningStatuses.has(download.status))
     case "completed":
       return downloads.filter((download) => completedStatuses.has(download.status))
     case "failed":

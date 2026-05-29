@@ -147,10 +147,65 @@ describe("DownloadsPage", () => {
     expect(screen.getAllByText(/已完成/i).length).toBeGreaterThan(0)
   })
 
-  it("filters the queue when switching tabs", async () => {
+  it("renders live events for queue, progress, and completion updates", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([])
+
+    render(<DownloadsPage />)
+
+    await screen.findByText(/No downloads yet/i)
+
+    act(() => {
+      statusHandler?.({
+        payload: {
+          taskId: "download-live-events",
+          wallpaperId: "queue123",
+          fileName: "wallhaven-queue123.jpg",
+          relativeFilePath: "wallpapers/wallhaven-queue123.jpg",
+          status: "queued",
+        },
+      })
+    })
+
+    act(() => {
+      progressHandler?.({
+        payload: {
+          taskId: "download-live-events",
+          wallpaperId: "queue123",
+          fileName: "wallhaven-queue123.jpg",
+          downloadedBytes: 1024,
+          totalBytes: 4096,
+        },
+      })
+    })
+
+    act(() => {
+      statusHandler?.({
+        payload: {
+          taskId: "download-live-events",
+          wallpaperId: "queue123",
+          fileName: "wallhaven-queue123.jpg",
+          relativeFilePath: "wallpapers/wallhaven-queue123.jpg",
+          status: "succeeded",
+        },
+      })
+    })
+
+    expect(screen.getByText(/已加入队列 · wallhaven-queue123.jpg/i)).toBeInTheDocument()
+    expect(screen.getByText(/下载进度 · wallhaven-queue123.jpg · 25%/i)).toBeInTheDocument()
+    expect(screen.getByText(/任务完成 · wallhaven-queue123.jpg/i)).toBeInTheDocument()
+  })
+
+  it("filters the queue when switching tabs, including queued-only tasks", async () => {
     const user = userEvent.setup()
 
     vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-queued",
+        wallpaperId: "queue123",
+        fileName: "wallhaven-queue123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-queue123.jpg",
+        status: "queued",
+      },
       {
         id: "download-running",
         wallpaperId: "run123",
@@ -170,8 +225,15 @@ describe("DownloadsPage", () => {
 
     render(<DownloadsPage />)
 
-    expect(await screen.findByText("wallhaven-run123.jpg")).toBeInTheDocument()
+    expect(await screen.findByText("wallhaven-queue123.jpg")).toBeInTheDocument()
+    expect(screen.getByText("wallhaven-run123.jpg")).toBeInTheDocument()
     expect(screen.getByText("wallhaven-fail123.jpg")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("tab", { name: /排队中/i }))
+
+    expect(screen.getByText("wallhaven-queue123.jpg")).toBeInTheDocument()
+    expect(screen.queryByText("wallhaven-run123.jpg")).not.toBeInTheDocument()
+    expect(screen.queryByText("wallhaven-fail123.jpg")).not.toBeInTheDocument()
 
     await user.click(screen.getByRole("tab", { name: /失败/i }))
 
