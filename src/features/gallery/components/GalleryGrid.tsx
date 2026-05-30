@@ -11,9 +11,11 @@ export type GalleryGridItem = GalleryCardItem
 type GalleryGridProps = {
   items: GalleryGridItem[]
   view: GalleryView
+  selectedWallpaperId?: string | null
+  onSelect?: (item: GalleryGridItem) => void
 }
 
-export function GalleryGrid({ items, view }: GalleryGridProps) {
+export function GalleryGrid({ items, view, selectedWallpaperId, onSelect }: GalleryGridProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewIndex, setPreviewIndex] = useState(0)
 
@@ -26,14 +28,24 @@ export function GalleryGrid({ items, view }: GalleryGridProps) {
     <>
       <div
         className={cn(
-          view === "grid" ? "grid gap-4 md:grid-cols-2 2xl:grid-cols-3" : "space-y-4",
+          view === "grid"
+            ? "grid max-h-[282px] grid-cols-3 gap-x-4 gap-y-[18px] overflow-y-auto pr-1"
+            : "max-h-[282px] space-y-4 overflow-y-auto pr-1",
         )}
+        style={view === "grid" ? { contentVisibility: "auto", containIntrinsicSize: "716px 282px" } : undefined}
       >
         {items.map((item, index) => (
           <GalleryCard
+            isSelected={item.wallpaperId === selectedWallpaperId}
             item={item}
             key={item.wallpaperId}
-            onPreview={() => openPreview(index)}
+            onPreview={() => {
+              onSelect?.(item)
+              openPreview(index)
+            }}
+            onSelect={() => {
+              onSelect?.(item)
+            }}
             view={view}
           />
         ))}

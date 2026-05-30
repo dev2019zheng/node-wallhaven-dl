@@ -36,7 +36,7 @@ export function DownloadQueue({ downloads, filter, isLoading }: DownloadQueuePro
   }
 
   return (
-    <div className="space-y-3">
+    <div className="max-h-[548px] space-y-[18px] overflow-y-auto pr-1">
       {downloads.map((download) => (
         <DownloadTaskCard download={download} key={download.id} />
       ))}

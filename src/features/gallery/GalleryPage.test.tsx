@@ -73,7 +73,7 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     expect(loadInitialGalleryItems).toHaveBeenCalledTimes(1)
-    expect(await screen.findByText(/暂无归档壁纸/i)).toBeInTheDocument()
+    expect(await screen.findByText(/No archived wallpapers yet/i)).toBeInTheDocument()
   })
 
   it("renders archived wallpaper cards using local asset URLs", async () => {
@@ -81,14 +81,14 @@ describe("GalleryPage", () => {
 
     render(<GalleryPage />)
 
-    const previewImage = await screen.findByRole("img", { name: /Wallpaper kxpkmm/i })
+    const [previewImage] = await screen.findAllByRole("img", { name: /Wallpaper kxpkmm/i })
 
     expect(previewImage).toHaveAttribute(
       "src",
       "asset:///Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/wallhaven-kxpkmm.jpg",
     )
-    expect(screen.getByText("wallhaven-kxpkmm.jpg")).toBeInTheDocument()
-    expect(screen.getByText("wallpapers/wallhaven-kxpkmm.jpg")).toBeInTheDocument()
+    expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("wallpapers/wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
   })
 
   it("renders a local gallery toolbar with search and view toggles", async () => {
@@ -99,8 +99,9 @@ describe("GalleryPage", () => {
     expect(
       await screen.findByRole("searchbox", { name: /Search local gallery/i }),
     ).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /网格视图/i })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /紧凑视图/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /^Grid$/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /List view/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Favorites/i })).toBeInTheDocument()
   })
 
   it("filters the loaded archive locally from the gallery toolbar", async () => {
@@ -114,7 +115,7 @@ describe("GalleryPage", () => {
       "forest",
     )
 
-    expect(screen.getByText("forest-scene.png")).toBeInTheDocument()
+    expect(screen.getAllByText("forest-scene.png").length).toBeGreaterThan(0)
     expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
   })
 
@@ -124,9 +125,9 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole("button", { name: /紧凑视图/i }))
+    await user.click(await screen.findByRole("button", { name: /List view/i }))
 
-    expect(useUiShellStore.getState().galleryView).toBe("compact")
+    expect(useUiShellStore.getState().galleryView).toBe("list")
   })
 
   it("opens a preview lightbox for the selected local wallpaper", async () => {
@@ -152,16 +153,17 @@ describe("GalleryPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("gallery unavailable")
   })
 
-  it("does not show Favorites as an active collection slot", async () => {
+  it("filters the local archive with v3 collection chips", async () => {
     vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
 
     render(<GalleryPage />)
 
-    // Wait for the gallery to load
-    await screen.findByText("wallhaven-kxpkmm.jpg")
+    await screen.findAllByRole("img", { name: /Wallpaper kxpkmm/i })
 
-    // The Favorites item should not be present as a collection slot
-    expect(screen.queryByText(/Favorites/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Backend pending/i)).not.toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: /Favorites/i }))
+
+    expect(screen.getAllByText("forest-scene.png").length).toBeGreaterThan(0)
+    expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
   })
 })

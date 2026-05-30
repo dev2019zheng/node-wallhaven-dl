@@ -5,22 +5,35 @@ vi.mock("@/infrastructure/tauri/settings-repository", () => ({
   saveDownloadDirectorySettings: vi.fn(),
   loadNetworkProxySettings: vi.fn(),
   saveNetworkProxySettings: vi.fn(),
+  loadUserPreferences: vi.fn(),
+  saveUserPreferences: vi.fn(),
 }));
 
 import {
   loadDownloadDirectorySettings,
   loadNetworkProxySettings,
   loadStoredWallhavenKey,
+  loadUserPreferences,
   saveDownloadDirectorySettings,
   saveNetworkProxySettings,
   saveStoredWallhavenKey,
+  saveUserPreferences,
 } from "@/infrastructure/tauri/settings-repository";
 
 import { loadSettings, saveSettings } from "./settings-service";
 
 describe("settings-service", () => {
+  const preferences = {
+    launchAtLogin: false,
+    confirmBeforeDelete: true,
+    telemetryEnabled: false,
+    cacheSizeBytes: 38_400_000,
+  };
+
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(loadUserPreferences).mockResolvedValue(preferences);
+    vi.mocked(saveUserPreferences).mockResolvedValue(preferences);
   });
 
   it("loads the stored key, download directory settings, and network proxy settings", async () => {
@@ -50,6 +63,7 @@ describe("settings-service", () => {
         scheme: "socks5",
         address: "127.0.0.1:7897",
       },
+      preferences,
     });
   });
 
@@ -97,6 +111,7 @@ describe("settings-service", () => {
       customDownloadDirectoryPath: "/Users/test/Pictures/Curated",
       networkProxyScheme: "socks5",
       networkProxyAddress: "127.0.0.1:7897",
+      preferences,
     });
 
     expect(saveStoredWallhavenKey).toHaveBeenCalledWith("updated-key");
@@ -107,6 +122,7 @@ describe("settings-service", () => {
       scheme: "socks5",
       address: "127.0.0.1:7897",
     });
+    expect(saveUserPreferences).toHaveBeenCalledWith(preferences);
   });
 
   it("disables the network proxy when the proxy address is blank", async () => {
@@ -126,6 +142,7 @@ describe("settings-service", () => {
       customDownloadDirectoryPath: "",
       networkProxyScheme: "http",
       networkProxyAddress: "   ",
+      preferences,
     });
 
     expect(saveNetworkProxySettings).toHaveBeenCalledWith(null);

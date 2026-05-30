@@ -746,9 +746,7 @@ describe("SearchPage", () => {
     expect(
       screen.queryByRole("button", { name: /下载当前查询/i }),
     ).not.toBeInTheDocument()
-    expect(
-      screen.getByText(/提交筛选条件后即可从搜索命令加载结果/i),
-    ).toBeInTheDocument()
+    expect(screen.getAllByText(/Start with a query/i).length).toBeGreaterThan(0)
     expect(searchWallpapers).toHaveBeenCalledTimes(1)
   })
 })

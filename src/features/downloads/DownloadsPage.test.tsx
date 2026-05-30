@@ -101,7 +101,7 @@ describe("DownloadsPage", () => {
 
     expect(await screen.findByText("wallhaven-kxpkmm.jpg")).toBeInTheDocument()
     expect(screen.getByText("wallpapers/wallhaven-kxpkmm.jpg")).toBeInTheDocument()
-    expect(screen.getByText(/503 Service Unavailable/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/503 Service Unavailable/i).length).toBeGreaterThan(0)
 
     act(() => {
       statusHandler?.({
@@ -116,7 +116,7 @@ describe("DownloadsPage", () => {
     })
 
     expect(screen.getByText("wallhaven-ab1234.png")).toBeInTheDocument()
-    expect(screen.getAllByText(/下载中/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Downloading/i).length).toBeGreaterThan(0)
 
     act(() => {
       progressHandler?.({
@@ -144,7 +144,7 @@ describe("DownloadsPage", () => {
       })
     })
 
-    expect(screen.getAllByText(/已完成/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Completed/i).length).toBeGreaterThan(0)
   })
 
   it("renders live events for queue, progress, and completion updates", async () => {
@@ -229,13 +229,13 @@ describe("DownloadsPage", () => {
     expect(screen.getByText("wallhaven-run123.jpg")).toBeInTheDocument()
     expect(screen.getByText("wallhaven-fail123.jpg")).toBeInTheDocument()
 
-    await user.click(screen.getByRole("tab", { name: /排队中/i }))
+    await user.click(screen.getByRole("tab", { name: /Queued/i }))
 
     expect(screen.getByText("wallhaven-queue123.jpg")).toBeInTheDocument()
     expect(screen.queryByText("wallhaven-run123.jpg")).not.toBeInTheDocument()
     expect(screen.queryByText("wallhaven-fail123.jpg")).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole("tab", { name: /失败/i }))
+    await user.click(screen.getByRole("tab", { name: /Failed/i }))
 
     expect(screen.getByText("wallhaven-fail123.jpg")).toBeInTheDocument()
     expect(screen.queryByText("wallhaven-run123.jpg")).not.toBeInTheDocument()
@@ -364,7 +364,7 @@ describe("DownloadsPage", () => {
       },
     ])
 
-    expect(await screen.findAllByText(/已完成/i)).not.toHaveLength(0)
+    expect(await screen.findAllByText(/Completed/i)).not.toHaveLength(0)
     expect(screen.queryByText("Connecting...")).not.toBeInTheDocument()
   })
 })

@@ -14,7 +14,7 @@ export function ThemeToggle() {
 
   if (!isMounted) {
     return (
-      <div className="h-10 w-[6.5rem] rounded-full border border-border/80 bg-card/50" />
+      <div className="h-8 w-[6.5rem] rounded-full border border-border/80 bg-card/50" />
     );
   }
 
@@ -23,7 +23,7 @@ export function ThemeToggle() {
   return (
     <Button
       aria-label={isDarkTheme ? "Switch to light theme" : "Switch to dark theme"}
-      className="rounded-full"
+      className="h-8 rounded-full px-5"
       onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
       size="sm"
       type="button"

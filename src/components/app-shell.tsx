@@ -1,22 +1,19 @@
 import { Outlet } from "react-router-dom";
 
 import { Sidebar } from "@/components/sidebar";
-import { TopBar } from "@/components/top-bar";
+import { MacWindowChrome } from "@/components/mac-window-chrome";
 
 export function AppShell() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="app-shell-grid min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-0">
+    <div className="wh-desktop-shell bg-background text-foreground">
+      <MacWindowChrome />
+
+      <div className="wh-workspace">
         <Sidebar />
 
-        <div className="min-w-0">
-          <TopBar />
-          <main className="app-shell-main min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-            <div className="mx-auto w-full max-w-7xl">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+        <main className="app-shell-main min-w-0">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

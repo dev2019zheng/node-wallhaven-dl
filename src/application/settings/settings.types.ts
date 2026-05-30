@@ -12,10 +12,18 @@ export type NetworkProxySettings = {
   address: string;
 };
 
+export type SettingsPreferences = {
+  launchAtLogin: boolean;
+  confirmBeforeDelete: boolean;
+  telemetryEnabled: boolean;
+  cacheSizeBytes: number;
+};
+
 export type SettingsSnapshot = {
   wallhavenKey: string;
   downloadDirectory: DownloadDirectorySettings;
   networkProxy: NetworkProxySettings | null;
+  preferences: SettingsPreferences;
 };
 
 export type SaveSettingsInput = {
@@ -23,6 +31,7 @@ export type SaveSettingsInput = {
   customDownloadDirectoryPath: string;
   networkProxyScheme: NetworkProxyScheme;
   networkProxyAddress: string;
+  preferences: SettingsPreferences;
 };
 
 export type SettingsCommandErrorKind =

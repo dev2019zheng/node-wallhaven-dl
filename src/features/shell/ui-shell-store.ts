@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type GalleryView = "grid" | "compact";
+export type GalleryView = "grid" | "timeline" | "list" | "compact";
 
 export type DownloadSummary = {
   activeCount: number;

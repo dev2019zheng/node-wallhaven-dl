@@ -10,27 +10,27 @@ type QueueTabConfig = {
 const queueTabs: QueueTabConfig[] = [
   {
     filter: "all",
-    label: "全部",
+    label: "All",
     count: (summary) => summary.totalCount,
   },
   {
-    filter: "queued",
-    label: "排队中",
-    count: (summary) => summary.queuedCount,
-  },
-  {
     filter: "running",
-    label: "下载中",
+    label: "Downloading",
     count: (summary) => summary.runningCount,
   },
   {
+    filter: "queued",
+    label: "Queued",
+    count: (summary) => summary.queuedCount,
+  },
+  {
     filter: "completed",
-    label: "已完成",
+    label: "Completed",
     count: (summary) => summary.completedCount,
   },
   {
     filter: "failed",
-    label: "失败",
+    label: "Failed",
     count: (summary) => summary.failedCount,
   },
 ];
@@ -43,7 +43,7 @@ type QueueTabsProps = {
 
 export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
   return (
-    <div aria-label="Download queue filters" className="flex flex-wrap gap-2" role="tablist">
+    <div aria-label="Download queue filters" className="grid grid-cols-5 gap-2" role="tablist">
       {queueTabs.map((tab) => {
         const isActive = tab.filter === activeFilter;
 
@@ -51,10 +51,10 @@ export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
           <button
             aria-selected={isActive}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors",
+              "inline-flex h-9 items-center justify-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition-colors",
               isActive
-                ? "border-primary/45 bg-primary/12 text-foreground shadow-[inset_0_0_0_1px_rgb(30_155_255_/_0.16)]"
-                : "border-border bg-background/60 text-muted-foreground hover:text-foreground",
+                ? "border-[#1e5a91] bg-[#123252] text-foreground"
+                : "border-border bg-[var(--surface-deep)] text-muted-foreground hover:border-border-strong hover:text-foreground",
             )}
             key={tab.filter}
             onClick={() => {
@@ -63,8 +63,8 @@ export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
             role="tab"
             type="button"
           >
-            <span>{tab.label}</span>
-            <span className="rounded-full bg-black/10 px-2 py-0.5 text-[11px] text-muted-foreground dark:bg-white/6">
+            <span className="truncate">{tab.label}</span>
+            <span className="text-[11px] text-muted-foreground">
               {tab.count(summary)}
             </span>
           </button>

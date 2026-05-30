@@ -29,7 +29,10 @@ export function WallpaperGrid({
 
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] gap-5">
+      <div
+        className="grid max-h-[618px] grid-cols-3 gap-[18px] overflow-y-auto pr-1"
+        style={{ contentVisibility: "auto", containIntrinsicSize: "932px 618px" }}
+      >
         {wallpapers.map((wallpaper, index) => (
           <WallpaperCard
             isDownloading={downloadingWallpaperIds.has(wallpaper.id)}

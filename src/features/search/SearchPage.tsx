@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Download, Loader2, Save, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -20,8 +21,6 @@ import {
   type WallhavenQueryFilters,
 } from "@/domain/wallhaven/models";
 
-import { SearchFilters } from "./components/SearchFilters";
-import { StickySelectionBar } from "./components/StickySelectionBar";
 import { WallpaperGrid } from "./components/WallpaperGrid";
 import {
   getSearchPageSessionSnapshot,
@@ -316,6 +315,14 @@ export function SearchPage() {
 
     return "下载当前查询";
   }, [isBulkDownloading, pagesToDownload]);
+  const resultSummaryLabel = useMemo(() => {
+    if (!result) {
+      return null;
+    }
+
+    return `${result.meta.total.toLocaleString()} results · Page ${result.meta.currentPage} of ${result.meta.lastPage}`;
+  }, [result]);
+  const inspectorWallpaper = selectedWallpapers[0] ?? null;
 
   const onSubmit = handleSubmit(async (values) => {
     setSearchError(null);
@@ -568,89 +575,176 @@ export function SearchPage() {
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="搜索工作台"
-        description="支持搜索、筛选与当前查询批量下载。"
+        badge="API synced"
+        description="Search and discover wallpapers from Wallhaven."
         eyebrow="Wallpaper discovery"
-        title="搜索"
+        title="Search"
       />
 
-      <div className="grid gap-5 xl:grid-cols-[18rem_minmax(0,1fr)] xl:items-start">
-        <SearchFilters
-          errors={formState.errors}
-          isBulkDownloading={isBulkDownloading}
-          isSubmitting={formState.isSubmitting}
-          onSubmit={onSubmit}
-          register={register}
-          sorting={formValues.sorting}
-        />
-
-        <section
-          aria-label="Search results"
-          className="app-panel space-y-4 border-border/90 p-4 lg:p-5"
-        >
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">结果</h3>
-              <p className="text-sm text-muted-foreground">
-                当前查询共展示一页结果，可直接预览或发起批量下载。
-              </p>
+      <div className="grid grid-cols-[932px_210px] items-start gap-[26px]">
+        <div className="min-w-0 space-y-6">
+          <section aria-label="Search filters">
+          <form className="space-y-4" onSubmit={onSubmit}>
+            <div className="grid grid-cols-[1fr_122px] gap-[18px]">
+              <label className="relative block" htmlFor="search-query">
+                <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  aria-invalid={formState.errors.q ? true : undefined}
+                  aria-label="关键词"
+                  className="wh-control h-[42px] w-full pl-12 pr-4 text-[13px]"
+                  id="search-query"
+                  placeholder="Search for wallpapers  (e.g. mountains, anime, space...)"
+                  {...register("q")}
+                />
+              </label>
+              <Button
+                aria-label="搜索"
+                className="h-[42px] rounded-[14px] text-[14px]"
+                disabled={formState.isSubmitting || isBulkDownloading}
+                type="submit"
+              >
+                {formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Search
+              </Button>
             </div>
-            {result && result.data.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-full border border-border/80 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground">
-                  Starting at page {activeFilters?.page ?? result.meta.currentPage} · downloading {pagesToDownload} page{pagesToDownload === 1 ? "" : "s"}
+
+            {formState.errors.q ? (
+              <p className="-mt-2 text-[12px] text-destructive" role="alert">
+                {formState.errors.q.message}
+              </p>
+            ) : null}
+
+            <div className="grid grid-cols-[repeat(5,1fr)_142px] gap-[12px]">
+              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-category">
+                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Category</span>
+                <select aria-label="分类" className="bg-transparent text-[13px] font-semibold outline-none" id="search-category" {...register("category")}>
+                  <option value="all">All</option>
+                  <option value="general">General</option>
+                  <option value="anime">Anime</option>
+                  <option value="people">People</option>
+                  <option value="ga">General + Anime</option>
+                  <option value="gp">General + People</option>
+                </select>
+              </label>
+              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-purity">
+                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Purity</span>
+                <select aria-label="纯净度" className="bg-transparent text-[13px] font-semibold outline-none" id="search-purity" {...register("purityPreset")}>
+                  <option value="sfw">SFW</option>
+                  <option value="sketchy">Sketchy</option>
+                  <option value="nsfw">NSFW</option>
+                  <option value="ws">SFW + Sketchy</option>
+                  <option value="wn">SFW + NSFW</option>
+                  <option value="sn">Sketchy + NSFW</option>
+                  <option value="all">All purity levels</option>
+                </select>
+              </label>
+              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-sorting">
+                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Sorting</span>
+                <select aria-label="排序" className="bg-transparent text-[13px] font-semibold outline-none" id="search-sorting" {...register("sorting")}>
+                  <option value="date_added">Date added</option>
+                  <option value="toplist">Toplist</option>
+                </select>
+              </label>
+              <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Resolution">
+                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Resolution</span>
+                <span className="text-[13px] font-semibold">All</span>
+              </div>
+              <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Aspect Ratio">
+                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Aspect Ratio</span>
+                <span className="text-[13px] font-semibold">16:9</span>
+              </div>
+              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-top-range">
+                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">More Filters</span>
+                <span className="flex items-center justify-between gap-3">
+                  {formValues.sorting === "toplist" ? (
+                    <select aria-label="热榜范围" className="min-w-0 bg-transparent text-[13px] font-semibold outline-none" id="search-top-range" {...register("topRange")}>
+                      <option value="1M">Advanced</option>
+                      <option value="1d">Past day</option>
+                      <option value="3d">Past 3 days</option>
+                      <option value="1w">Past week</option>
+                      <option value="3M">Past 3 months</option>
+                      <option value="6M">Past 6 months</option>
+                      <option value="1y">Past year</option>
+                    </select>
+                  ) : (
+                    <span className="text-[13px] font-semibold">Advanced</span>
+                  )}
+                  <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
+                </span>
+              </label>
+            </div>
+          </form>
+          </section>
+
+          <section aria-label="Search results" className="space-y-4">
+            <div className="flex h-[42px] items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h3 className="text-[14px] font-semibold text-foreground">
+                  {resultSummaryLabel ?? "Start with a query"}
+                </h3>
+                {result ? (
+                  <span className="text-[13px] font-medium text-muted-foreground">
+                    Page {result.meta.currentPage} of {result.meta.lastPage}
+                  </span>
+                ) : null}
+              </div>
+              {result && result.data.length > 0 ? (
+                <div className="flex items-center gap-3">
+                  <Button
+                    aria-label={bulkDownloadLabel}
+                    className="h-[42px] rounded-[14px] px-4"
+                    disabled={formState.isSubmitting || isBulkDownloading}
+                    onClick={() => {
+                      void onBulkDownload();
+                    }}
+                    type="button"
+                  >
+                    {isBulkDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    <span className="sr-only">{bulkDownloadLabel}</span>
+                  </Button>
+                  <div className="wh-control flex h-[42px] w-[126px] items-center justify-between px-4 text-[13px] font-semibold">
+                    24 per page
+                    <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <button aria-label="Grid view" className="wh-icon-button h-[42px] w-[42px]" type="button">
+                    <SlidersHorizontal className="h-4 w-4 text-primary" />
+                  </button>
                 </div>
-                <Button
-                  disabled={formState.isSubmitting || isBulkDownloading}
-                  onClick={() => {
-                    void onBulkDownload();
-                  }}
-                  type="button"
-                >
-                  {bulkDownloadLabel}
-                </Button>
+              ) : null}
+            </div>
+
+            {searchError ? <ErrorState message={searchError} /> : null}
+
+            {downloadFeedback ? (
+              <div
+                className={
+                  downloadFeedback.tone === "error"
+                    ? "rounded-[14px] border border-destructive/40 bg-destructive/10 px-4 py-3 text-[13px] text-destructive"
+                    : "rounded-[14px] border border-emerald-500/35 bg-emerald-500/12 px-4 py-3 text-[13px] font-medium text-emerald-200"
+                }
+                role={downloadFeedback.tone === "error" ? "alert" : "status"}
+              >
+                {downloadFeedback.message}
               </div>
             ) : null}
-          </div>
 
-          {searchError ? <ErrorState message={searchError} /> : null}
+            {!searchError && resultCountLabel ? (
+              <div className="sr-only">{resultCountLabel}</div>
+            ) : null}
 
-          {downloadFeedback ? (
-            <div
-              className={
-                downloadFeedback.tone === "error"
-                  ? "rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-                  : "rounded-2xl border border-emerald-500/35 bg-emerald-500/12 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200"
-              }
-              role={downloadFeedback.tone === "error" ? "alert" : "status"}
-            >
-              {downloadFeedback.message}
-            </div>
-          ) : null}
+            {formState.isSubmitting ? (
+              <div className="grid grid-cols-3 gap-[18px]" aria-label="Loading search results">
+                {Array.from({ length: 9 }, (_, index) => (
+                  <div className="h-[156px] animate-pulse rounded-2xl border border-border bg-[var(--surface-deep)]" key={index} />
+                ))}
+              </div>
+            ) : null}
 
-          {!searchError && resultCountLabel ? (
-            <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/12 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
-              {resultCountLabel}
-            </div>
-          ) : null}
+            {!searchError && !formState.isSubmitting && result && result.data.length === 0 ? (
+              <EmptyState title="No wallpapers matched the current filters." />
+            ) : null}
 
-          {!searchError && result && result.data.length === 0 ? (
-            <EmptyState title="No wallpapers matched the current filters." />
-          ) : null}
-
-          {!searchError && result && result.data.length > 0 ? (
-            <>
-              {selectedWallpapers.length > 0 ? (
-                <StickySelectionBar
-                  isDownloading={isSelectedDownloading}
-                  onClear={clearSelectedSearchIds}
-                  onDownloadSelected={() => {
-                    void onDownloadSelected();
-                  }}
-                  selectedCount={selectedWallpapers.length}
-                />
-              ) : null}
-
+            {!searchError && !formState.isSubmitting && result && result.data.length > 0 ? (
               <WallpaperGrid
                 downloadingWallpaperIds={downloadingWallpaperIdSet}
                 onDownload={(wallpaper) => {
@@ -661,16 +755,123 @@ export function SearchPage() {
                 selectionDisabled={isSelectedDownloading}
                 wallpapers={result.data}
               />
-            </>
-          ) : null}
+            ) : null}
 
-          {!searchError && !result ? (
-            <EmptyState
-              description="Then use the bulk action to download the current query."
-              title="提交筛选条件后即可从搜索命令加载结果。"
-            />
+            {!searchError && !formState.isSubmitting && !result ? (
+              <EmptyState
+                description="Try mountains, anime, city night, space, or 4K landscape."
+                title="Start with a query"
+              />
+            ) : null}
+          </section>
+        </div>
+
+        <aside className="app-panel min-h-[716px] space-y-6 p-6" aria-label="Inspector">
+          <div className="space-y-2">
+            <h3 className="text-[20px] font-semibold leading-7 text-foreground">Inspector</h3>
+            <p className="text-[13px] font-medium text-muted-foreground">
+              {selectedWallpapers.length > 0
+                ? `Selected ${selectedWallpapers.length} wallpapers`
+                : "Start with a query"}
+            </p>
+          </div>
+
+          {selectedWallpapers.length > 0 ? (
+            <div className="space-y-4">
+              <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] p-4">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Batch action</p>
+                <p className="mt-3 text-[16px] font-semibold text-foreground">Download selected</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  已选择 {selectedWallpapers.length} 项 · {selectedWallpapers.length} files
+                </p>
+              </div>
+              <Button
+                aria-label={isSelectedDownloading ? "下载选中中..." : "下载选中"}
+                className="h-12 w-full rounded-[14px]"
+                disabled={isSelectedDownloading || isBulkDownloading}
+                onClick={() => {
+                  void onDownloadSelected();
+                }}
+                type="button"
+              >
+                {isSelectedDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Start download
+              </Button>
+              <Button className="h-12 w-full rounded-[14px]" type="button" variant="outline">
+                <Save className="h-4 w-4" />
+                Save to collection
+              </Button>
+              <Button
+                aria-label="清除选择"
+                className="h-10 w-full rounded-[14px]"
+                disabled={isSelectedDownloading}
+                onClick={clearSelectedSearchIds}
+                type="button"
+                variant="ghost"
+              >
+                <X className="h-4 w-4" />
+                Clear selection
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] p-4 text-[13px] leading-6 text-muted-foreground">
+                Search, then click the selection badge on cards to enable batch actions here.
+              </div>
+              <Button
+                aria-label="Start bulk download from inspector"
+                className="h-12 w-full rounded-[14px]"
+                disabled={!result || result.data.length === 0 || formState.isSubmitting || isBulkDownloading}
+                onClick={() => {
+                  void onBulkDownload();
+                }}
+                type="button"
+              >
+                {isBulkDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {bulkDownloadLabel}
+              </Button>
+              <label className="block space-y-2 text-[12px] font-semibold text-muted-foreground">
+                起始页
+                <input
+                  className="wh-control h-10 w-full px-3 text-[13px] text-foreground"
+                  min={1}
+                  type="number"
+                  {...register("page", { valueAsNumber: true })}
+                />
+              </label>
+              <label className="block space-y-2 text-[12px] font-semibold text-muted-foreground">
+                批量页数
+                <input
+                  className="wh-control h-10 w-full px-3 text-[13px] text-foreground"
+                  min={1}
+                  type="number"
+                  {...register("pagesToDownload", { valueAsNumber: true })}
+                />
+              </label>
+            </div>
+          )}
+
+          {inspectorWallpaper ? (
+            <dl className="space-y-6 text-[13px]">
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Resolution</dt>
+                <dd className="mt-2 text-foreground">{inspectorWallpaper.resolution}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Purity</dt>
+                <dd className="mt-2 uppercase text-foreground">{inspectorWallpaper.purity}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Ratio</dt>
+                <dd className="mt-2 text-foreground">{inspectorWallpaper.ratio}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Tags</dt>
+                <dd className="mt-2 text-foreground">space, city, nature</dd>
+              </div>
+            </dl>
           ) : null}
-        </section>
+        </aside>
       </div>
     </section>
   );

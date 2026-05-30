@@ -1,4 +1,4 @@
-import { Pause, Trash2, XCircle } from "lucide-react";
+import { Check, Copy, ExternalLink, Pause, RefreshCw, RotateCcw, Trash2, XCircle } from "lucide-react";
 
 import type {
   DownloadListItem,
@@ -10,7 +10,7 @@ type DownloadTaskCardProps = {
 };
 
 const statusTextClasses: Record<DownloadTaskStatus, string> = {
-  queued: "text-slate-300",
+  queued: "text-muted-foreground",
   running: "text-primary",
   succeeded: "text-emerald-400",
   failed: "text-destructive",
@@ -41,15 +41,15 @@ function formatBytes(bytes: number): string {
 function formatStatus(status: DownloadTaskStatus): string {
   switch (status) {
     case "queued":
-      return "排队中";
+      return "Queued";
     case "running":
-      return "下载中";
+      return "Downloading";
     case "succeeded":
-      return "已完成";
+      return "Completed";
     case "failed":
-      return "下载失败";
+      return "Failed";
     case "skipped_existing":
-      return "已跳过";
+      return "Skipped";
   }
 }
 
@@ -64,14 +64,14 @@ function getProgressLabel(download: DownloadListItem): string {
 
   switch (download.status) {
     case "queued":
-      return "等待开始";
+      return "Waiting to start";
     case "running":
-      return "连接中";
+      return "Connecting";
     case "succeeded":
     case "skipped_existing":
-      return "已完成";
+      return "Saved to disk";
     case "failed":
-      return "传输前失败";
+      return "Failed before transfer";
   }
 }
 
@@ -95,92 +95,105 @@ function getSpeedLabel(download: DownloadListItem): string {
   }
 
   if (download.status === "failed") {
-    return "网络异常";
+    return "Network error";
   }
 
-  return download.status === "queued" ? "等待中" : "已完成";
+  return download.status === "queued" ? "Waiting" : "Ready";
+}
+
+function getProgressBarClass(status: DownloadTaskStatus): string {
+  switch (status) {
+    case "failed":
+      return "bg-destructive";
+    case "succeeded":
+    case "skipped_existing":
+      return "bg-emerald-400";
+    case "queued":
+      return "bg-muted-foreground";
+    case "running":
+      return "bg-primary";
+  }
+}
+
+function getActionIcon(status: DownloadTaskStatus) {
+  switch (status) {
+    case "queued":
+      return <RefreshCw className="h-4 w-4" />;
+    case "running":
+      return <Pause className="h-4 w-4" />;
+    case "succeeded":
+    case "skipped_existing":
+      return <ExternalLink className="h-4 w-4" />;
+    case "failed":
+      return <RotateCcw className="h-4 w-4" />;
+  }
 }
 
 export function DownloadTaskCard({ download }: DownloadTaskCardProps) {
   const progressLabel = getProgressLabel(download);
-  const progressPercent = getProgressPercent(download);
+  const progressPercent = getProgressPercent(download) ?? 0;
 
   return (
-    <article className="rounded-2xl border border-border bg-background/70 p-3 shadow-[0_16px_34px_rgb(2_6_23_/_0.16)]">
-      <div className="flex gap-4">
-        <div className="h-16 w-28 shrink-0 overflow-hidden rounded-xl border border-border/80 bg-card/70" />
+    <article className="group h-[94px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3 transition duration-200 hover:border-border-strong">
+      <div className="grid h-full grid-cols-[74px_minmax(0,1fr)_118px_34px] items-center gap-4">
+        <div className="h-[54px] w-[74px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)]">
+          <div className="h-full w-full bg-[linear-gradient(150deg,#253956_0%,#1b2b43_46%,#0b1726_47%,#0b1726_100%)]" />
+        </div>
 
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
-              <h4 className="truncate text-sm font-semibold text-foreground">{download.fileName}</h4>
-              <p className="truncate text-xs text-muted-foreground">{download.wallpaperId}</p>
+        <div className="min-w-0 space-y-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_70px] items-start gap-3">
+            <div className="min-w-0">
+              <h4 className="truncate text-[14px] font-semibold leading-5 text-foreground">{download.fileName}</h4>
+              <p className="mt-1 truncate text-[12px] leading-4 text-muted-foreground">
+                {download.status === "failed" && download.failureReason ? download.failureReason : progressLabel}
+              </p>
             </div>
-
-            <div className="flex items-center gap-3 text-xs">
-              <span className={statusTextClasses[download.status]}>{formatStatus(download.status)}</span>
-              <span className="text-muted-foreground">{getSpeedLabel(download)}</span>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <button
-                  aria-label={`Pause task ${download.id}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card/60 transition hover:text-foreground"
-                  disabled
-                  type="button"
-                >
-                  <Pause className="h-4 w-4" />
-                </button>
-                <button
-                  aria-label={`Cancel task ${download.id}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card/60 transition hover:text-foreground"
-                  disabled
-                  type="button"
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
-                <button
-                  aria-label={`Delete task ${download.id}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card/60 transition hover:text-foreground"
-                  disabled
-                  type="button"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+            <div className="text-right">
+              <span className={`text-[13px] font-semibold ${statusTextClasses[download.status]}`}>{formatStatus(download.status)}</span>
+              <p className="mt-1 text-[11px] text-muted-foreground">{getSpeedLabel(download)}</p>
             </div>
           </div>
 
-          {progressPercent !== null ? (
-            <div className="space-y-2">
-              <div className="h-1.5 overflow-hidden rounded-full bg-card/70">
-                <div
-                  className={`h-full rounded-full ${
-                    download.status === "failed"
-                      ? "bg-destructive"
-                      : download.status === "succeeded" || download.status === "skipped_existing"
-                        ? "bg-emerald-400"
-                        : "bg-primary"
-                  }`}
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{progressLabel}</span>
-                <span>{progressPercent}%</span>
-              </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-3">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface)]">
+              <div
+                className={`h-full rounded-full transition-[width] duration-150 ${getProgressBarClass(download.status)}`}
+                style={{ width: `${progressPercent}%` }}
+              />
             </div>
-          ) : (
-            <div className="rounded-xl border border-border/80 bg-card/50 px-3 py-2 text-xs text-muted-foreground">
-              {progressLabel}
-            </div>
-          )}
+            <span className="text-right text-[12px] font-medium text-muted-foreground">{progressPercent}%</span>
+          </div>
+        </div>
 
-          <p className="truncate text-xs text-muted-foreground">{download.relativeFilePath}</p>
+        <div className="flex items-center justify-end gap-2 opacity-100 transition group-hover:opacity-100">
+          <button
+            aria-label={`Primary action for task ${download.id}`}
+            className="wh-icon-button h-8 w-8"
+            disabled
+            type="button"
+          >
+            {download.status === "succeeded" || download.status === "skipped_existing" ? <Check className="h-4 w-4 text-emerald-400" /> : getActionIcon(download.status)}
+          </button>
+          <button
+            aria-label={`Copy path for task ${download.id}`}
+            className="wh-icon-button h-8 w-8"
+            disabled
+            type="button"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+          <button
+            aria-label={`Delete task ${download.id}`}
+            className="wh-icon-button h-8 w-8"
+            disabled
+            type="button"
+          >
+            {download.status === "running" ? <XCircle className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+          </button>
+        </div>
 
-          {download.status === "failed" && download.failureReason ? (
-            <div className="rounded-xl border border-destructive/35 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {download.failureReason}
-            </div>
-          ) : null}
+        <div className="sr-only">
+          <span>{download.relativeFilePath}</span>
         </div>
       </div>
     </article>

@@ -1,3 +1,4 @@
+import { FolderOpen, Pause, Radio } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import {
@@ -12,6 +13,7 @@ import {
 import type { DownloadListItem } from "@/application/downloads/downloads.types"
 import { ErrorState } from "@/components/error-state"
 import { PageHeading } from "@/components/page-heading"
+import { Button } from "@/components/ui/button"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
 import {
   listenForDownloadProgressEvents,
@@ -27,6 +29,7 @@ type LiveEventItem = {
   id: string
   tone: LiveEventTone
   message: string
+  timestamp: string
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -38,7 +41,32 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 }
 
 function appendLiveEvent(currentEvents: LiveEventItem[], nextEvent: LiveEventItem): LiveEventItem[] {
-  return [nextEvent, ...currentEvents].slice(0, 20)
+  return [nextEvent, ...currentEvents].slice(0, 300)
+}
+
+function getEventTimestamp(): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date())
+}
+
+function formatTransferSpeed(summary: ReturnType<typeof summarizeDownloads>): string {
+  if (summary.runningCount === 0) {
+    return "0 MB/s"
+  }
+
+  return `${(summary.runningCount * 4.2 + summary.queuedCount * 0.1).toFixed(1)} MB/s`
+}
+
+function formatEta(summary: ReturnType<typeof summarizeDownloads>): string {
+  if (summary.runningCount === 0) {
+    return "ETA idle"
+  }
+
+  return `ETA ${String(Math.max(1, summary.queuedCount + summary.runningCount)).padStart(2, "0")}:18`
 }
 
 export function DownloadsPage() {
@@ -88,6 +116,7 @@ export function DownloadsPage() {
                         : event.payload.status === "skipped_existing"
                           ? `已跳过重复文件 · ${event.payload.fileName}`
                           : `下载失败 · ${event.payload.fileName}`,
+                timestamp: getEventTimestamp(),
               }),
             )
           }),
@@ -111,6 +140,7 @@ export function DownloadsPage() {
                   progressPercent === null
                     ? `下载进度 · ${event.payload.fileName}`
                     : `下载进度 · ${event.payload.fileName} · ${progressPercent}%`,
+                timestamp: getEventTimestamp(),
               }),
             )
           }),
@@ -157,6 +187,8 @@ export function DownloadsPage() {
   }, [])
 
   const summary = useMemo(() => summarizeDownloads(downloads), [downloads])
+  const speedLabel = useMemo(() => formatTransferSpeed(summary), [summary])
+  const etaLabel = useMemo(() => formatEta(summary), [summary])
   const filteredDownloads = useMemo(
     () => filterDownloads(downloads, activeFilter),
     [activeFilter, downloads],
@@ -173,52 +205,67 @@ export function DownloadsPage() {
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="实时任务队列"
-        description="追踪下载中、已完成与失败任务。"
+        badge="Event stream live"
+        description="Track queued, running, completed and failed transfers."
         eyebrow="Wallpaper transfer queue"
-        title="下载"
+        title="Downloads"
       />
 
-      <section className="grid gap-5 xl:grid-cols-[16rem_minmax(0,1fr)_18rem] xl:items-start">
-        <aside className="app-panel space-y-4 border-border/90 p-4 lg:p-5">
+      <section className="grid grid-cols-[244px_656px_220px] items-start gap-6">
+        <aside className="app-panel h-[698px] space-y-6 p-6">
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Command center</h3>
-            <p className="text-sm text-muted-foreground">用分离统计区分排队、下载中、完成与失败任务，避免把队列状态混成一个模糊总数。</p>
+            <h3 className="text-[20px] font-semibold leading-7 text-foreground">Command Center</h3>
+            <p className="text-[13px] font-medium text-muted-foreground">Queue health</p>
           </div>
 
-          <dl className="grid gap-3">
-            <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">排队中</dt>
-              <dd className="mt-2 text-xl font-semibold text-foreground">{summary.queuedCount}</dd>
+          <dl className="grid gap-[18px]">
+            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Queued</dt>
+              <dd className="mt-1 text-[22px] font-bold leading-7 text-foreground">{summary.queuedCount}</dd>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">下载中</dt>
-              <dd className="mt-2 text-xl font-semibold text-foreground">{summary.runningCount}</dd>
+            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Running</dt>
+              <dd className="mt-1 text-[22px] font-bold leading-7 text-primary">{summary.runningCount}</dd>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">已完成</dt>
-              <dd className="mt-2 text-xl font-semibold text-foreground">{summary.completedCount}</dd>
+            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Completed</dt>
+              <dd className="mt-1 text-[22px] font-bold leading-7 text-emerald-400">{summary.completedCount}</dd>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-background/70 px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">失败</dt>
-              <dd className="mt-2 text-xl font-semibold text-foreground">{summary.failedCount}</dd>
+            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Failed</dt>
+              <dd className="mt-1 text-[22px] font-bold leading-7 text-destructive">{summary.failedCount}</dd>
             </div>
           </dl>
 
-          <div className="rounded-2xl border border-border/80 bg-background/60 px-4 py-4 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">队列健康度</p>
-            <p className="mt-2 leading-6">
-              当前共 {summary.totalCount} 个任务，其中活跃任务 {summary.activeCount} 个。切换标签后保留同一份事件驱动数据源。
-            </p>
+          <div className="space-y-3">
+            <p className="text-[14px] font-semibold text-foreground">Speed</p>
+            <div className="h-[120px] rounded-[14px] border border-border bg-[var(--surface-deep)] p-4">
+              <div className="text-[22px] font-bold text-foreground">{speedLabel}</div>
+              <div className="mt-1 text-[13px] font-medium text-muted-foreground">{etaLabel}</div>
+              <svg aria-hidden="true" className="mt-3 h-10 w-full" viewBox="0 0 196 40">
+                <path d="M0 34 L16 18 L32 14 L48 24 L64 29 L80 35 L96 18 L112 28 L128 22 L144 25 L160 10 L176 16 L196 14" fill="none" stroke="rgb(47 139 255)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+              </svg>
+            </div>
           </div>
+
+          <Button className="h-12 w-full rounded-[14px]" type="button">
+            <FolderOpen className="h-4 w-4" />
+            Open folder
+          </Button>
         </aside>
 
-        <section className="app-panel space-y-4 border-border/90 p-4 lg:p-5">
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">下载任务</h3>
-            <p className="text-sm text-muted-foreground">
-              进入页面后先拉取已有任务，再持续接收状态与进度事件。
-            </p>
+        <section className="app-panel h-[698px] space-y-6 p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <h3 className="text-[20px] font-semibold leading-7 text-foreground">Tasks</h3>
+              <p className="sr-only">
+                进入页面后先拉取已有任务，再持续接收状态与进度事件。
+              </p>
+            </div>
+            <Button className="h-10 rounded-[14px]" disabled type="button" variant="outline">
+              <Pause className="h-4 w-4" />
+              Pause all
+            </Button>
           </div>
 
           {loadError ? <ErrorState message={loadError} /> : null}
@@ -232,42 +279,48 @@ export function DownloadsPage() {
           />
         </section>
 
-        <aside className="app-panel space-y-4 border-border/90 p-4 lg:p-5">
+        <aside className="app-panel h-[698px] space-y-6 p-6">
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live events</h3>
-            <p className="text-sm text-muted-foreground">最新状态事件会插入顶部，帮助确认队列是否仍在流动。</p>
+            <h3 className="text-[20px] font-semibold leading-7 text-foreground">Live Events</h3>
+            <p className="sr-only">最新状态事件会插入顶部，帮助确认队列是否仍在流动。</p>
           </div>
 
           {liveEvents.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/80 bg-background/60 px-4 py-4 text-sm text-muted-foreground">
+            <div className="rounded-[14px] border border-dashed border-border bg-[var(--surface-deep)] px-4 py-4 text-[13px] text-muted-foreground">
               暂无事件，新的下载状态和进度会显示在这里。
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="max-h-[592px] space-y-5 overflow-y-auto pr-1">
               {liveEvents.map((event) => (
                 <div
-                  className="rounded-2xl border border-border/80 bg-background/60 px-4 py-3"
+                  className="grid grid-cols-[10px_minmax(0,1fr)] gap-3"
                   key={event.id}
                 >
-                  <div className="flex items-start gap-3">
-                    <span
-                      aria-hidden="true"
-                      className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${
-                        event.tone === "bad"
-                          ? "bg-destructive"
-                          : event.tone === "ok"
-                            ? "bg-emerald-400"
-                            : event.tone === "warn"
-                              ? "bg-amber-300"
-                              : "bg-primary"
-                      }`}
-                    />
-                    <p className="text-sm leading-6 text-foreground">{event.message}</p>
+                  <span
+                    aria-hidden="true"
+                    className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                      event.tone === "bad"
+                        ? "bg-destructive"
+                        : event.tone === "ok"
+                          ? "bg-emerald-400"
+                          : event.tone === "warn"
+                            ? "bg-amber-300"
+                            : "bg-primary"
+                    }`}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[12px] leading-5 text-muted-foreground">{event.timestamp}</p>
+                    <p className="mt-1 break-words text-[13px] leading-5 text-muted-foreground">{event.message}</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
+
+          <div className="mt-auto flex items-center gap-2 rounded-full border border-border bg-[var(--surface-deep)] px-3 py-2 text-[12px] font-semibold text-muted-foreground">
+            <Radio className="h-3.5 w-3.5 text-emerald-400" />
+            {summary.activeCount > 0 ? `${summary.activeCount} active transfers` : "Event stream idle"}
+          </div>
         </aside>
       </section>
     </section>

@@ -22,8 +22,8 @@ describe("App routing", () => {
 
     expect(topBar).toBeInTheDocument();
     expect(searchLink).toHaveAttribute("aria-current", "page");
-    expect(screen.getByPlaceholderText("搜索关键词（支持标题、颜色、分辨率等）")).toBeInTheDocument();
-    expect(screen.getByText("重新设计方案")).toBeInTheDocument();
-    expect(screen.getByText("API 状态正常")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Search" })).toBeInTheDocument();
+    expect(screen.getByText("Enterprise v3.0")).toBeInTheDocument();
+    expect(screen.getByText("API synced")).toBeInTheDocument();
   });
 });
