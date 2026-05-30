@@ -13,9 +13,18 @@ type GalleryGridProps = {
   view: GalleryView
   selectedWallpaperId?: string | null
   onSelect?: (item: GalleryGridItem) => void
+  onTag?: (item: GalleryGridItem) => void
+  onToggleFavorite?: (item: GalleryGridItem) => void
 }
 
-export function GalleryGrid({ items, view, selectedWallpaperId, onSelect }: GalleryGridProps) {
+export function GalleryGrid({
+  items,
+  view,
+  selectedWallpaperId,
+  onSelect,
+  onTag,
+  onToggleFavorite,
+}: GalleryGridProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewIndex, setPreviewIndex] = useState(0)
 
@@ -29,10 +38,10 @@ export function GalleryGrid({ items, view, selectedWallpaperId, onSelect }: Gall
       <div
         className={cn(
           view === "grid"
-            ? "grid max-h-[282px] grid-cols-3 gap-x-4 gap-y-[18px] overflow-y-auto pr-1"
-            : "max-h-[282px] space-y-4 overflow-y-auto pr-1",
+            ? "grid max-h-[calc(100vh-418px)] min-h-[282px] grid-cols-3 gap-x-4 gap-y-[18px] overflow-y-auto pr-1"
+            : "max-h-[calc(100vh-418px)] min-h-[282px] space-y-4 overflow-y-auto pr-1",
         )}
-        style={view === "grid" ? { contentVisibility: "auto", containIntrinsicSize: "716px 282px" } : undefined}
+        style={view === "grid" ? { contentVisibility: "auto", containIntrinsicSize: "716px 420px" } : undefined}
       >
         {items.map((item, index) => (
           <GalleryCard
@@ -45,6 +54,12 @@ export function GalleryGrid({ items, view, selectedWallpaperId, onSelect }: Gall
             }}
             onSelect={() => {
               onSelect?.(item)
+            }}
+            onTag={() => {
+              onTag?.(item)
+            }}
+            onToggleFavorite={() => {
+              onToggleFavorite?.(item)
             }}
             view={view}
           />

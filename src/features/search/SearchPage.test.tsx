@@ -262,6 +262,8 @@ describe("SearchPage", () => {
       wallpaperId: "kxpkmm",
       imageUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
       fileName: "wallhaven-kxpkmm.jpg",
+      purity: "sfw",
+      category: "anime",
     })
     expect(screen.getByText(/请前往 Downloads 查看进度/i)).toBeInTheDocument()
     expect(downloadButton).toBeDisabled()
@@ -317,11 +319,15 @@ describe("SearchPage", () => {
       wallpaperId: "kxpkmm",
       imageUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
       fileName: "wallhaven-kxpkmm.jpg",
+      purity: "sfw",
+      category: "anime",
     })
     expect(downloadWallpaper).toHaveBeenNthCalledWith(2, {
       wallpaperId: "213edy",
       imageUrl: "https://w.wallhaven.cc/full/21/wallhaven-213edy.png",
       fileName: "wallhaven-213edy.png",
+      purity: "sfw",
+      category: "anime",
     })
     expect(await screen.findByText(/Finished downloading 2 张壁纸/i)).toBeInTheDocument()
   })
@@ -456,11 +462,15 @@ describe("SearchPage", () => {
       wallpaperId: "kxpkmm",
       imageUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
       fileName: "wallhaven-kxpkmm.jpg",
+      purity: "sfw",
+      category: "anime",
     })
     expect(downloadWallpaper).toHaveBeenNthCalledWith(2, {
       wallpaperId: "zz9xwy",
       imageUrl: "https://w.wallhaven.cc/full/zz/wallhaven-zz9xwy.jpg",
       fileName: "wallhaven-zz9xwy.jpg",
+      purity: "sfw",
+      category: "anime",
     })
   })
 
@@ -525,6 +535,8 @@ describe("SearchPage", () => {
       wallpaperId: selectedWallpaper.id,
       imageUrl: selectedWallpaper.path,
       fileName: "wallhaven-zz9xwy.jpg",
+      purity: "sfw",
+      category: "anime",
     })
 
     selectedDownload.resolve(createDownloadResult(selectedWallpaper))
@@ -591,6 +603,8 @@ describe("SearchPage", () => {
       wallpaperId: bulkWallpaper.id,
       imageUrl: bulkWallpaper.path,
       fileName: "wallhaven-zz9xwy.jpg",
+      purity: "sfw",
+      category: "anime",
     })
 
     bulkDownload.resolve(createDownloadResult(bulkWallpaper))

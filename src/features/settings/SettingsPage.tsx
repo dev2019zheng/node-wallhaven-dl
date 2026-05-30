@@ -370,7 +370,7 @@ export function SettingsPage() {
         title="Settings"
       />
 
-      <div className="grid grid-cols-[686px_452px] items-start gap-[30px]">
+      <div className="grid grid-cols-[minmax(686px,1fr)_452px] items-start gap-[30px]">
         <form className="app-panel min-h-[698px] space-y-6 p-[30px]" onSubmit={onSubmit}>
           <section aria-labelledby="wallhaven-access-heading" className="space-y-4">
             <div>

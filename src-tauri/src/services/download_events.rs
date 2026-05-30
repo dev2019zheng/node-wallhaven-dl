@@ -150,6 +150,8 @@ mod tests {
             "download-000001",
             "wh-1",
             "https://wallhaven.cc/w/wh-1",
+            None,
+            None,
             DownloadStrategy::new("AppLocalData", "wallpapers"),
             DownloadTarget::new("wh-1.jpg", "wallpapers/wh-1.jpg"),
         )

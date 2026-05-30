@@ -211,7 +211,10 @@ pub async fn search_wallpapers(
     database: State<'_, DatabaseState>,
     request: WallhavenSearchRequest,
 ) -> Result<SearchWallpapersResponse, SearchWallpapersError> {
-    let network_proxy = database.settings_repository().load_network_proxy_settings().await?;
+    let network_proxy = database
+        .settings_repository()
+        .load_network_proxy_settings()
+        .await?;
     let client = WallhavenClient::with_proxy(network_proxy.as_ref())?;
     map_search_result(client.search(&request).await)
 }

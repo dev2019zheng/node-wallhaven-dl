@@ -23,6 +23,8 @@ export type DownloadWallpaperInput = {
   wallpaperId: string
   imageUrl: string
   fileName: string
+  purity?: "sfw" | "sketchy" | "nsfw"
+  category?: "general" | "anime" | "people"
 }
 
 export type DownloadCommandErrorKind =

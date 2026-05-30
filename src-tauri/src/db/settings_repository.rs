@@ -37,11 +37,12 @@ impl SettingsRepository {
             return Ok(None);
         };
 
-        let settings = serde_json::from_str::<NetworkProxySettings>(&raw_value).map_err(|error| {
-            SettingsStoreError::Persistence {
-                message: format!("failed to decode saved network proxy settings: {error}"),
-            }
-        })?;
+        let settings =
+            serde_json::from_str::<NetworkProxySettings>(&raw_value).map_err(|error| {
+                SettingsStoreError::Persistence {
+                    message: format!("failed to decode saved network proxy settings: {error}"),
+                }
+            })?;
 
         Ok(Some(settings))
     }
@@ -52,11 +53,12 @@ impl SettingsRepository {
     ) -> SettingsStoreResult<()> {
         let serialized = match proxy_settings {
             Some(settings) => {
-                let normalized = settings.normalized().map_err(|error| {
-                    SettingsStoreError::Persistence {
-                        message: format!("failed to normalize network proxy settings: {error}"),
-                    }
-                })?;
+                let normalized =
+                    settings
+                        .normalized()
+                        .map_err(|error| SettingsStoreError::Persistence {
+                            message: format!("failed to normalize network proxy settings: {error}"),
+                        })?;
                 Some(serde_json::to_string(&normalized).map_err(|error| {
                     SettingsStoreError::Persistence {
                         message: format!("failed to encode network proxy settings: {error}"),
@@ -171,9 +173,15 @@ mod tests {
                 .save_custom_download_directory(Some("/Users/test/Pictures/Wallhaven"))
                 .await
                 .unwrap();
-            repository.save_custom_download_directory(None).await.unwrap();
+            repository
+                .save_custom_download_directory(None)
+                .await
+                .unwrap();
 
-            assert_eq!(repository.load_custom_download_directory().await.unwrap(), None);
+            assert_eq!(
+                repository.load_custom_download_directory().await.unwrap(),
+                None
+            );
         });
     }
 
@@ -222,7 +230,10 @@ mod tests {
                 .unwrap();
             repository.save_network_proxy_settings(None).await.unwrap();
 
-            assert_eq!(repository.load_network_proxy_settings().await.unwrap(), None);
+            assert_eq!(
+                repository.load_network_proxy_settings().await.unwrap(),
+                None
+            );
         });
     }
 }

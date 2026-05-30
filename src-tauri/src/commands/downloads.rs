@@ -116,10 +116,12 @@ fn build_download_http_client(
         client_builder = client_builder.proxy(network_proxy.to_reqwest_proxy()?);
     }
 
-    client_builder.build().map_err(|error| DownloadCommandError {
-        kind: DownloadCommandErrorKind::Internal,
-        message: error.to_string(),
-    })
+    client_builder
+        .build()
+        .map_err(|error| DownloadCommandError {
+            kind: DownloadCommandErrorKind::Internal,
+            message: error.to_string(),
+        })
 }
 
 #[tauri::command]

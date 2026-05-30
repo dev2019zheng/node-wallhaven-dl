@@ -311,6 +311,8 @@ impl DownloadStore {
             format!("download-{}", Uuid::new_v4()),
             request.wallpaper_id.trim(),
             request.image_url.trim(),
+            request.purity.clone(),
+            request.category.clone(),
             strategy,
             target,
         );
@@ -1033,6 +1035,8 @@ mod tests {
             "download-000001",
             "wh-progress",
             "https://wallhaven.cc/w/wh-progress",
+            None,
+            None,
             DownloadStrategy::new("AppLocalData", "wallpapers"),
             DownloadTarget::new("wh-progress.jpg", "wallpapers/wh-progress.jpg"),
         )
@@ -1226,7 +1230,6 @@ mod tests {
             assert!(second_task.id.starts_with("download-"));
         });
     }
-
 
     #[test]
     fn download_manager_writes_into_the_configured_custom_directory() {
@@ -1423,6 +1426,10 @@ mod tests {
                     source_url: format!("{}{}", server.uri(), request_path),
                     file_name: "wh-4.jpg".into(),
                     relative_file_path: "wallpapers/wh-4.jpg".into(),
+                    purity: None,
+                    category: None,
+                    tags: vec![],
+                    is_favorite: false,
                     download_base_dir: "AppLocalData".into(),
                     download_root_path: None,
                 })
@@ -1626,6 +1633,10 @@ mod tests {
                     source_url: format!("{}{}", archived_server.uri(), request_path),
                     file_name: "shared.jpg".into(),
                     relative_file_path: "wallpapers/shared.jpg".into(),
+                    purity: None,
+                    category: None,
+                    tags: vec![],
+                    is_favorite: false,
                     download_base_dir: "AppLocalData".into(),
                     download_root_path: None,
                 })

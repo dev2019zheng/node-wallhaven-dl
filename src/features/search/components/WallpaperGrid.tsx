@@ -30,7 +30,7 @@ export function WallpaperGrid({
   return (
     <>
       <div
-        className="grid max-h-[618px] grid-cols-3 gap-[18px] overflow-y-auto pr-1"
+        className="grid max-h-[calc(100vh-282px)] grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-[18px] overflow-y-auto pr-1"
         style={{ contentVisibility: "auto", containIntrinsicSize: "932px 618px" }}
       >
         {wallpapers.map((wallpaper, index) => (

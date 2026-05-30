@@ -20,6 +20,20 @@ pub struct GalleryListRequest {
     pub page_size: u32,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetGalleryFavoriteRequest {
+    pub wallpaper_id: String,
+    pub is_favorite: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateGalleryTagsRequest {
+    pub wallpaper_id: String,
+    pub tags: Vec<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GalleryListResponse {
@@ -37,6 +51,10 @@ pub struct GalleryItemDto {
     pub file_name: String,
     pub relative_file_path: String,
     pub absolute_path: String,
+    pub purity: Option<String>,
+    pub category: Option<String>,
+    pub tags: Vec<String>,
+    pub is_favorite: bool,
     pub created_at: String,
 }
 
@@ -55,12 +73,40 @@ pub struct GalleryCommandError {
 }
 
 impl GalleryCommandError {
+    fn invalid_request(message: impl Into<String>) -> Self {
+        Self {
+            kind: GalleryCommandErrorKind::InvalidRequest,
+            message: message.into(),
+        }
+    }
+
     fn internal(message: impl Into<String>) -> Self {
         Self {
             kind: GalleryCommandErrorKind::Internal,
             message: message.into(),
         }
     }
+}
+
+fn normalize_gallery_tags(tags: Vec<String>) -> Vec<String> {
+    let mut normalized_tags = Vec::new();
+
+    for tag in tags {
+        let normalized_tag = tag.trim();
+        if normalized_tag.is_empty()
+            || normalized_tag.len() > 40
+            || normalized_tags
+                .iter()
+                .any(|existing: &String| existing.eq_ignore_ascii_case(normalized_tag))
+        {
+            continue;
+        }
+
+        normalized_tags.push(normalized_tag.to_string());
+    }
+
+    normalized_tags.truncate(12);
+    normalized_tags
 }
 
 impl From<GalleryListQueryError> for GalleryCommandError {
@@ -114,6 +160,10 @@ fn to_gallery_item_dto(
         file_name: record.file_name,
         relative_file_path: record.relative_file_path,
         absolute_path: absolute_path.to_string_lossy().into_owned(),
+        purity: record.purity,
+        category: record.category,
+        tags: record.tags,
+        is_favorite: record.is_favorite,
         created_at: record.created_at,
     })
 }
@@ -165,6 +215,72 @@ pub async fn list_gallery_items(
     Ok(response)
 }
 
+async fn resolve_app_local_data_dir(
+    app: &AppHandle,
+) -> Result<std::path::PathBuf, GalleryCommandError> {
+    app.path()
+        .resolve("", BaseDirectory::AppLocalData)
+        .map_err(|error| GalleryCommandError::internal(error.to_string()))
+}
+
+async fn gallery_item_after_update(
+    app: &AppHandle,
+    record: Option<GalleryArchiveRecord>,
+) -> Result<GalleryItemDto, GalleryCommandError> {
+    let record = record.ok_or_else(|| {
+        GalleryCommandError::invalid_request(
+            "Gallery wallpaper was not found in the local archive.",
+        )
+    })?;
+    let app_local_data_dir = resolve_app_local_data_dir(app).await?;
+    let item = to_gallery_item_dto(record, app_local_data_dir.as_path())?;
+    app.asset_protocol_scope()
+        .allow_file(Path::new(&item.absolute_path))
+        .map_err(|error| GalleryCommandError::internal(error.to_string()))?;
+    Ok(item)
+}
+
+#[tauri::command]
+pub async fn set_gallery_favorite(
+    app: AppHandle,
+    state: State<'_, DatabaseState>,
+    request: SetGalleryFavoriteRequest,
+) -> Result<GalleryItemDto, GalleryCommandError> {
+    if request.wallpaper_id.trim().is_empty() {
+        return Err(GalleryCommandError::invalid_request(
+            "wallpaperId must not be empty.",
+        ));
+    }
+
+    let record = state
+        .archive_repository()
+        .set_favorite(&request.wallpaper_id, request.is_favorite)
+        .await?;
+
+    gallery_item_after_update(&app, record).await
+}
+
+#[tauri::command]
+pub async fn update_gallery_tags(
+    app: AppHandle,
+    state: State<'_, DatabaseState>,
+    request: UpdateGalleryTagsRequest,
+) -> Result<GalleryItemDto, GalleryCommandError> {
+    if request.wallpaper_id.trim().is_empty() {
+        return Err(GalleryCommandError::invalid_request(
+            "wallpaperId must not be empty.",
+        ));
+    }
+
+    let tags = normalize_gallery_tags(request.tags);
+    let record = state
+        .archive_repository()
+        .update_tags(&request.wallpaper_id, &tags)
+        .await?;
+
+    gallery_item_after_update(&app, record).await
+}
+
 #[cfg(test)]
 mod tests {
     use reqwest::Client;
@@ -192,6 +308,10 @@ mod tests {
                 file_name: "wh-1.jpg".into(),
                 relative_file_path: "wallpapers/wh-1.jpg".into(),
                 absolute_path: "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/wh-1.jpg".into(),
+                purity: Some("sfw".into()),
+                category: Some("general".into()),
+                tags: vec![],
+                is_favorite: false,
                 created_at: "2026-05-24 12:00:00".into(),
             }],
             page: 1,
@@ -340,6 +460,10 @@ mod tests {
                         .join("wallpapers/wh-archived.jpg")
                         .to_string_lossy()
                         .into_owned(),
+                    purity: None,
+                    category: None,
+                    tags: vec![],
+                    is_favorite: false,
                     created_at: "2026-05-24 12:00:00".into(),
                 }]
             );

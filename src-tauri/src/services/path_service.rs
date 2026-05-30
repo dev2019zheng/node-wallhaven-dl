@@ -115,7 +115,8 @@ pub fn build_download_target_with_strategy(
     strategy: &DownloadStrategy,
     file_name: &str,
 ) -> Result<DownloadTarget, ResolveDownloadPathError> {
-    let file_name = validate_file_name(file_name).map_err(ResolveDownloadPathError::InvalidTarget)?;
+    let file_name =
+        validate_file_name(file_name).map_err(ResolveDownloadPathError::InvalidTarget)?;
 
     match strategy.base_dir.trim() {
         DEFAULT_BASE_DIR => {
@@ -128,7 +129,9 @@ pub fn build_download_target_with_strategy(
             ))
         }
         ABSOLUTE_BASE_DIR => Ok(DownloadTarget::new(file_name, file_name)),
-        other => Err(ResolveDownloadPathError::UnsupportedBaseDir(other.to_string())),
+        other => Err(ResolveDownloadPathError::UnsupportedBaseDir(
+            other.to_string(),
+        )),
     }
 }
 
@@ -149,17 +152,16 @@ pub fn resolve_download_path(
     match strategy.base_dir.trim() {
         DEFAULT_BASE_DIR => Ok(app_local_data_dir.join(&target.relative_file_path)),
         ABSOLUTE_BASE_DIR => {
-            let root_path = normalize_absolute_root_path(
-                strategy
-                    .root_path
-                    .as_deref()
-                    .ok_or(ResolveDownloadPathError::InvalidRootPath(RootPathError::Empty))?,
-            )
+            let root_path = normalize_absolute_root_path(strategy.root_path.as_deref().ok_or(
+                ResolveDownloadPathError::InvalidRootPath(RootPathError::Empty),
+            )?)
             .map_err(ResolveDownloadPathError::InvalidRootPath)?;
 
             Ok(PathBuf::from(root_path).join(&target.relative_file_path))
         }
-        other => Err(ResolveDownloadPathError::UnsupportedBaseDir(other.to_string())),
+        other => Err(ResolveDownloadPathError::UnsupportedBaseDir(
+            other.to_string(),
+        )),
     }
 }
 
@@ -174,16 +176,15 @@ fn resolve_strategy_directory(
             Ok(app_local_data_dir.join(relative_root))
         }
         ABSOLUTE_BASE_DIR => {
-            let root_path = normalize_absolute_root_path(
-                strategy
-                    .root_path
-                    .as_deref()
-                    .ok_or(ResolveDownloadPathError::InvalidRootPath(RootPathError::Empty))?,
-            )
+            let root_path = normalize_absolute_root_path(strategy.root_path.as_deref().ok_or(
+                ResolveDownloadPathError::InvalidRootPath(RootPathError::Empty),
+            )?)
             .map_err(ResolveDownloadPathError::InvalidRootPath)?;
             Ok(PathBuf::from(root_path))
         }
-        other => Err(ResolveDownloadPathError::UnsupportedBaseDir(other.to_string())),
+        other => Err(ResolveDownloadPathError::UnsupportedBaseDir(
+            other.to_string(),
+        )),
     }
 }
 
@@ -273,8 +274,9 @@ mod tests {
 
     use super::{
         build_download_target, build_download_target_with_strategy, default_download_strategy,
-        resolve_download_path, resolve_effective_download_directory, strategy_from_custom_download_directory,
-        PathRuleError, ResolveDownloadPathError, RootPathError,
+        resolve_download_path, resolve_effective_download_directory,
+        strategy_from_custom_download_directory, PathRuleError, ResolveDownloadPathError,
+        RootPathError,
     };
     use crate::models::download::{DownloadStrategy, DownloadTarget};
 
@@ -413,7 +415,8 @@ mod tests {
     #[test]
     fn resolve_download_path_places_target_under_the_custom_absolute_directory() {
         let strategy = DownloadStrategy::absolute_directory("/Users/test/Pictures/Wallhaven");
-        let target = build_download_target_with_strategy(&strategy, "wallhaven-kxpkmm.jpg").unwrap();
+        let target =
+            build_download_target_with_strategy(&strategy, "wallhaven-kxpkmm.jpg").unwrap();
 
         assert_eq!(
             resolve_download_path(
@@ -464,7 +467,8 @@ mod tests {
     #[test]
     fn resolve_download_path_rejects_relative_custom_roots() {
         let strategy = DownloadStrategy::absolute_directory("Downloads/Wallhaven");
-        let target = build_download_target_with_strategy(&strategy, "wallhaven-kxpkmm.jpg").unwrap();
+        let target =
+            build_download_target_with_strategy(&strategy, "wallhaven-kxpkmm.jpg").unwrap();
 
         assert_eq!(
             resolve_download_path(

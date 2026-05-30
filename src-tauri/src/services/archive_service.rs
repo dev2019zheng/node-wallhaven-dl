@@ -173,6 +173,10 @@ mod tests {
             source_url: "https://wallhaven.cc/w/wh-1".into(),
             file_name: "wh-1.jpg".into(),
             relative_file_path: "wallpapers/wh-1.jpg".into(),
+            purity: None,
+            category: None,
+            tags: Vec::new(),
+            is_favorite: false,
             download_base_dir: "AppLocalData".into(),
             download_root_path: None,
         }
@@ -184,6 +188,10 @@ mod tests {
             source_url: "https://wallhaven.cc/w/wh-2".into(),
             file_name: "wh-2.jpg".into(),
             relative_file_path: "wallpapers/wh-2.jpg".into(),
+            purity: None,
+            category: None,
+            tags: Vec::new(),
+            is_favorite: false,
             download_base_dir: "AppLocalData".into(),
             download_root_path: None,
         }
@@ -247,6 +255,10 @@ mod tests {
             source_url: "https://wallhaven.cc/w/wh-2".into(),
             file_name: "shared.jpg".into(),
             relative_file_path: "shared.jpg".into(),
+            purity: None,
+            category: None,
+            tags: Vec::new(),
+            is_favorite: false,
             download_base_dir: "Absolute".into(),
             download_root_path: Some("/Users/test/Pictures/Wallhaven".into()),
         };

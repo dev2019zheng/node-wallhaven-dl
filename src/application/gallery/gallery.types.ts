@@ -3,12 +3,26 @@ export type GalleryListRequest = {
   pageSize: number
 }
 
+export type SetGalleryFavoriteInput = {
+  wallpaperId: string
+  isFavorite: boolean
+}
+
+export type UpdateGalleryTagsInput = {
+  wallpaperId: string
+  tags: string[]
+}
+
 export type GalleryItem = {
   wallpaperId: string
   sourceUrl: string
   fileName: string
   relativeFilePath: string
   absolutePath: string
+  purity: "sfw" | "sketchy" | "nsfw" | null
+  category: "general" | "anime" | "people" | null
+  tags: string[]
+  isFavorite: boolean
   createdAt: string
 }
 

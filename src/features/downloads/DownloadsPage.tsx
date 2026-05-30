@@ -211,7 +211,7 @@ export function DownloadsPage() {
         title="Downloads"
       />
 
-      <section className="grid grid-cols-[244px_656px_220px] items-start gap-6">
+      <section className="grid grid-cols-[260px_minmax(656px,1fr)_260px] items-start gap-6">
         <aside className="app-panel h-[698px] space-y-6 p-6">
           <div className="space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-foreground">Command Center</h3>

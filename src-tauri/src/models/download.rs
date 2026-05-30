@@ -9,6 +9,10 @@ pub struct DownloadRequest {
     pub wallpaper_id: String,
     pub image_url: String,
     pub file_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
 }
 
 impl DownloadRequest {
@@ -21,6 +25,8 @@ impl DownloadRequest {
             wallpaper_id: wallpaper_id.into(),
             image_url: image_url.into(),
             file_name: file_name.into(),
+            purity: None,
+            category: None,
         }
     }
 
@@ -131,6 +137,10 @@ pub struct DownloadTask {
     pub id: String,
     pub wallpaper_id: String,
     pub source_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
     pub strategy: DownloadStrategy,
     pub target: DownloadTarget,
     pub status: DownloadStatus,
@@ -165,6 +175,8 @@ impl DownloadTask {
         id: impl Into<String>,
         wallpaper_id: impl Into<String>,
         source_url: impl Into<String>,
+        purity: Option<String>,
+        category: Option<String>,
         strategy: DownloadStrategy,
         target: DownloadTarget,
     ) -> Self {
@@ -172,6 +184,8 @@ impl DownloadTask {
             id: id.into(),
             wallpaper_id: wallpaper_id.into(),
             source_url: source_url.into(),
+            purity,
+            category,
             strategy,
             target,
             status: DownloadStatus::Queued,
@@ -235,6 +249,12 @@ pub struct ArchiveRecord {
     pub source_url: String,
     pub file_name: String,
     pub relative_file_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    pub tags: Vec<String>,
+    pub is_favorite: bool,
     pub download_base_dir: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub download_root_path: Option<String>,
@@ -265,6 +285,10 @@ impl ArchiveRecord {
                 source_url: task.source_url.clone(),
                 file_name: task.target.file_name.clone(),
                 relative_file_path: task.target.relative_file_path.clone(),
+                purity: task.purity.clone(),
+                category: task.category.clone(),
+                tags: Vec::new(),
+                is_favorite: false,
                 download_base_dir: task.strategy.base_dir.clone(),
                 download_root_path: task.strategy.root_path.clone(),
             }),
@@ -285,6 +309,8 @@ mod tests {
             "task-1",
             "wh-1",
             "https://wallhaven.cc/w/wh-1",
+            None,
+            None,
             DownloadStrategy::new("AppLocalData", "wallpapers"),
             DownloadTarget::new("wh-1.jpg", "wallpapers/wh-1.jpg"),
         )
@@ -376,6 +402,10 @@ mod tests {
                 source_url: "https://wallhaven.cc/w/wh-1".into(),
                 file_name: "wh-1.jpg".into(),
                 relative_file_path: "wallpapers/wh-1.jpg".into(),
+                purity: None,
+                category: None,
+                tags: Vec::new(),
+                is_favorite: false,
                 download_base_dir: "AppLocalData".into(),
                 download_root_path: None,
             }
@@ -405,6 +435,10 @@ mod tests {
                 source_url: "https://wallhaven.cc/w/wh-1".into(),
                 file_name: "wh-1.jpg".into(),
                 relative_file_path: "wallpapers/wh-1.jpg".into(),
+                purity: None,
+                category: None,
+                tags: Vec::new(),
+                is_favorite: false,
                 download_base_dir: "AppLocalData".into(),
                 download_root_path: None,
             }
@@ -417,6 +451,8 @@ mod tests {
             "task-custom",
             "wh-custom",
             "https://wallhaven.cc/w/wh-custom",
+            None,
+            None,
             DownloadStrategy::absolute_directory("/Users/test/Pictures/Wallhaven"),
             DownloadTarget::new("wh-custom.jpg", "wh-custom.jpg"),
         );
@@ -430,6 +466,10 @@ mod tests {
                 source_url: "https://wallhaven.cc/w/wh-custom".into(),
                 file_name: "wh-custom.jpg".into(),
                 relative_file_path: "wh-custom.jpg".into(),
+                purity: None,
+                category: None,
+                tags: Vec::new(),
+                is_favorite: false,
                 download_base_dir: "Absolute".into(),
                 download_root_path: Some("/Users/test/Pictures/Wallhaven".into()),
             }

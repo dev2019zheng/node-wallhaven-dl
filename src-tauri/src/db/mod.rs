@@ -140,6 +140,10 @@ mod tests {
                     "download_base_dir",
                     "download_root_path",
                     "created_at",
+                    "purity",
+                    "category",
+                    "tags",
+                    "is_favorite",
                 ]
             );
             assert_eq!(
@@ -203,6 +207,10 @@ mod tests {
                     "download_base_dir",
                     "download_root_path",
                     "created_at",
+                    "purity",
+                    "category",
+                    "tags",
+                    "is_favorite",
                 ]
             );
             assert_eq!(

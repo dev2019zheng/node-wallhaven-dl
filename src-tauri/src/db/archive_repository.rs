@@ -7,9 +7,9 @@ use crate::services::archive_service::{
 };
 
 const ARCHIVE_SELECT_COLUMNS: &str =
-    "wallpaper_id, source_url, file_name, relative_file_path, download_base_dir, download_root_path";
+    "wallpaper_id, source_url, file_name, relative_file_path, purity, category, tags, is_favorite, download_base_dir, download_root_path";
 const GALLERY_SELECT_COLUMNS: &str =
-    "wallpaper_id, source_url, file_name, relative_file_path, download_base_dir, download_root_path, created_at";
+    "wallpaper_id, source_url, file_name, relative_file_path, purity, category, tags, is_favorite, download_base_dir, download_root_path, created_at";
 
 #[derive(Clone)]
 pub struct ArchiveRepository {
@@ -58,14 +58,20 @@ impl ArchiveRepository {
                 source_url,
                 file_name,
                 relative_file_path,
+                purity,
+                category,
+                tags,
+                is_favorite,
                 download_base_dir,
                 download_root_path
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(wallpaper_id) DO UPDATE SET
                 source_url = excluded.source_url,
                 file_name = excluded.file_name,
                 relative_file_path = excluded.relative_file_path,
+                purity = excluded.purity,
+                category = excluded.category,
                 download_base_dir = excluded.download_base_dir,
                 download_root_path = excluded.download_root_path
             "#,
@@ -74,6 +80,10 @@ impl ArchiveRepository {
         .bind(&record.source_url)
         .bind(&record.file_name)
         .bind(&record.relative_file_path)
+        .bind(&record.purity)
+        .bind(&record.category)
+        .bind(serialize_tags(&record.tags)?)
+        .bind(if record.is_favorite { 1_i64 } else { 0_i64 })
         .bind(&record.download_base_dir)
         .bind(&record.download_root_path)
         .execute(&mut *transaction)
@@ -160,6 +170,44 @@ impl ArchiveRepository {
         Ok(GalleryArchivePage { items, total })
     }
 
+    pub async fn set_favorite(
+        &self,
+        wallpaper_id: &str,
+        is_favorite: bool,
+    ) -> ArchiveStoreResult<Option<GalleryArchiveRecord>> {
+        let result = query("UPDATE wallpapers SET is_favorite = ? WHERE wallpaper_id = ?")
+            .bind(if is_favorite { 1_i64 } else { 0_i64 })
+            .bind(wallpaper_id)
+            .execute(&self.pool)
+            .await
+            .map_err(map_sql_error)?;
+
+        if result.rows_affected() == 0 {
+            return Ok(None);
+        }
+
+        self.find_gallery_record_by_wallpaper_id(wallpaper_id).await
+    }
+
+    pub async fn update_tags(
+        &self,
+        wallpaper_id: &str,
+        tags: &[String],
+    ) -> ArchiveStoreResult<Option<GalleryArchiveRecord>> {
+        let result = query("UPDATE wallpapers SET tags = ? WHERE wallpaper_id = ?")
+            .bind(serialize_tags(tags)?)
+            .bind(wallpaper_id)
+            .execute(&self.pool)
+            .await
+            .map_err(map_sql_error)?;
+
+        if result.rows_affected() == 0 {
+            return Ok(None);
+        }
+
+        self.find_gallery_record_by_wallpaper_id(wallpaper_id).await
+    }
+
     async fn find_wallpaper_id_by_download_target(
         &self,
         download_base_dir: &str,
@@ -174,6 +222,20 @@ impl ArchiveRepository {
         .bind(relative_file_path)
         .fetch_optional(&self.pool)
         .await
+        .map_err(map_sql_error)
+    }
+
+    async fn find_gallery_record_by_wallpaper_id(
+        &self,
+        wallpaper_id: &str,
+    ) -> ArchiveStoreResult<Option<GalleryArchiveRecord>> {
+        query(&format!(
+            "SELECT {GALLERY_SELECT_COLUMNS} FROM wallpapers WHERE wallpaper_id = ?"
+        ))
+        .bind(wallpaper_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map(|row| row.map(gallery_archive_record_from_row))
         .map_err(map_sql_error)
     }
 
@@ -231,6 +293,10 @@ fn archive_record_from_row(row: SqliteRow) -> ArchiveRecord {
         source_url: row.get("source_url"),
         file_name: row.get("file_name"),
         relative_file_path: row.get("relative_file_path"),
+        purity: row.get("purity"),
+        category: row.get("category"),
+        tags: parse_tags(row.get("tags")),
+        is_favorite: row.get::<i64, _>("is_favorite") != 0,
         download_base_dir: row.get("download_base_dir"),
         download_root_path: row.get("download_root_path"),
     }
@@ -242,10 +308,24 @@ fn gallery_archive_record_from_row(row: SqliteRow) -> GalleryArchiveRecord {
         source_url: row.get("source_url"),
         file_name: row.get("file_name"),
         relative_file_path: row.get("relative_file_path"),
+        purity: row.get("purity"),
+        category: row.get("category"),
+        tags: parse_tags(row.get("tags")),
+        is_favorite: row.get::<i64, _>("is_favorite") != 0,
         download_base_dir: row.get("download_base_dir"),
         download_root_path: row.get("download_root_path"),
         created_at: row.get("created_at"),
     }
+}
+
+fn serialize_tags(tags: &[String]) -> ArchiveStoreResult<String> {
+    serde_json::to_string(tags).map_err(|error| ArchiveStoreError::Persistence {
+        message: format!("failed to encode wallpaper tags: {error}"),
+    })
+}
+
+fn parse_tags(raw_value: String) -> Vec<String> {
+    serde_json::from_str::<Vec<String>>(&raw_value).unwrap_or_default()
 }
 
 fn is_relative_file_path_unique_violation(error: &sqlx::Error) -> bool {
@@ -276,6 +356,10 @@ mod tests {
             source_url: "https://wallhaven.cc/w/wh-1".into(),
             file_name: "wh-1.jpg".into(),
             relative_file_path: "wallpapers/wh-1.jpg".into(),
+            purity: None,
+            category: None,
+            tags: Vec::new(),
+            is_favorite: false,
             download_base_dir: "AppLocalData".into(),
             download_root_path: None,
         }
@@ -287,6 +371,10 @@ mod tests {
             source_url: "https://wallhaven.cc/w/wh-2".into(),
             file_name: "wh-2.jpg".into(),
             relative_file_path: "wallpapers/wh-2.jpg".into(),
+            purity: None,
+            category: None,
+            tags: Vec::new(),
+            is_favorite: false,
             download_base_dir: "AppLocalData".into(),
             download_root_path: None,
         }
@@ -336,6 +424,49 @@ mod tests {
     }
 
     #[test]
+    fn sqlite_archive_repository_updates_gallery_favorite_and_tags() {
+        tauri::async_runtime::block_on(async {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let database = initialize_for_path(&temp_dir.path().join("wallhaven.sqlite"))
+                .await
+                .unwrap();
+            let repository = database.archive_repository();
+            let record = ArchiveRecord {
+                purity: Some("sketchy".into()),
+                category: Some("anime".into()),
+                tags: vec!["Original".into()],
+                ..sample_record()
+            };
+
+            repository.upsert(record).await.unwrap();
+
+            let favorite_record = repository
+                .set_favorite("wh-1", true)
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(favorite_record.is_favorite);
+            assert_eq!(favorite_record.purity, Some("sketchy".into()));
+            assert_eq!(favorite_record.category, Some("anime".into()));
+            assert_eq!(favorite_record.tags, vec!["Original"]);
+
+            let tagged_record = repository
+                .update_tags("wh-1", &["Portrait".into(), "Blue".into()])
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(tagged_record.is_favorite);
+            assert_eq!(tagged_record.tags, vec!["Portrait", "Blue"]);
+
+            assert_eq!(
+                repository.set_favorite("missing", true).await.unwrap(),
+                None
+            );
+            assert_eq!(repository.update_tags("missing", &[]).await.unwrap(), None);
+        });
+    }
+
+    #[test]
     fn sqlite_archive_repository_allows_the_same_relative_path_in_different_roots() {
         tauri::async_runtime::block_on(async {
             let temp_dir = tempfile::tempdir().unwrap();
@@ -353,6 +484,10 @@ mod tests {
                 source_url: "https://wallhaven.cc/w/wh-2".into(),
                 file_name: "shared.jpg".into(),
                 relative_file_path: "shared.jpg".into(),
+                purity: None,
+                category: None,
+                tags: Vec::new(),
+                is_favorite: false,
                 download_base_dir: "Absolute".into(),
                 download_root_path: Some("/Users/test/Pictures/Wallhaven".into()),
             };
@@ -494,6 +629,10 @@ mod tests {
                         source_url: "https://wallhaven.cc/w/wh-4".into(),
                         file_name: "wh-4.jpg".into(),
                         relative_file_path: "wallpapers/wh-4.jpg".into(),
+                        purity: None,
+                        category: None,
+                        tags: vec![],
+                        is_favorite: false,
                         download_base_dir: "AppLocalData".into(),
                         download_root_path: None,
                         created_at: "2026-05-26 09:00:00".into(),
@@ -503,6 +642,10 @@ mod tests {
                         source_url: "https://wallhaven.cc/w/wh-3".into(),
                         file_name: "wh-3.jpg".into(),
                         relative_file_path: "wallpapers/wh-3.jpg".into(),
+                        purity: None,
+                        category: None,
+                        tags: vec![],
+                        is_favorite: false,
                         download_base_dir: "AppLocalData".into(),
                         download_root_path: None,
                         created_at: "2026-05-25 10:00:00".into(),
@@ -518,6 +661,10 @@ mod tests {
                         source_url: "https://wallhaven.cc/w/wh-2".into(),
                         file_name: "wh-2.jpg".into(),
                         relative_file_path: "wallpapers/wh-2.jpg".into(),
+                        purity: None,
+                        category: None,
+                        tags: vec![],
+                        is_favorite: false,
                         download_base_dir: "AppLocalData".into(),
                         download_root_path: None,
                         created_at: "2026-05-25 10:00:00".into(),
@@ -527,6 +674,10 @@ mod tests {
                         source_url: "https://wallhaven.cc/w/wh-1".into(),
                         file_name: "wh-1.jpg".into(),
                         relative_file_path: "wallpapers/wh-1.jpg".into(),
+                        purity: None,
+                        category: None,
+                        tags: vec![],
+                        is_favorite: false,
                         download_base_dir: "AppLocalData".into(),
                         download_root_path: None,
                         created_at: "2026-05-24 08:00:00".into(),

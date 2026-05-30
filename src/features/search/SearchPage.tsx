@@ -181,6 +181,8 @@ function buildWallpaperDownloadRequest(wallpaper: SearchWallpaper) {
     wallpaperId: wallpaper.id,
     imageUrl: wallpaper.path,
     fileName: buildDownloadFileName(wallpaper),
+    purity: wallpaper.purity,
+    category: wallpaper.category,
   };
 }
 
@@ -581,7 +583,7 @@ export function SearchPage() {
         title="Search"
       />
 
-      <div className="grid grid-cols-[932px_210px] items-start gap-[26px]">
+      <div className="grid grid-cols-[minmax(820px,1fr)_260px] items-start gap-[26px]">
         <div className="min-w-0 space-y-6">
           <section aria-label="Search filters">
           <form className="space-y-4" onSubmit={onSubmit}>

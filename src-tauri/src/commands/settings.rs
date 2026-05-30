@@ -161,10 +161,8 @@ async fn load_download_directory_settings_from_repository(
     app_local_data_dir: &std::path::Path,
 ) -> Result<DownloadDirectorySettingsDto, SettingsCommandError> {
     let custom_directory_path = repository.load_custom_download_directory().await?;
-    let effective_directory_path = resolve_effective_download_directory(
-        app_local_data_dir,
-        custom_directory_path.as_deref(),
-    )?;
+    let effective_directory_path =
+        resolve_effective_download_directory(app_local_data_dir, custom_directory_path.as_deref())?;
     let default_directory_path = resolve_effective_download_directory(app_local_data_dir, None)?;
     let is_using_default_directory = custom_directory_path.is_none();
 
@@ -244,7 +242,10 @@ pub async fn save_network_proxy_settings(
     state: State<'_, DatabaseState>,
     request: SaveNetworkProxySettingsRequest,
 ) -> Result<Option<NetworkProxySettingsDto>, SettingsCommandError> {
-    let proxy = request.proxy.map(NetworkProxySettings::try_from).transpose()?;
+    let proxy = request
+        .proxy
+        .map(NetworkProxySettings::try_from)
+        .transpose()?;
 
     state
         .settings_repository()
@@ -268,8 +269,8 @@ mod tests {
         SaveDownloadDirectorySettingsRequest, SaveNetworkProxySettingsRequest,
         SettingsCommandError, SettingsCommandErrorKind,
     };
-    use crate::services::path_service::{ResolveDownloadPathError, RootPathError};
     use crate::models::settings::NetworkProxySettingsError;
+    use crate::services::path_service::{ResolveDownloadPathError, RootPathError};
 
     #[test]
     fn download_directory_settings_dto_serializes_in_camel_case() {

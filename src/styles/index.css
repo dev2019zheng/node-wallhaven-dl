@@ -158,9 +158,11 @@
 @layer components {
   .wh-desktop-shell {
     position: relative;
-    min-width: 1440px;
-    min-height: 900px;
-    overflow: hidden;
+    width: 100vw;
+    min-width: 1180px;
+    height: 100vh;
+    min-height: 760px;
+    overflow: auto;
     background:
       radial-gradient(circle at 76% 14%, rgb(47 139 255 / 0.06), transparent 22%),
       linear-gradient(135deg, #07111e 0%, #081728 100%);
@@ -203,18 +205,19 @@
     display: grid;
     grid-template-columns: 198px minmax(0, 1fr);
     column-gap: 30px;
-    min-height: 842px;
+    min-height: calc(100vh - 58px);
     padding: 12px 28px 22px 16px;
   }
 
   .app-shell-sidebar {
-    height: 808px;
+    height: calc(100vh - 92px);
+    min-height: 720px;
     border-radius: 20px;
   }
 
   .app-shell-main {
     position: relative;
-    min-height: 802px;
+    min-height: calc(100vh - 92px);
     padding-top: 12px;
     animation: wh-page-in var(--motion-page);
   }

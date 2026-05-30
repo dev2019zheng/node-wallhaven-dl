@@ -54,6 +54,25 @@ pub struct WallhavenClient {
     http_client: Client,
 }
 
+pub fn build_http_client(
+    proxy_settings: Option<&NetworkProxySettings>,
+) -> Result<Client, WallhavenClientError> {
+    let mut http_client_builder = Client::builder()
+        .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECONDS))
+        .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECONDS))
+        .user_agent(USER_AGENT);
+
+    if let Some(proxy_settings) = proxy_settings {
+        http_client_builder = http_client_builder.proxy(
+            proxy_settings
+                .to_reqwest_proxy()
+                .map_err(|error| WallhavenClientError::InvalidProxy(error.to_string()))?,
+        );
+    }
+
+    http_client_builder.build().map_err(Into::into)
+}
+
 impl WallhavenClient {
     pub fn new() -> Self {
         Self::with_proxy(None).expect("default wallhaven base URL should always be valid")
@@ -76,20 +95,7 @@ impl WallhavenClient {
         let base_url = Url::parse(base_url.as_ref())
             .map_err(|error| WallhavenClientError::InvalidBaseUrl(error.to_string()))?;
 
-        let mut http_client_builder = Client::builder()
-            .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECONDS))
-            .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECONDS))
-            .user_agent(USER_AGENT);
-
-        if let Some(proxy_settings) = proxy_settings {
-            http_client_builder = http_client_builder.proxy(
-                proxy_settings
-                    .to_reqwest_proxy()
-                    .map_err(|error| WallhavenClientError::InvalidProxy(error.to_string()))?,
-            );
-        }
-
-        let http_client = http_client_builder.build()?;
+        let http_client = build_http_client(proxy_settings)?;
 
         Ok(Self {
             base_url,

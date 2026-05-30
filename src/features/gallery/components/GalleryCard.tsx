@@ -14,9 +14,19 @@ type GalleryCardProps = {
   isSelected?: boolean
   onPreview: () => void
   onSelect?: () => void
+  onTag?: () => void
+  onToggleFavorite?: () => void
 }
 
-export function GalleryCard({ item, view, isSelected = false, onPreview, onSelect }: GalleryCardProps) {
+export function GalleryCard({
+  item,
+  view,
+  isSelected = false,
+  onPreview,
+  onSelect,
+  onTag,
+  onToggleFavorite,
+}: GalleryCardProps) {
   return (
     <article
       className={cn(
@@ -47,14 +57,18 @@ export function GalleryCard({ item, view, isSelected = false, onPreview, onSelec
 
       <div className={cn("pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/76 via-black/18 to-black/12", view === "list" || view === "compact" ? "left-[220px] bg-none" : "")}>
         <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-[#07111e]/78 px-3 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur">
-          3840 × 2160
+          {(item.purity ?? "sfw").toUpperCase()}
         </div>
         <button
           aria-label={`Favorite wallpaper ${item.wallpaperId}`}
           className="pointer-events-auto absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-[#07111e]/78 text-white/85 backdrop-blur transition hover:text-white"
+          onClick={() => {
+            onSelect?.()
+            onToggleFavorite?.()
+          }}
           type="button"
         >
-          <Heart className="h-4 w-4" />
+          <Heart className={cn("h-4 w-4", item.isFavorite ? "fill-current text-rose-300" : "")} />
         </button>
 
         <div className="absolute inset-x-4 bottom-3 flex items-end justify-between gap-3">
@@ -64,11 +78,19 @@ export function GalleryCard({ item, view, isSelected = false, onPreview, onSelec
             type="button"
           >
             <span className="block truncate text-[13px] font-semibold text-white">{item.fileName}</span>
-            <span className="mt-1 block truncate text-[11px] text-white/70">{item.wallpaperId}</span>
+            <span className="mt-1 block truncate text-[11px] text-white/70">{item.wallpaperId} · {item.category ?? "general"}</span>
           </button>
 
           <div className="pointer-events-auto flex translate-y-7 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-            <button aria-label={`Tag wallpaper ${item.wallpaperId}`} className="wh-icon-button h-8 w-8" type="button">
+            <button
+              aria-label={`Tag wallpaper ${item.wallpaperId}`}
+              className="wh-icon-button h-8 w-8"
+              onClick={() => {
+                onSelect?.()
+                onTag?.()
+              }}
+              type="button"
+            >
               <Tag className="h-4 w-4" />
             </button>
             <button aria-label={`Preview wallpaper ${item.wallpaperId}`} className="wh-icon-button h-8 w-8" onClick={onPreview} type="button">

@@ -115,10 +115,7 @@ mod tests {
             address: "127.0.0.1:7897".into(),
         };
 
-        assert_eq!(
-            settings.to_proxy_url().unwrap(),
-            "socks5://127.0.0.1:7897"
-        );
+        assert_eq!(settings.to_proxy_url().unwrap(), "socks5://127.0.0.1:7897");
     }
 
     #[test]

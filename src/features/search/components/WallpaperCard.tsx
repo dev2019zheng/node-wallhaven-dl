@@ -1,6 +1,7 @@
 import { Download, Eye, Heart } from "lucide-react";
 
 import type { SearchWallpaper } from "@/application/search/search.types";
+import { ProxiedImage } from "@/components/proxied-image";
 
 type WallpaperCardProps = {
   wallpaper: SearchWallpaper;
@@ -28,7 +29,7 @@ export function WallpaperCard({
       }`}
     >
       <div className="relative h-full overflow-hidden bg-background/70">
-        <img
+        <ProxiedImage
           alt={`Wallpaper ${wallpaper.id}`}
           className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.035]"
           loading="lazy"
