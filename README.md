@@ -1,20 +1,41 @@
-# Wallhaven Downloader
+# Wallhaven Desktop
 
-This is a simple script to download wallpapers from wallhaven.cc. It uses the wallhaven API to search for wallpapers and download them.
+This repository is now set up as a **Tauri v2 + React + TypeScript** desktop application scaffold for the Wallhaven downloader project.
 
-## Installation
+## Current scaffold
 
-need nodejs
+- React + Vite + TypeScript frontend app shell
+- Tailwind CSS + shadcn/ui-ready foundation
+- Feature placeholders for Search / Downloads / Gallery / Settings
+- Vitest + React Testing Library baseline test coverage
+- Tauri v2 Rust shell under `src-tauri/`
+- Legacy Node CLI preserved in `index.js` for migration reference
 
-!!! set the environment variable
+## Development commands
 
 ```bash
-# important to set the api key
-export WALLHAVEN_API_KEY={your_api_key}
+npm install
+npm run dev
+npm run test -- --run
+npm run build
+npm run tauri dev
+npm run tauri:build:dmg
 ```
 
-## Usage
+## Release automation
+
+Pushing a tag that starts with `v` triggers `.github/workflows/release-tauri.yml` to build platform installers and upload them to the matching GitHub Release page.
+
+Local macOS DMG verification uses the same wrapper script as CI:
 
 ```bash
-node ./index.js
+npm run tauri:build:dmg
+```
+
+## Legacy CLI reference
+
+The original Node CLI downloader remains available for migration work:
+
+```bash
+npm run legacy:cli
 ```

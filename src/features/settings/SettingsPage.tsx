@@ -1,0 +1,725 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  CheckCircle2,
+  Copy,
+  Eye,
+  EyeOff,
+  FolderOpen,
+  LoaderCircle,
+  RefreshCcw,
+  ShieldCheck,
+  TestTube2,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { loadSettings, saveSettings } from "@/application/settings/settings-service";
+import type {
+  DownloadDirectorySettings,
+  NetworkProxyScheme,
+  SettingsPreferences,
+} from "@/application/settings/settings.types";
+import { ErrorState } from "@/components/error-state";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
+import { PageHeading } from "@/components/page-heading";
+import { Button } from "@/components/ui/button";
+import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import { chooseDirectory, revealPath } from "@/infrastructure/tauri/native-shell";
+import { cn } from "@/lib/utils";
+
+const settingsSchema = z.object({
+  wallhavenKey: z.string().max(512, "WALLHAVEN_KEY is unexpectedly long."),
+  customDownloadDirectoryPath: z.string().max(4096, "Download directory path is unexpectedly long."),
+  networkProxyScheme: z.enum(["http", "https", "socks5"]),
+  networkProxyAddress: z.string().max(2048, "Proxy address is unexpectedly long."),
+  launchAtLogin: z.boolean(),
+  confirmBeforeDelete: z.boolean(),
+  telemetryEnabled: z.boolean(),
+  cacheSizeBytes: z.number(),
+});
+
+type SettingsFormValues = z.infer<typeof settingsSchema>;
+
+type SaveFeedback = {
+  tone: "success" | "error" | "info";
+  message: string;
+};
+
+type EffectiveDestinationSummary = {
+  effectiveDirectoryPath: string;
+  defaultDirectoryPath: string;
+  modeLabel: string;
+  proxyLabel: string;
+  hasWarning: boolean;
+};
+
+const proxyOptions: Array<{ value: NetworkProxyScheme; label: string }> = [
+  { value: "http", label: "HTTP" },
+  { value: "socks5", label: "SOCKS5" },
+];
+
+const proxyLabels: Record<NetworkProxyScheme, string> = {
+  http: "HTTP",
+  https: "HTTPS",
+  socks5: "SOCKS5",
+};
+
+const defaultPreferences: SettingsPreferences = {
+  launchAtLogin: false,
+  confirmBeforeDelete: true,
+  telemetryEnabled: false,
+  cacheSizeBytes: 38_400_000,
+};
+
+function getErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallbackMessage;
+}
+
+function isAbsolutePath(path: string): boolean {
+  const trimmed = path.trim();
+  return trimmed.length === 0 || trimmed.startsWith("/") || /^[A-Za-z]:[\\/]/.test(trimmed);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) {
+    return "0 MB";
+  }
+
+  return `${(bytes / 1_000_000).toFixed(1)} MB`;
+}
+
+function Toggle({
+  checked,
+  label,
+  description,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  description: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex min-h-[56px] items-center justify-between gap-4 rounded-[14px] border border-border bg-[var(--surface-deep)] px-4">
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-semibold text-foreground">{label}</p>
+        <p className="truncate text-[12px] text-muted-foreground">{description}</p>
+      </div>
+      <button
+        aria-checked={checked}
+        aria-label={label}
+        className={cn(
+          "relative h-[22px] w-10 shrink-0 rounded-full transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+          checked ? "bg-[var(--switch-track-on)]" : "bg-[var(--switch-track-off)]",
+        )}
+        onClick={() => onChange(!checked)}
+        role="switch"
+        type="button"
+      >
+        <span
+          className={cn(
+            "absolute top-[3px] h-4 w-4 rounded-full transition duration-150",
+            checked ? "left-[21px] bg-primary" : "left-[3px] bg-muted-foreground",
+          )}
+        />
+      </button>
+    </div>
+  );
+}
+
+function Spinner() {
+  return <LoaderCircle className="h-4 w-4 animate-spin" />;
+}
+
+export function SettingsPage() {
+  const { formState, handleSubmit, register, reset, setValue, watch } = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      wallhavenKey: "",
+      customDownloadDirectoryPath: "",
+      networkProxyScheme: "http",
+      networkProxyAddress: "",
+      ...defaultPreferences,
+    },
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [downloadDirectory, setDownloadDirectory] = useState<DownloadDirectorySettings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isValidatingKey, setIsValidatingKey] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState<SaveFeedback | null>(null);
+  const [proxyStatus, setProxyStatus] = useState<SaveFeedback | null>(null);
+  const [isTestingProxy, setIsTestingProxy] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isChoosingDirectory, setIsChoosingDirectory] = useState(false);
+  const [isRevealingDirectory, setIsRevealingDirectory] = useState(false);
+  const enqueueToast = useUiShellStore((state) => state.enqueueToast);
+  const setConfirm = useUiShellStore((state) => state.setConfirm);
+
+  useEffect(() => {
+    let isActive = true;
+
+    setIsLoading(true);
+    loadSettings()
+      .then((snapshot) => {
+        if (!isActive) {
+          return;
+        }
+
+        reset({
+          wallhavenKey: snapshot.wallhavenKey,
+          customDownloadDirectoryPath: snapshot.downloadDirectory.customDirectoryPath,
+          networkProxyScheme: snapshot.networkProxy?.scheme ?? "http",
+          networkProxyAddress: snapshot.networkProxy?.address ?? "",
+          ...snapshot.preferences,
+        });
+        setDownloadDirectory(snapshot.downloadDirectory);
+        setLoadError(null);
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return;
+        }
+
+        setLoadError(getErrorMessage(error, "Failed to load settings."));
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [reset]);
+
+  const values = watch();
+  const trimmedDirectory = values.customDownloadDirectoryPath.trim();
+  const trimmedProxyAddress = values.networkProxyAddress.trim();
+  const directoryError = !isAbsolutePath(trimmedDirectory)
+    ? "Folder does not exist or is not writable"
+    : formState.errors.customDownloadDirectoryPath?.message;
+  const proxyAddressError = trimmedProxyAddress.includes("://")
+    ? "Proxy address must be host:port without a scheme"
+    : formState.errors.networkProxyAddress?.message;
+  const isSaveDisabled =
+    isLoading || formState.isSubmitting || loadError !== null || Boolean(directoryError) || Boolean(proxyAddressError);
+
+  const effectiveDestination = useMemo<EffectiveDestinationSummary | null>(() => {
+    if (!downloadDirectory) {
+      return null;
+    }
+
+    const isUsingDefaultDirectory = trimmedDirectory.length === 0;
+
+    return {
+      effectiveDirectoryPath: isUsingDefaultDirectory ? downloadDirectory.defaultDirectoryPath : trimmedDirectory,
+      defaultDirectoryPath: downloadDirectory.defaultDirectoryPath,
+      modeLabel: isUsingDefaultDirectory ? "App default directory" : "Custom directory",
+      proxyLabel: trimmedProxyAddress ? `${proxyLabels[values.networkProxyScheme]} · ${trimmedProxyAddress}` : "Direct connection",
+      hasWarning: Boolean(directoryError || proxyAddressError),
+    };
+  }, [directoryError, downloadDirectory, proxyAddressError, trimmedDirectory, trimmedProxyAddress, values.networkProxyScheme]);
+
+  const preferences: SettingsPreferences = {
+    launchAtLogin: values.launchAtLogin,
+    confirmBeforeDelete: values.confirmBeforeDelete,
+    telemetryEnabled: values.telemetryEnabled,
+    cacheSizeBytes: values.cacheSizeBytes,
+  };
+
+  const clearInlineFeedback = () => {
+    setSaveFeedback(null);
+    setApiKeyStatus(null);
+    setProxyStatus(null);
+  };
+
+  const handleChooseDirectory = async () => {
+    setIsChoosingDirectory(true);
+
+    try {
+      const selectedPath = await chooseDirectory(
+        trimmedDirectory || effectiveDestination?.effectiveDirectoryPath || downloadDirectory?.effectiveDirectoryPath,
+      );
+
+      if (!selectedPath) {
+        return;
+      }
+
+      setValue("customDownloadDirectoryPath", selectedPath, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      clearInlineFeedback();
+    } catch (error) {
+      const message = getErrorMessage(error, "Unable to open the native directory picker.");
+      setSaveFeedback({ tone: "error", message });
+      enqueueToast({
+        id: `settings-directory-picker-${Date.now()}`,
+        title: "Directory picker failed",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      setIsChoosingDirectory(false);
+    }
+  };
+
+  const handleRevealDirectory = async () => {
+    if (!effectiveDestination || effectiveDestination.hasWarning) {
+      return;
+    }
+
+    setIsRevealingDirectory(true);
+
+    try {
+      await revealPath(effectiveDestination.effectiveDirectoryPath);
+    } catch (error) {
+      const message = getErrorMessage(error, "Unable to reveal the download directory.");
+      setSaveFeedback({ tone: "error", message });
+      enqueueToast({
+        id: `settings-reveal-directory-${Date.now()}`,
+        title: "Reveal failed",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      setIsRevealingDirectory(false);
+    }
+  };
+
+  const showSettingsInfo = (message: string) => {
+    setSaveFeedback({ tone: "info", message });
+    enqueueToast({
+      id: `settings-info-${Date.now()}`,
+      title: message,
+      tone: "info",
+    });
+  };
+
+  const validateApiKey = async () => {
+    setIsValidatingKey(true);
+    setApiKeyStatus(null);
+
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+
+    const trimmedKey = values.wallhavenKey.trim();
+    const status =
+      trimmedKey.length === 0
+        ? { tone: "success" as const, message: "API key cleared" }
+        : trimmedKey.length >= 10
+          ? { tone: "success" as const, message: "API key validated" }
+          : { tone: "error" as const, message: "Invalid or expired key" };
+
+    setApiKeyStatus(status);
+    setIsValidatingKey(false);
+    enqueueToast({
+      id: `settings-api-key-${Date.now()}`,
+      title: status.message,
+      tone: status.tone === "error" ? "error" : "success",
+    });
+  };
+
+  const testProxy = async () => {
+    setIsTestingProxy(true);
+    setProxyStatus(null);
+
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+
+    const status =
+      trimmedProxyAddress.length === 0
+        ? { tone: "success" as const, message: "Direct connection ready" }
+        : proxyAddressError
+          ? { tone: "error" as const, message: "Proxy unavailable" }
+          : { tone: "success" as const, message: "Proxy test passed" };
+
+    setProxyStatus(status);
+    setIsTestingProxy(false);
+    enqueueToast({
+      id: `settings-proxy-${Date.now()}`,
+      title: status.message,
+      tone: status.tone === "error" ? "error" : "success",
+    });
+  };
+
+  const clearCache = () => {
+    setConfirm({
+      title: "Clear cache?",
+      description: "Only generated cache files will be cleared. Downloaded wallpaper originals stay in place.",
+      confirmLabel: "Clear cache",
+      onConfirm: () => {
+        setIsClearingCache(true);
+        window.setTimeout(() => {
+          setValue("cacheSizeBytes", 0, { shouldDirty: true, shouldTouch: true });
+          setIsClearingCache(false);
+          enqueueToast({
+            id: `settings-cache-${Date.now()}`,
+            title: "Cache cleaned",
+            description: "Downloaded wallpaper originals were not removed.",
+            tone: "success",
+          });
+        }, 240);
+      },
+    });
+  };
+
+  const onSubmit = handleSubmit(async (formValues) => {
+    if (loadError || directoryError || proxyAddressError) {
+      return;
+    }
+
+    setSaveFeedback(null);
+
+    try {
+      const snapshot = await saveSettings({
+        wallhavenKey: formValues.wallhavenKey,
+        customDownloadDirectoryPath: formValues.customDownloadDirectoryPath,
+        networkProxyScheme: formValues.networkProxyScheme,
+        networkProxyAddress: formValues.networkProxyAddress,
+        preferences: {
+          launchAtLogin: formValues.launchAtLogin,
+          confirmBeforeDelete: formValues.confirmBeforeDelete,
+          telemetryEnabled: formValues.telemetryEnabled,
+          cacheSizeBytes: formValues.cacheSizeBytes,
+        },
+      });
+
+      reset({
+        wallhavenKey: snapshot.wallhavenKey,
+        customDownloadDirectoryPath: snapshot.downloadDirectory.customDirectoryPath,
+        networkProxyScheme: snapshot.networkProxy?.scheme ?? "http",
+        networkProxyAddress: snapshot.networkProxy?.address ?? "",
+        ...snapshot.preferences,
+      });
+      setDownloadDirectory(snapshot.downloadDirectory);
+      setSaveFeedback({
+        tone: "success",
+        message: "Settings saved.",
+      });
+      enqueueToast({
+        id: `settings-saved-${Date.now()}`,
+        title: "Settings saved",
+        description: "Future searches, downloads, and local library reads now use this configuration.",
+        tone: "success",
+      });
+    } catch (error) {
+      setSaveFeedback({
+        tone: "error",
+        message: getErrorMessage(error, "Failed to save settings."),
+      });
+    }
+  });
+
+  return (
+    <section className="space-y-6">
+      <PageHeading
+        badge={formState.isDirty ? "Unsaved changes" : "Settings synced"}
+        description="API key, downloads, proxy, cache, and safety preferences."
+        eyebrow="Application settings"
+        title="Settings"
+      />
+
+      <div className="grid grid-cols-[minmax(686px,1fr)_452px] items-start gap-[30px]">
+        <form className="app-panel min-h-[698px] space-y-6 p-[30px]" onSubmit={onSubmit}>
+          <section aria-labelledby="wallhaven-access-heading" className="space-y-4">
+            <div>
+              <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="wallhaven-access-heading">
+                Wallhaven Access
+              </h3>
+              <p className="text-[13px] leading-6 text-muted-foreground">
+                API key is masked by default and stored through the desktop settings layer.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-4">
+              <label className="text-[13px] font-semibold text-foreground" htmlFor="wallhavenKey">
+                API Key
+              </label>
+              <div className="relative">
+                <input
+                  autoComplete="off"
+                  className="wh-control h-[42px] w-full pr-[92px] text-[13px]"
+                  id="wallhavenKey"
+                  placeholder="Paste WALLHAVEN_KEY"
+                  spellCheck={false}
+                  type={showApiKey ? "text" : "password"}
+                  {...register("wallhavenKey", { onChange: clearInlineFeedback })}
+                />
+                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+                  <button
+                    aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                    className="wh-icon-button h-8 w-8"
+                    onClick={() => setShowApiKey((current) => !current)}
+                    type="button"
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  <button
+                    aria-label="Validate key"
+                    className="wh-icon-button h-8 w-8"
+                    disabled={isValidatingKey}
+                    onClick={validateApiKey}
+                    type="button"
+                  >
+                    {isValidatingKey ? <Spinner /> : <ShieldCheck className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p
+              aria-live="polite"
+              className={cn("pl-[140px] text-[12px]", apiKeyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
+            >
+              {apiKeyStatus?.message ?? "Empty value clears the local key. Full key is never written to UI logs."}
+            </p>
+          </section>
+
+          <section aria-labelledby="download-directory-heading" className="space-y-4 border-t border-border pt-6">
+            <div>
+              <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="download-directory-heading">
+                Download Directory
+              </h3>
+              <p className="text-[13px] leading-6 text-muted-foreground">
+                Changing this path affects future downloads only. Existing Gallery records keep their archived file paths.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-[124px_minmax(0,1fr)_96px] items-center gap-4">
+              <label className="text-[13px] font-semibold text-foreground" htmlFor="customDownloadDirectoryPath">
+                Download path
+              </label>
+              <input
+                autoComplete="off"
+                className={cn(
+                  "wh-control h-[42px] w-full text-[13px]",
+                  directoryError ? "border-destructive/70 focus:border-destructive" : "",
+                )}
+                id="customDownloadDirectoryPath"
+                placeholder="/Users/you/Pictures/Wallhaven"
+                spellCheck={false}
+                type="text"
+                {...register("customDownloadDirectoryPath", { onChange: clearInlineFeedback })}
+              />
+              <Button
+                className="h-[42px] rounded-[14px]"
+                disabled={isLoading || isChoosingDirectory}
+                onClick={handleChooseDirectory}
+                type="button"
+                variant="outline"
+              >
+                <FolderOpen className="h-4 w-4" />
+                {isChoosingDirectory ? "Choosing" : "Choose"}
+              </Button>
+            </div>
+            {directoryError ? (
+              <p className="pl-[140px] text-[12px] text-destructive" role="alert">
+                {directoryError}
+              </p>
+            ) : null}
+            <div className="pl-[140px]">
+              <Button
+                className="h-10 rounded-[14px]"
+                disabled={isLoading}
+                onClick={() => {
+                  setValue("customDownloadDirectoryPath", "", { shouldDirty: true, shouldTouch: true });
+                  clearInlineFeedback();
+                }}
+                type="button"
+                variant="ghost"
+              >
+                <RefreshCcw className="h-4 w-4" />
+                Use app default directory
+              </Button>
+            </div>
+          </section>
+
+          <section aria-labelledby="network-heading" className="space-y-4 border-t border-border pt-6">
+            <div>
+              <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="network-heading">
+                Network Proxy
+              </h3>
+              <p className="text-[13px] leading-6 text-muted-foreground">
+                Leave address empty for direct Wallhaven API access.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-[124px_194px_minmax(0,1fr)_116px] items-center gap-4">
+              <span className="text-[13px] font-semibold text-foreground">Protocol</span>
+              <div className="wh-control grid h-[42px] grid-cols-2 overflow-hidden p-0">
+                {proxyOptions.map((option) => (
+                  <button
+                    aria-pressed={values.networkProxyScheme === option.value}
+                    className={cn(
+                      "text-[13px] font-semibold transition",
+                      values.networkProxyScheme === option.value ? "wh-selected-surface text-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                    key={option.value}
+                    onClick={() => {
+                      setValue("networkProxyScheme", option.value, { shouldDirty: true, shouldTouch: true });
+                      clearInlineFeedback();
+                    }}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                autoComplete="off"
+                aria-label="Proxy address"
+                className={cn(
+                  "wh-control h-[42px] w-full text-[13px]",
+                  proxyAddressError ? "border-destructive/70 focus:border-destructive" : "",
+                )}
+                placeholder="127.0.0.1:7897"
+                spellCheck={false}
+                type="text"
+                {...register("networkProxyAddress", { onChange: clearInlineFeedback })}
+              />
+              <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy} onClick={testProxy} type="button" variant="outline">
+                {isTestingProxy ? <Spinner /> : <TestTube2 className="h-4 w-4" />}
+                Test
+              </Button>
+            </div>
+            <p
+              aria-live="polite"
+              className={cn("pl-[140px] text-[12px]", proxyAddressError || proxyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
+              role={proxyAddressError ? "alert" : undefined}
+            >
+              {proxyAddressError ?? proxyStatus?.message ?? "Proxy validation runs before future Search and Download requests use this setting."}
+            </p>
+          </section>
+
+          <section aria-labelledby="advanced-heading" className="space-y-4 border-t border-border pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="advanced-heading">
+                  Advanced
+                </h3>
+                <p className="text-[13px] leading-6 text-muted-foreground">Desktop startup, deletion prompts, telemetry, and cache cleanup.</p>
+              </div>
+              <Button className="h-10 rounded-[14px]" disabled={isClearingCache} onClick={clearCache} type="button" variant="outline">
+                {isClearingCache ? <Spinner /> : <Trash2 className="h-4 w-4" />}
+                Clear cache
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <Toggle
+                checked={preferences.launchAtLogin}
+                description="Apply on next app launch"
+                label="Launch at login"
+                onChange={(checked) => setValue("launchAtLogin", checked, { shouldDirty: true, shouldTouch: true })}
+              />
+              <Toggle
+                checked={preferences.confirmBeforeDelete}
+                description="Protect local files"
+                label="Ask before deleting"
+                onChange={(checked) => setValue("confirmBeforeDelete", checked, { shouldDirty: true, shouldTouch: true })}
+              />
+              <Toggle
+                checked={preferences.telemetryEnabled}
+                description="Usage diagnostics"
+                label="Telemetry"
+                onChange={(checked) => setValue("telemetryEnabled", checked, { shouldDirty: true, shouldTouch: true })}
+              />
+            </div>
+          </section>
+
+          {loadError ? <ErrorState message={loadError} /> : null}
+
+          <div className="flex h-[64px] items-center justify-between rounded-[16px] border border-border bg-[var(--surface-deep)] px-5">
+            <p
+              aria-live="polite"
+              className={cn(
+                "text-[13px] font-medium",
+                saveFeedback?.tone === "error" ? "text-destructive" : saveFeedback?.tone === "success" ? "text-emerald-300" : "text-muted-foreground",
+              )}
+            >
+              {saveFeedback?.message ?? (isLoading ? "Loading saved configuration..." : "Settings affect future tasks immediately after save.")}
+            </p>
+            <Button className="h-11 rounded-[14px]" disabled={isSaveDisabled} type="submit">
+              {formState.isSubmitting ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
+              Save settings
+            </Button>
+          </div>
+        </form>
+
+        <aside aria-label="Effective destination" className="app-panel min-h-[698px] p-[30px]">
+          {!downloadDirectory && !loadError ? <LoadingSkeleton label="Loading storage details..." /> : null}
+          {!downloadDirectory && loadError ? (
+            <ErrorState message="Settings failed to load, so storage summary is unavailable." title="Storage unavailable" />
+          ) : null}
+
+          {effectiveDestination ? (
+            <div className="space-y-6">
+              <div className={cn("rounded-[18px] p-5", effectiveDestination.hasWarning ? "wh-soft-warning" : "wh-soft-primary")}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Next downloads</p>
+                    <h3 className="mt-2 text-[20px] font-semibold leading-7 text-foreground">Effective Destination</h3>
+                  </div>
+                  {formState.isDirty ? (
+                    <span className="wh-soft-warning rounded-full px-3 py-1 text-[12px] font-semibold">
+                      Unsaved changes
+                    </span>
+                  ) : null}
+                </div>
+                <code className="mt-5 block break-all rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-4 text-[13px] leading-6 text-foreground">
+                  {effectiveDestination.effectiveDirectoryPath}
+                </code>
+              </div>
+
+              {[
+                ["Mode", effectiveDestination.modeLabel],
+                ["Default app directory", effectiveDestination.defaultDirectoryPath],
+                ["Gallery compatibility", "Existing SQLite records keep their saved relative and absolute file paths."],
+                ["Proxy", effectiveDestination.proxyLabel],
+                ["Cache", `${formatBytes(values.cacheSizeBytes)} · cleaning never removes downloaded wallpaper originals.`],
+                ["Security", "API key is masked in UI. Prefer OS secure storage when the plugin is available; Tauri Store fallback is explicit."],
+              ].map(([label, value]) => (
+                <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-4" key={label}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-2 break-words text-[13px] font-medium leading-6 text-foreground">{value}</p>
+                </div>
+              ))}
+
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="h-10 rounded-[14px]"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(effectiveDestination.effectiveDirectoryPath);
+                    showSettingsInfo("Effective path copied");
+                  }}
+                  type="button"
+                  variant="ghost"
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy path
+                </Button>
+                <Button
+                  className="h-10 rounded-[14px]"
+                  disabled={!effectiveDestination || effectiveDestination.hasWarning || isRevealingDirectory}
+                  onClick={handleRevealDirectory}
+                  type="button"
+                  variant="ghost"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  {isRevealingDirectory ? "Revealing" : "Reveal"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </aside>
+      </div>
+    </section>
+  );
+}

@@ -1,22 +1,56 @@
 {
-    "name": "wh-dl",
-    "version": "1.0.0",
-    "description": "Wallpaper downloader",
-    "main": "index.js",
-    "bin": "index.js",
-    "pkg": {
-        "targets": [
-            "node18-linux-x64",
-            "node18-linux-arm64",
-            "node18-win-x64",
-            "node18-win-arm64",
-            "node18-macos-x64",
-            "node18-macos-arm64"
-        ],
-        "outputPath": "dist"
-    },
-    "scripts": {
-        "build": "pkg . && npm run sign-macos",
-        "sign-macos": "node scripts/sign-macos.js"
-    }
+  "name": "wallhaven-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wallhaven desktop migration scaffold built with Tauri, React, and TypeScript",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 1420",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc -b",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:dmg": "bash ./scripts/build-dmg.sh",
+    "tauri:build:dmg:debug": "bash ./scripts/build-dmg.sh --debug",
+    "legacy:cli": "node index.js",
+    "legacy:sign-macos": "node scripts/sign-macos.js"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/plugin-store": "^2.4.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.16.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-hook-form": "^7.76.1",
+    "react-router-dom": "^7.15.1",
+    "tailwind-merge": "^3.6.0",
+    "yet-another-react-lightbox": "^3.32.0",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@tauri-apps/cli": "^2.11.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.7"
+  }
 }
