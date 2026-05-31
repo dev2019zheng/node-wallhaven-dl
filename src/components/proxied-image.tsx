@@ -1,4 +1,4 @@
-import type { ImgHTMLAttributes } from "react"
+import type { ImgHTMLAttributes, SyntheticEvent } from "react"
 import { useEffect, useState } from "react"
 
 import { loadRemoteImageObjectUrl } from "@/infrastructure/tauri/media-repository"
@@ -7,26 +7,33 @@ type ProxiedImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> & {
   src: string
 }
 
-export function ProxiedImage({ src, alt, ...props }: ProxiedImageProps) {
-  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
+const imagePlaceholderSrc =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%23101b2a'/%3E%3C/svg%3E"
+
+export function ProxiedImage({ src, alt, onError, ...props }: ProxiedImageProps) {
+  const [resolvedSrc, setResolvedSrc] = useState(imagePlaceholderSrc)
+  const [loadState, setLoadState] = useState<"loading" | "loaded" | "error">("loading")
 
   useEffect(() => {
     let isActive = true
     let objectUrl: string | null = null
 
-    setResolvedSrc(null)
+    setResolvedSrc(imagePlaceholderSrc)
+    setLoadState("loading")
     loadRemoteImageObjectUrl(src)
       .then((nextObjectUrl) => {
         objectUrl = nextObjectUrl
         if (isActive) {
           setResolvedSrc(nextObjectUrl)
+          setLoadState("loaded")
         } else {
           URL.revokeObjectURL(nextObjectUrl)
         }
       })
       .catch(() => {
         if (isActive) {
-          setResolvedSrc(src)
+          setResolvedSrc(imagePlaceholderSrc)
+          setLoadState("error")
         }
       })
 
@@ -38,5 +45,22 @@ export function ProxiedImage({ src, alt, ...props }: ProxiedImageProps) {
     }
   }, [src])
 
-  return <img {...props} alt={alt} src={resolvedSrc ?? src} />
+  const handleImageError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
+    if (resolvedSrc !== imagePlaceholderSrc) {
+      setResolvedSrc(imagePlaceholderSrc)
+      setLoadState("error")
+    }
+
+    onError?.(event)
+  }
+
+  return (
+    <img
+      {...props}
+      alt={alt}
+      data-load-state={loadState}
+      onError={handleImageError}
+      src={resolvedSrc}
+    />
+  )
 }

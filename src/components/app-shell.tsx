@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 
-import { Sidebar } from "@/components/sidebar";
 import { MacWindowChrome } from "@/components/mac-window-chrome";
+import { Sidebar } from "@/components/sidebar";
 
 export function AppShell() {
   return (

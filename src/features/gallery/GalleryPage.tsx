@@ -114,7 +114,7 @@ export function GalleryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [localQuery, setLocalQuery] = useState("")
-  const [activeChip, setActiveChip] = useState<(typeof filterChips)[number]>("All")
+  const [activeChip, setActiveChip] = useState<(typeof filterChips)[number]>("SFW")
   const [selectedWallpaperId, setSelectedWallpaperId] = useState<string | null>(null)
   const [tagDraft, setTagDraft] = useState("")
   const [pendingAction, setPendingAction] = useState<string | null>(null)

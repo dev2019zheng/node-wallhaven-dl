@@ -81,4 +81,13 @@ describe("search-service", () => {
 
     expect(searchWallpapersInRepository).toHaveBeenCalledWith({ q: "cats", page: 3 }, "");
   });
+
+  it("keeps search working when key storage is unavailable", async () => {
+    vi.mocked(loadStoredWallhavenKey).mockRejectedValue(new Error("store unavailable"));
+    vi.mocked(searchWallpapersInRepository).mockResolvedValue(sampleResult);
+
+    await searchWallpapers({ q: "mountains", page: 1 });
+
+    expect(searchWallpapersInRepository).toHaveBeenCalledWith({ q: "mountains", page: 1 }, "");
+  });
 });

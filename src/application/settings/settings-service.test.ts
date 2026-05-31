@@ -1,4 +1,10 @@
 vi.mock("@/infrastructure/tauri/settings-repository", () => ({
+  defaultSettingsPreferences: {
+    launchAtLogin: false,
+    confirmBeforeDelete: true,
+    telemetryEnabled: false,
+    cacheSizeBytes: 38_400_000,
+  },
   loadStoredWallhavenKey: vi.fn(),
   saveStoredWallhavenKey: vi.fn(),
   loadDownloadDirectorySettings: vi.fn(),
@@ -77,7 +83,7 @@ describe("settings-service", () => {
     await expect(loadSettings()).rejects.toThrow("download directory unavailable");
   });
 
-  it("still fails when the stored key cannot be loaded", async () => {
+  it("keeps loading settings when optional stored values are unavailable", async () => {
     vi.mocked(loadStoredWallhavenKey).mockRejectedValue(new Error("key load failed"));
     vi.mocked(loadDownloadDirectorySettings).mockResolvedValue({
       customDirectoryPath: "",
@@ -87,9 +93,22 @@ describe("settings-service", () => {
         "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
       isUsingDefaultDirectory: true,
     });
-    vi.mocked(loadNetworkProxySettings).mockResolvedValue(null);
+    vi.mocked(loadNetworkProxySettings).mockRejectedValue(new Error("proxy decode failed"));
+    vi.mocked(loadUserPreferences).mockRejectedValue(new Error("preferences load failed"));
 
-    await expect(loadSettings()).rejects.toThrow("key load failed");
+    await expect(loadSettings()).resolves.toEqual({
+      wallhavenKey: "",
+      downloadDirectory: {
+        customDirectoryPath: "",
+        effectiveDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        defaultDirectoryPath:
+          "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers",
+        isUsingDefaultDirectory: true,
+      },
+      networkProxy: null,
+      preferences,
+    });
   });
 
   it("persists the stored key, custom download directory, and network proxy through saveSettings", async () => {

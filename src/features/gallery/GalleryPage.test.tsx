@@ -157,14 +157,25 @@ describe("GalleryPage", () => {
     expect(screen.getByRole("button", { name: /Favorites/i })).toBeInTheDocument()
   })
 
+  it("defaults the gallery archive to SFW wallpapers", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    expect(await screen.findByRole("button", { name: "SFW", pressed: true })).toBeInTheDocument()
+    expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
+    expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
+  })
+
   it("filters the loaded archive locally from the gallery toolbar", async () => {
     vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
 
     render(<GalleryPage />)
 
     const user = userEvent.setup()
+    await user.click(await screen.findByRole("button", { name: "All" }))
     await user.type(
-      await screen.findByRole("searchbox", { name: /Search local gallery/i }),
+      screen.getByRole("searchbox", { name: /Search local gallery/i }),
       "forest",
     )
 

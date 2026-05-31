@@ -427,8 +427,8 @@ export function SettingsPage() {
         title="Settings"
       />
 
-      <div className="grid grid-cols-[minmax(686px,1fr)_452px] items-start gap-[30px]">
-        <form className="app-panel min-h-[698px] space-y-6 p-[30px]" onSubmit={onSubmit}>
+      <div className="grid grid-cols-1 items-start gap-[22px] min-[1280px]:grid-cols-[minmax(0,1fr)_minmax(320px,452px)] min-[1440px]:gap-[30px]">
+        <form className="app-panel min-h-0 space-y-6 p-5 min-[900px]:p-[30px] min-[1280px]:min-h-[640px]" onSubmit={onSubmit}>
           <section aria-labelledby="wallhaven-access-heading" className="space-y-4">
             <div>
               <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="wallhaven-access-heading">
@@ -439,7 +439,7 @@ export function SettingsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-4">
+            <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_minmax(0,1fr)] md:gap-4">
               <label className="text-[13px] font-semibold text-foreground" htmlFor="wallhavenKey">
                 API Key
               </label>
@@ -476,7 +476,7 @@ export function SettingsPage() {
             </div>
             <p
               aria-live="polite"
-              className={cn("pl-[140px] text-[12px]", apiKeyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
+              className={cn("text-[12px] md:pl-[140px]", apiKeyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
             >
               {apiKeyStatus?.message ?? "Empty value clears the local key. Full key is never written to UI logs."}
             </p>
@@ -492,7 +492,7 @@ export function SettingsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-[124px_minmax(0,1fr)_96px] items-center gap-4">
+            <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_minmax(0,1fr)_96px] md:gap-4">
               <label className="text-[13px] font-semibold text-foreground" htmlFor="customDownloadDirectoryPath">
                 Download path
               </label>
@@ -520,11 +520,11 @@ export function SettingsPage() {
               </Button>
             </div>
             {directoryError ? (
-              <p className="pl-[140px] text-[12px] text-destructive" role="alert">
+              <p className="text-[12px] text-destructive md:pl-[140px]" role="alert">
                 {directoryError}
               </p>
             ) : null}
-            <div className="pl-[140px]">
+            <div className="md:pl-[140px]">
               <Button
                 className="h-10 rounded-[14px]"
                 disabled={isLoading}
@@ -551,7 +551,7 @@ export function SettingsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-[124px_194px_minmax(0,1fr)_116px] items-center gap-4">
+            <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_194px_minmax(0,1fr)_116px] md:gap-4">
               <span className="text-[13px] font-semibold text-foreground">Protocol</span>
               <div className="wh-control grid h-[42px] grid-cols-2 overflow-hidden p-0">
                 {proxyOptions.map((option) => (
@@ -591,7 +591,7 @@ export function SettingsPage() {
             </div>
             <p
               aria-live="polite"
-              className={cn("pl-[140px] text-[12px]", proxyAddressError || proxyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
+              className={cn("text-[12px] md:pl-[140px]", proxyAddressError || proxyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
               role={proxyAddressError ? "alert" : undefined}
             >
               {proxyAddressError ?? proxyStatus?.message ?? "Proxy validation runs before future Search and Download requests use this setting."}
@@ -612,7 +612,7 @@ export function SettingsPage() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <Toggle
                 checked={preferences.launchAtLogin}
                 description="Apply on next app launch"
@@ -636,7 +636,7 @@ export function SettingsPage() {
 
           {loadError ? <ErrorState message={loadError} /> : null}
 
-          <div className="flex h-[64px] items-center justify-between rounded-[16px] border border-border bg-[var(--surface-deep)] px-5">
+          <div className="flex min-h-[64px] flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-[var(--surface-deep)] px-5 py-3">
             <p
               aria-live="polite"
               className={cn(
@@ -653,7 +653,7 @@ export function SettingsPage() {
           </div>
         </form>
 
-        <aside aria-label="Effective destination" className="app-panel min-h-[698px] p-[30px]">
+        <aside aria-label="Effective destination" className="app-panel min-h-0 p-5 min-[900px]:p-[30px] min-[1280px]:min-h-[640px]">
           {!downloadDirectory && !loadError ? <LoadingSkeleton label="Loading storage details..." /> : null}
           {!downloadDirectory && loadError ? (
             <ErrorState message="Settings failed to load, so storage summary is unavailable." title="Storage unavailable" />

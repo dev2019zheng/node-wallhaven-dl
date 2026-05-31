@@ -90,6 +90,16 @@ describe("settings-repository", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
+  it("does not fail completed reads when releasing the store resource fails", async () => {
+    const store = createMockStore();
+    store.get.mockResolvedValue("stored-key");
+    store.close.mockRejectedValue(new Error("close failed"));
+    vi.mocked(Store.load).mockResolvedValue(store as never);
+
+    await expect(loadStoredWallhavenKey()).resolves.toBe("stored-key");
+    expect(store.close).toHaveBeenCalledTimes(1);
+  });
+
   it("invokes the Rust download directory settings command by name", async () => {
     vi.mocked(invoke).mockResolvedValue({
       customDirectoryPath: "/Users/test/Pictures/Wallhaven",
