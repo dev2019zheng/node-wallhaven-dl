@@ -9,8 +9,8 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-[#1b6fe8]",
-        outline: "border border-border bg-[var(--surface-deep)] hover:border-primary/70 hover:bg-[#123252] hover:text-accent-foreground",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-[var(--primary-hover)]",
+        outline: "border border-border bg-[var(--surface-deep)] hover:border-primary/70 hover:bg-[var(--control-selected-bg)] hover:text-accent-foreground",
         ghost: "hover:bg-accent hover:text-accent-foreground",
       },
       size: {

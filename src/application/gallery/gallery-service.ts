@@ -1,10 +1,13 @@
 import {
+  deleteGalleryItem as deleteGalleryItemInRepository,
   listGalleryItems as listGalleryItemsInRepository,
   setGalleryFavorite as setGalleryFavoriteInRepository,
   updateGalleryTags as updateGalleryTagsInRepository,
 } from "@/infrastructure/tauri/gallery-repository"
 
 import type {
+  DeleteGalleryItemInput,
+  DeleteGalleryItemResult,
   GalleryItem,
   GalleryListResponse,
   SetGalleryFavoriteInput,
@@ -28,4 +31,10 @@ export async function setGalleryFavorite(
 
 export async function updateGalleryTags(input: UpdateGalleryTagsInput): Promise<GalleryItem> {
   return updateGalleryTagsInRepository(input)
+}
+
+export async function deleteGalleryItem(
+  input: DeleteGalleryItemInput,
+): Promise<DeleteGalleryItemResult> {
+  return deleteGalleryItemInRepository(input)
 }

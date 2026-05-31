@@ -54,7 +54,7 @@ export function SearchPreviewLightbox({
     <div
       aria-label={`Preview wallpaper ${wallpaper.id}`}
       aria-modal="true"
-      className="fixed inset-0 z-50 grid grid-rows-[72px_minmax(0,1fr)_84px] bg-[#03070d]/94 backdrop-blur-xl"
+      className="fixed inset-0 z-50 grid grid-rows-[72px_minmax(0,1fr)_84px] bg-[var(--overlay-backdrop)] backdrop-blur-xl"
       data-testid="lightbox"
       role="dialog"
     >

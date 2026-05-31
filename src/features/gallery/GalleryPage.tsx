@@ -4,17 +4,20 @@ import { useEffect, useMemo, useState } from "react"
 
 import { downloadWallpaper as downloadWallpaperInService } from "@/application/downloads/downloads-service"
 import {
+  deleteGalleryItem as deleteGalleryItemInService,
   loadInitialGalleryItems,
   setGalleryFavorite as setGalleryFavoriteInService,
   updateGalleryTags as updateGalleryTagsInService,
 } from "@/application/gallery/gallery-service"
 import type { GalleryItem, GalleryListResponse } from "@/application/gallery/gallery.types"
+import { loadSettingsPreferences } from "@/application/settings/settings-service"
 import { EmptyState } from "@/components/empty-state"
 import { ErrorState } from "@/components/error-state"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { PageHeading } from "@/components/page-heading"
 import { Button } from "@/components/ui/button"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
+import { revealPath } from "@/infrastructure/tauri/native-shell"
 
 import { GalleryGrid, type GalleryGridItem } from "./components/GalleryGrid"
 
@@ -115,9 +118,11 @@ export function GalleryPage() {
   const [selectedWallpaperId, setSelectedWallpaperId] = useState<string | null>(null)
   const [tagDraft, setTagDraft] = useState("")
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+  const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(true)
   const galleryView = useUiShellStore((state) => state.galleryView)
   const setGalleryView = useUiShellStore((state) => state.setGalleryView)
   const enqueueToast = useUiShellStore((state) => state.enqueueToast)
+  const setConfirm = useUiShellStore((state) => state.setConfirm)
 
   useEffect(() => {
     let isActive = true
@@ -147,6 +152,15 @@ export function GalleryPage() {
     }
 
     void start()
+    void loadSettingsPreferences()
+      .then((preferences) => {
+        if (isActive) {
+          setConfirmBeforeDelete(preferences.confirmBeforeDelete)
+        }
+      })
+      .catch(() => {
+        // Keep the safe default when preferences fail to load.
+      })
 
     return () => {
       isActive = false
@@ -232,6 +246,22 @@ export function GalleryPage() {
     })
   }
 
+  const removeGalleryItem = (wallpaperId: string) => {
+    setGallery((currentGallery) => {
+      if (!currentGallery) {
+        return currentGallery
+      }
+
+      const nextItems = currentGallery.items.filter((item) => item.wallpaperId !== wallpaperId)
+      return {
+        ...currentGallery,
+        items: nextItems,
+        total: Math.max(0, currentGallery.total - (nextItems.length === currentGallery.items.length ? 0 : 1)),
+      }
+    })
+    setSelectedWallpaperId((currentWallpaperId) => (currentWallpaperId === wallpaperId ? null : currentWallpaperId))
+  }
+
   const showToast = (title: string, description: string, tone: "success" | "error" | "info" = "success") => {
     enqueueToast({
       id: `gallery-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -307,6 +337,48 @@ export function GalleryPage() {
     }
   }
 
+  const handleRevealItem = async (item: GalleryGridItem) => {
+    setPendingAction(`reveal:${item.wallpaperId}`)
+
+    try {
+      await revealPath(item.absolutePath)
+    } catch (error) {
+      showToast("Reveal failed", getErrorMessage(error, "Unable to reveal the local file."), "error")
+    } finally {
+      setPendingAction(null)
+    }
+  }
+
+  const deleteItem = async (item: GalleryGridItem) => {
+    setPendingAction(`delete:${item.wallpaperId}`)
+
+    try {
+      await deleteGalleryItemInService({ wallpaperId: item.wallpaperId })
+      removeGalleryItem(item.wallpaperId)
+      showToast("Wallpaper deleted", item.fileName)
+    } catch (error) {
+      showToast("Delete failed", getErrorMessage(error, "Unable to delete the local wallpaper."), "error")
+    } finally {
+      setPendingAction(null)
+    }
+  }
+
+  const handleDeleteItem = (item: GalleryGridItem) => {
+    if (!confirmBeforeDelete) {
+      void deleteItem(item)
+      return
+    }
+
+    setConfirm({
+      title: "Delete wallpaper?",
+      description: `This removes ${item.fileName} from disk and the local gallery archive.`,
+      confirmLabel: "Delete wallpaper",
+      onConfirm: () => {
+        void deleteItem(item)
+      },
+    })
+  }
+
   return (
     <section className="space-y-6">
       <PageHeading
@@ -339,7 +411,7 @@ export function GalleryPage() {
               aria-pressed={activeChip === chip}
               className={
                 activeChip === chip
-                  ? "h-[42px] rounded-full border border-[#1e5a91] bg-[#123252] px-4 text-[13px] font-semibold text-foreground"
+                  ? "wh-selected-surface h-[42px] rounded-full border px-4 text-[13px] font-semibold text-foreground"
                   : "h-[42px] rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground transition hover:border-border-strong hover:text-foreground"
               }
               key={chip}
@@ -376,9 +448,18 @@ export function GalleryPage() {
         {isLoading && !gallery ? <LoadingSkeleton label="Loading archived wallpapers..." /> : null}
 
         {!loadError && galleryCountLabel ? (
-          <div className="flex h-[54px] items-center justify-between rounded-[16px] border border-emerald-500/30 bg-emerald-500/12 px-6">
-            <p className="text-[15px] font-semibold text-emerald-200">{galleryCountLabel}</p>
-            <button className="max-w-[420px] truncate text-[12px] font-semibold text-muted-foreground transition hover:text-foreground" type="button">
+          <div className="wh-soft-success flex h-[54px] items-center justify-between rounded-[16px] px-6">
+            <p className="text-[15px] font-semibold">{galleryCountLabel}</p>
+            <button
+              className="max-w-[420px] truncate text-[12px] font-semibold text-muted-foreground transition hover:text-foreground"
+              disabled={!selectedItem || pendingAction === `reveal:${selectedItem.wallpaperId}`}
+              onClick={() => {
+                if (selectedItem) {
+                  void handleRevealItem(selectedItem)
+                }
+              }}
+              type="button"
+            >
               {galleryPathLabel}
             </button>
           </div>
@@ -423,7 +504,7 @@ export function GalleryPage() {
                       ["This month", `${gallery?.total ?? galleryItems.length} archived`],
                     ].map(([label, count], index) => (
                       <div className="grid grid-cols-[18px_1fr_120px] items-center gap-4" key={label}>
-                        <span className={index === 0 ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[#2b4260]"} />
+                        <span className={index === 0 ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
                         <span className="text-[14px] font-semibold text-foreground">{label}</span>
                         <span className="text-[13px] font-medium text-muted-foreground">{count}</span>
                       </div>
@@ -538,13 +619,29 @@ export function GalleryPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <Button className="h-10 rounded-[14px]" type="button" variant="ghost">
+                    <Button
+                      className="h-10 rounded-[14px]"
+                      disabled={pendingAction === `reveal:${selectedItem.wallpaperId}`}
+                      onClick={() => {
+                        void handleRevealItem(selectedItem)
+                      }}
+                      type="button"
+                      variant="ghost"
+                    >
                       <FolderOpen className="h-4 w-4" />
-                      Reveal
+                      {pendingAction === `reveal:${selectedItem.wallpaperId}` ? "Revealing" : "Reveal"}
                     </Button>
-                    <Button className="h-10 rounded-[14px]" type="button" variant="ghost">
+                    <Button
+                      className="h-10 rounded-[14px]"
+                      disabled={pendingAction === `delete:${selectedItem.wallpaperId}`}
+                      onClick={() => {
+                        handleDeleteItem(selectedItem)
+                      }}
+                      type="button"
+                      variant="ghost"
+                    >
                       <Trash2 className="h-4 w-4" />
-                      Delete
+                      {pendingAction === `delete:${selectedItem.wallpaperId}` ? "Deleting" : "Delete"}
                     </Button>
                   </div>
                 </div>

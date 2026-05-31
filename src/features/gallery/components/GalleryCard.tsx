@@ -56,12 +56,12 @@ export function GalleryCard({
       </button>
 
       <div className={cn("pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/76 via-black/18 to-black/12", view === "list" || view === "compact" ? "left-[220px] bg-none" : "")}>
-        <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-[#07111e]/78 px-3 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur">
+        <div className="wh-image-pill absolute left-4 top-4 rounded-full px-3 py-1 text-[11px] font-semibold">
           {(item.purity ?? "sfw").toUpperCase()}
         </div>
         <button
           aria-label={`Favorite wallpaper ${item.wallpaperId}`}
-          className="pointer-events-auto absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-[#07111e]/78 text-white/85 backdrop-blur transition hover:text-white"
+          className="wh-image-button pointer-events-auto absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full"
           onClick={() => {
             onSelect?.()
             onToggleFavorite?.()

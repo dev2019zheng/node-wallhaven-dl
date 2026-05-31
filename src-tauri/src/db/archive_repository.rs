@@ -208,6 +208,16 @@ impl ArchiveRepository {
         self.find_gallery_record_by_wallpaper_id(wallpaper_id).await
     }
 
+    pub async fn delete_by_wallpaper_id(&self, wallpaper_id: &str) -> ArchiveStoreResult<bool> {
+        let result = query("DELETE FROM wallpapers WHERE wallpaper_id = ?")
+            .bind(wallpaper_id)
+            .execute(&self.pool)
+            .await
+            .map_err(map_sql_error)?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
     async fn find_wallpaper_id_by_download_target(
         &self,
         download_base_dir: &str,

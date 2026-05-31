@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::{fs, io};
 
 use serde::{Deserialize, Serialize};
 use tauri::path::BaseDirectory;
@@ -34,6 +35,12 @@ pub struct UpdateGalleryTagsRequest {
     pub tags: Vec<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteGalleryItemRequest {
+    pub wallpaper_id: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GalleryListResponse {
@@ -56,6 +63,12 @@ pub struct GalleryItemDto {
     pub tags: Vec<String>,
     pub is_favorite: bool,
     pub created_at: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteGalleryItemResponse {
+    pub wallpaper_id: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -240,6 +253,17 @@ async fn gallery_item_after_update(
     Ok(item)
 }
 
+fn remove_gallery_file(path: &Path) -> Result<(), GalleryCommandError> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(GalleryCommandError::internal(format!(
+            "failed to remove gallery file {}: {error}",
+            path.display()
+        ))),
+    }
+}
+
 #[tauri::command]
 pub async fn set_gallery_favorite(
     app: AppHandle,
@@ -279,6 +303,64 @@ pub async fn update_gallery_tags(
         .await?;
 
     gallery_item_after_update(&app, record).await
+}
+
+#[tauri::command]
+pub async fn delete_gallery_item(
+    app: AppHandle,
+    state: State<'_, DatabaseState>,
+    request: DeleteGalleryItemRequest,
+) -> Result<DeleteGalleryItemResponse, GalleryCommandError> {
+    if request.wallpaper_id.trim().is_empty() {
+        return Err(GalleryCommandError::invalid_request(
+            "wallpaperId must not be empty.",
+        ));
+    }
+
+    let record = state
+        .archive_repository()
+        .find_by_wallpaper_id(&request.wallpaper_id)
+        .await?
+        .ok_or_else(|| {
+            GalleryCommandError::invalid_request(
+                "Gallery wallpaper was not found in the local archive.",
+            )
+        })?;
+    let app_local_data_dir = resolve_app_local_data_dir(&app).await?;
+    let strategy = archive_record_strategy(&GalleryArchiveRecord {
+        wallpaper_id: record.wallpaper_id.clone(),
+        source_url: record.source_url.clone(),
+        file_name: record.file_name.clone(),
+        relative_file_path: record.relative_file_path.clone(),
+        purity: record.purity.clone(),
+        category: record.category.clone(),
+        tags: record.tags.clone(),
+        is_favorite: record.is_favorite,
+        download_base_dir: record.download_base_dir.clone(),
+        download_root_path: record.download_root_path.clone(),
+        created_at: String::new(),
+    });
+    let absolute_path = resolve_download_path(
+        app_local_data_dir.as_path(),
+        &strategy,
+        &DownloadTarget::new(record.file_name.clone(), record.relative_file_path.clone()),
+    )?;
+
+    remove_gallery_file(absolute_path.as_path())?;
+    let deleted = state
+        .archive_repository()
+        .delete_by_wallpaper_id(&request.wallpaper_id)
+        .await?;
+
+    if !deleted {
+        return Err(GalleryCommandError::invalid_request(
+            "Gallery wallpaper was not found in the local archive.",
+        ));
+    }
+
+    Ok(DeleteGalleryItemResponse {
+        wallpaper_id: request.wallpaper_id,
+    })
 }
 
 #[cfg(test)]

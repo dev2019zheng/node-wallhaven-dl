@@ -39,14 +39,14 @@ export function StorageAboutCard({
 
       {downloadDirectory && effectiveDestination ? (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-primary/18 bg-primary/8 p-4">
+          <div className="wh-soft-primary rounded-2xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Next downloads</p>
                 <p className="mt-2 text-sm font-medium text-foreground">下一次下载会写入以下目录</p>
               </div>
               {hasUnsavedChanges ? (
-                <span className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-400/12 px-3 py-1 text-xs font-medium text-amber-200">
+                <span className="wh-soft-warning inline-flex items-center rounded-full px-3 py-1 text-xs font-medium">
                   未保存更改
                 </span>
               ) : null}

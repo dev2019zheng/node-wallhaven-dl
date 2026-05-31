@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import {
   applyDownloadProgressEvent,
   applyDownloadStatusEvent,
+  deleteDownloadTask as deleteDownloadTaskInService,
+  downloadWallpaper as downloadWallpaperInService,
   filterDownloads,
   listDownloads as listDownloadsInService,
   mergeLoadedDownloads,
@@ -11,6 +13,10 @@ import {
   type DownloadQueueFilter,
 } from "@/application/downloads/downloads-service"
 import type { DownloadListItem } from "@/application/downloads/downloads.types"
+import {
+  loadDownloadDirectory,
+  loadSettingsPreferences,
+} from "@/application/settings/settings-service"
 import { ErrorState } from "@/components/error-state"
 import { PageHeading } from "@/components/page-heading"
 import { Button } from "@/components/ui/button"
@@ -19,10 +25,12 @@ import {
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
 } from "@/infrastructure/tauri/download-events"
+import { openNativePath } from "@/infrastructure/tauri/native-shell"
 
 import { DownloadQueue } from "./components/DownloadQueue"
 import { QueueTabs } from "./components/QueueTabs"
 
+type PendingTaskAction = "copy" | "delete" | "primary"
 type LiveEventTone = "info" | "ok" | "warn" | "bad"
 
 type LiveEventItem = {
@@ -38,6 +46,17 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   }
 
   return fallbackMessage
+}
+
+function getParentDirectory(path: string): string {
+  const normalizedPath = path.replace(/\\/g, "/")
+  const lastSeparatorIndex = normalizedPath.lastIndexOf("/")
+
+  if (lastSeparatorIndex <= 0) {
+    return path
+  }
+
+  return normalizedPath.slice(0, lastSeparatorIndex)
 }
 
 function appendLiveEvent(currentEvents: LiveEventItem[], nextEvent: LiveEventItem): LiveEventItem[] {
@@ -75,7 +94,12 @@ export function DownloadsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [liveEvents, setLiveEvents] = useState<LiveEventItem[]>([])
+  const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(true)
+  const [isOpeningFolder, setIsOpeningFolder] = useState(false)
+  const [pendingActionByTaskId, setPendingActionByTaskId] = useState<Record<string, PendingTaskAction | null>>({})
   const setDownloadSummary = useUiShellStore((state) => state.setDownloadSummary)
+  const enqueueToast = useUiShellStore((state) => state.enqueueToast)
+  const setConfirm = useUiShellStore((state) => state.setConfirm)
 
   useEffect(() => {
     let isActive = true
@@ -178,6 +202,15 @@ export function DownloadsPage() {
     }
 
     void start()
+    void loadSettingsPreferences()
+      .then((preferences) => {
+        if (isActive) {
+          setConfirmBeforeDelete(preferences.confirmBeforeDelete)
+        }
+      })
+      .catch(() => {
+        // Keep the safe default when preferences are unavailable.
+      })
 
     return () => {
       isActive = false
@@ -201,6 +234,142 @@ export function DownloadsPage() {
       failedCount: summary.failedCount,
     })
   }, [setDownloadSummary, summary.activeCount, summary.completedCount, summary.failedCount])
+
+  const showToast = (
+    title: string,
+    description: string,
+    tone: "error" | "info" | "success" = "success",
+  ) => {
+    enqueueToast({
+      id: `downloads-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      title,
+      description,
+      tone,
+    })
+  }
+
+  const setPendingTaskAction = (taskId: string, action: PendingTaskAction | null) => {
+    setPendingActionByTaskId((currentActions) => {
+      if (action === null) {
+        const nextActions = { ...currentActions }
+        delete nextActions[taskId]
+        return nextActions
+      }
+
+      return {
+        ...currentActions,
+        [taskId]: action,
+      }
+    })
+  }
+
+  const handleOpenFolder = async () => {
+    setIsOpeningFolder(true)
+
+    try {
+      const downloadDirectory = await loadDownloadDirectory()
+      await openNativePath(downloadDirectory.effectiveDirectoryPath)
+    } catch (error) {
+      showToast("Open folder failed", getErrorMessage(error, "Unable to open the download directory."), "error")
+    } finally {
+      setIsOpeningFolder(false)
+    }
+  }
+
+  const handlePrimaryAction = async (download: DownloadListItem) => {
+    setPendingTaskAction(download.id, "primary")
+
+    try {
+      if (download.status === "failed") {
+        if (!download.sourceUrl) {
+          throw new Error("Original download URL is not available for retry.")
+        }
+
+        await downloadWallpaperInService({
+          wallpaperId: download.wallpaperId,
+          imageUrl: download.sourceUrl,
+          fileName: download.fileName,
+          purity: download.purity,
+          category: download.category,
+        })
+        showToast("Retry queued", download.fileName)
+        return
+      }
+
+      if (!download.absolutePath) {
+        throw new Error("Task path is not available yet.")
+      }
+
+      if (download.status === "succeeded" || download.status === "skipped_existing") {
+        await openNativePath(download.absolutePath)
+        return
+      }
+
+      await openNativePath(getParentDirectory(download.absolutePath))
+    } catch (error) {
+      showToast("Task action failed", getErrorMessage(error, "Unable to open the selected download."), "error")
+    } finally {
+      setPendingTaskAction(download.id, null)
+    }
+  }
+
+  const handleCopyPath = async (download: DownloadListItem) => {
+    setPendingTaskAction(download.id, "copy")
+
+    try {
+      if (!download.absolutePath) {
+        throw new Error("Task path is not available yet.")
+      }
+
+      await navigator.clipboard.writeText(download.absolutePath)
+      showToast("Path copied", download.absolutePath)
+    } catch (error) {
+      showToast("Copy failed", getErrorMessage(error, "Clipboard is unavailable."), "error")
+    } finally {
+      setPendingTaskAction(download.id, null)
+    }
+  }
+
+  const deleteTask = async (download: DownloadListItem) => {
+    setPendingTaskAction(download.id, "delete")
+
+    try {
+      await deleteDownloadTaskInService(download.id)
+      setDownloads((currentDownloads) =>
+        currentDownloads.filter((currentDownload) => currentDownload.id !== download.id),
+      )
+      showToast("Task deleted", download.fileName)
+    } catch (error) {
+      showToast("Delete failed", getErrorMessage(error, "Unable to delete the download task."), "error")
+    } finally {
+      setPendingTaskAction(download.id, null)
+    }
+  }
+
+  const handleDelete = (download: DownloadListItem) => {
+    if (download.status === "queued" || download.status === "running") {
+      return
+    }
+
+    const description =
+      download.status === "failed"
+        ? `This removes the failed task record for ${download.fileName}.`
+        : `This removes ${download.fileName} from disk, task history, and the local gallery archive.`
+
+    if (!confirmBeforeDelete) {
+      void deleteTask(download)
+      return
+    }
+
+    setConfirm({
+      title: "Delete download task?",
+      description,
+      confirmLabel: "Delete task",
+      onConfirm: () => {
+        void deleteTask(download)
+      },
+    })
+  }
 
   return (
     <section className="space-y-6">
@@ -243,14 +412,21 @@ export function DownloadsPage() {
               <div className="text-[22px] font-bold text-foreground">{speedLabel}</div>
               <div className="mt-1 text-[13px] font-medium text-muted-foreground">{etaLabel}</div>
               <svg aria-hidden="true" className="mt-3 h-10 w-full" viewBox="0 0 196 40">
-                <path d="M0 34 L16 18 L32 14 L48 24 L64 29 L80 35 L96 18 L112 28 L128 22 L144 25 L160 10 L176 16 L196 14" fill="none" stroke="rgb(47 139 255)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+                <path d="M0 34 L16 18 L32 14 L48 24 L64 29 L80 35 L96 18 L112 28 L128 22 L144 25 L160 10 L176 16 L196 14" fill="none" stroke="var(--primary)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
               </svg>
             </div>
           </div>
 
-          <Button className="h-12 w-full rounded-[14px]" type="button">
+          <Button
+            className="h-12 w-full rounded-[14px]"
+            disabled={isOpeningFolder}
+            onClick={() => {
+              void handleOpenFolder()
+            }}
+            type="button"
+          >
             <FolderOpen className="h-4 w-4" />
-            Open folder
+            {isOpeningFolder ? "Opening..." : "Open folder"}
           </Button>
         </aside>
 
@@ -276,6 +452,14 @@ export function DownloadsPage() {
             downloads={filteredDownloads}
             filter={activeFilter}
             isLoading={isLoading}
+            onCopyPath={(download) => {
+              void handleCopyPath(download)
+            }}
+            onDelete={handleDelete}
+            onPrimaryAction={(download) => {
+              void handlePrimaryAction(download)
+            }}
+            pendingActionByTaskId={pendingActionByTaskId}
           />
         </section>
 

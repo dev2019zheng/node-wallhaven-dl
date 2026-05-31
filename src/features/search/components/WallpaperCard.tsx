@@ -24,7 +24,7 @@ export function WallpaperCard({
 }: WallpaperCardProps) {
   return (
     <article
-      className={`group relative h-[156px] overflow-hidden rounded-2xl border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_12px_32px_rgb(0_0_0_/_0.36)] ${
+      className={`group relative h-[156px] overflow-hidden rounded-2xl border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary hover:shadow-[var(--card-hover-shadow)] ${
         isSelected ? "border-[3px] border-primary" : "border-border"
       }`}
     >
@@ -37,11 +37,11 @@ export function WallpaperCard({
         />
 
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/55 via-black/10 to-transparent px-3 py-3">
-          <span className="rounded-full border border-white/10 bg-[#07111e]/78 px-3 py-1 text-[11px] font-semibold text-white shadow-sm backdrop-blur">
+          <span className="wh-image-pill rounded-full px-3 py-1 text-[11px] font-semibold">
             {wallpaper.resolution}
           </span>
 
-          <label className="pointer-events-auto relative flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-[#07111e]/78 text-white/85 backdrop-blur transition hover:text-white">
+          <label className="wh-image-button pointer-events-auto relative flex h-8 w-8 items-center justify-center rounded-full">
             <input
               aria-label={`Select wallpaper ${wallpaper.id}`}
               checked={isSelected}
@@ -82,7 +82,7 @@ export function WallpaperCard({
           <div className="flex translate-y-8 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100">
             <button
               aria-label={`Preview wallpaper ${wallpaper.id}`}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-[#07111e]/78 text-white/85 backdrop-blur transition hover:text-white"
+              className="wh-image-button flex h-8 w-8 items-center justify-center rounded-full"
               onClick={onPreview}
               type="button"
             >

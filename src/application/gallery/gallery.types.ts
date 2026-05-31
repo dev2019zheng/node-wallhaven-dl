@@ -13,6 +13,14 @@ export type UpdateGalleryTagsInput = {
   tags: string[]
 }
 
+export type DeleteGalleryItemInput = {
+  wallpaperId: string
+}
+
+export type DeleteGalleryItemResult = {
+  wallpaperId: string
+}
+
 export type GalleryItem = {
   wallpaperId: string
   sourceUrl: string

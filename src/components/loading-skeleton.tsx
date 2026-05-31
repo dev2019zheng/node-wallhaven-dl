@@ -10,7 +10,7 @@ export function LoadingSkeleton({ label }: LoadingSkeletonProps) {
       role="status"
     >
       <div className="flex items-center gap-3">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400" />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
         <span>{label}</span>
       </div>
     </div>

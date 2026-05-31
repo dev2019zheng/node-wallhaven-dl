@@ -55,10 +55,10 @@ export function Sidebar() {
               aria-label={item.label}
               className={({ isActive }) =>
                 cn(
-                  "group flex h-[42px] items-center gap-3 rounded-[14px] px-3 text-[14px] font-semibold transition-colors",
+                  "group flex h-[42px] items-center gap-3 rounded-[14px] border px-3 text-[14px] font-semibold transition-colors",
                   isActive
-                    ? "border border-[#1e5a91] bg-[#123252] text-foreground"
-                    : "border border-transparent text-muted-foreground hover:bg-[var(--surface-hover)]/65 hover:text-foreground",
+                    ? "wh-selected-surface text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-[var(--surface-hover)]/65 hover:text-foreground",
                 )
               }
               key={item.to}
@@ -94,7 +94,7 @@ export function Sidebar() {
       <section className="mt-auto rounded-[14px] border border-border bg-[var(--surface-deep)] p-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="h-9 w-9 rounded-full bg-[#6f43b8]" />
+            <span className="h-9 w-9 rounded-full bg-[linear-gradient(135deg,var(--primary)_0%,color-mix(in_srgb,var(--primary)_42%,#7042b9)_100%)]" />
             <div className="min-w-0">
               <p className="truncate text-[13px] font-semibold text-foreground">zhengy</p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase text-primary">Pro</p>

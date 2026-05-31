@@ -1,9 +1,11 @@
 vi.mock("@/infrastructure/tauri/download-repository", () => ({
+  deleteDownloadTask: vi.fn(),
   downloadWallpaper: vi.fn(),
   listDownloads: vi.fn(),
 }))
 
 import {
+  deleteDownloadTask as deleteDownloadTaskInRepository,
   downloadWallpaper as downloadWallpaperInRepository,
   listDownloads as listDownloadsInRepository,
 } from "@/infrastructure/tauri/download-repository"
@@ -11,6 +13,7 @@ import {
 import {
   applyDownloadProgressEvent,
   applyDownloadStatusEvent,
+  deleteDownloadTask,
   downloadWallpaper,
   filterDownloads,
   listDownloads,
@@ -88,6 +91,14 @@ describe("downloads-service", () => {
       imageUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
       fileName: "wallhaven-kxpkmm.jpg",
     })
+  })
+
+  it("deletes tasks through the repository", async () => {
+    vi.mocked(deleteDownloadTaskInRepository).mockResolvedValue(undefined)
+
+    await expect(deleteDownloadTask("download-000001")).resolves.toBeUndefined()
+
+    expect(deleteDownloadTaskInRepository).toHaveBeenCalledWith("download-000001")
   })
 
   it("merges loaded snapshots without losing live progress and applies status and progress events", () => {

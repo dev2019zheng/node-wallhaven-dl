@@ -8,9 +8,19 @@ import { useUiShellStore } from "@/features/shell/ui-shell-store";
 
 import { SettingsPage } from "./SettingsPage";
 
+const { chooseDirectory, revealPath } = vi.hoisted(() => ({
+  chooseDirectory: vi.fn(),
+  revealPath: vi.fn(),
+}));
+
 vi.mock("@/application/settings/settings-service", () => ({
   loadSettings: vi.fn(),
   saveSettings: vi.fn(),
+}));
+
+vi.mock("@/infrastructure/tauri/native-shell", () => ({
+  chooseDirectory,
+  revealPath,
 }));
 
 const preferences = {
@@ -56,6 +66,8 @@ describe("SettingsPage", () => {
     useUiShellStore.setState({ toasts: [], confirm: null });
     vi.mocked(loadSettings).mockResolvedValue(defaultSnapshot);
     vi.mocked(saveSettings).mockResolvedValue(defaultSnapshot);
+    vi.mocked(chooseDirectory).mockResolvedValue(null);
+    vi.mocked(revealPath).mockResolvedValue(undefined);
   });
 
   it("renders the v3 settings sections and effective destination panel", async () => {
@@ -156,6 +168,29 @@ describe("SettingsPage", () => {
     expect(screen.getByText("/Users/test/Pictures/Curated")).toBeInTheDocument();
     expect(screen.getByText("Custom directory")).toBeInTheDocument();
     expect(screen.getByText("HTTP · 127.0.0.1:7897")).toBeInTheDocument();
+  });
+
+  it("uses the native directory picker to populate the download path field", async () => {
+    vi.mocked(chooseDirectory).mockResolvedValue("/Users/test/Pictures/Chosen");
+
+    render(<SettingsPage />);
+
+    const user = userEvent.setup();
+    await screen.findByLabelText(/^API Key$/i, { selector: "input" });
+    await user.click(screen.getByRole("button", { name: /^Choose$/i }));
+
+    expect(chooseDirectory).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven");
+    expect(screen.getByLabelText(/Download path/i)).toHaveValue("/Users/test/Pictures/Chosen");
+  });
+
+  it("reveals the effective destination through the native shell bridge", async () => {
+    render(<SettingsPage />);
+
+    const user = userEvent.setup();
+    await screen.findByLabelText(/^API Key$/i, { selector: "input" });
+    await user.click(screen.getByRole("button", { name: /^Reveal$/i }));
+
+    expect(revealPath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven");
   });
 
   it("validates masked API key input and reports success without exposing logs", async () => {

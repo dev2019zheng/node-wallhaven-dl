@@ -2,9 +2,8 @@ import { useUiShellStore } from "@/features/shell/ui-shell-store";
 
 const toastToneClassName = {
   error: "border-destructive/40 bg-destructive/10 text-destructive",
-  info: "border-sky-500/35 bg-sky-500/12 text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200",
-  success:
-    "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200",
+  info: "wh-soft-primary",
+  success: "wh-soft-success",
 } as const;
 
 export function ToastProvider() {

@@ -23,7 +23,7 @@ export function GallerySidebar({
       </div>
 
       <div className="space-y-1.5 rounded-2xl border border-border/85 bg-background/35 p-3">
-        <div className="flex items-center justify-between rounded-xl bg-primary/12 px-3 py-2 text-sm text-foreground shadow-[inset_0_0_0_1px_rgb(30_155_255_/_0.16)]">
+        <div className="wh-soft-primary flex items-center justify-between rounded-xl px-3 py-2 text-sm text-foreground">
           <span>全部壁纸</span>
           <span className="text-xs font-semibold text-primary">{visibleCount}</span>
         </div>

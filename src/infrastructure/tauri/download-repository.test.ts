@@ -4,12 +4,13 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import { invoke } from "@tauri-apps/api/core"
 
-import { downloadWallpaper, listDownloads } from "./download-repository"
+import { deleteDownloadTask, downloadWallpaper, listDownloads } from "./download-repository"
 
 const sampleTask = {
   id: "download-000001",
   wallpaperId: "kxpkmm",
   sourceUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
+  absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-kxpkmm.jpg",
   strategy: {
     baseDir: "appLocalData",
     relativePath: "wallpapers",
@@ -40,8 +41,10 @@ describe("download-repository", () => {
     ).resolves.toEqual({
       id: "download-000001",
       wallpaperId: "kxpkmm",
+      sourceUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
       fileName: "wallhaven-kxpkmm.jpg",
       relativeFilePath: "wallpapers/wallhaven-kxpkmm.jpg",
+      absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-kxpkmm.jpg",
       status: "succeeded",
     })
 
@@ -49,8 +52,10 @@ describe("download-repository", () => {
       {
         id: "download-000001",
         wallpaperId: "kxpkmm",
+        sourceUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
         fileName: "wallhaven-kxpkmm.jpg",
         relativeFilePath: "wallpapers/wallhaven-kxpkmm.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-kxpkmm.jpg",
         status: "succeeded",
       },
     ])
@@ -102,6 +107,18 @@ describe("download-repository", () => {
       kind: "conflict",
       message:
         "relative file path wallpapers/shared.jpg is already reserved by wallpaper wh-running; cannot assign it to wh-conflict",
+    })
+  })
+
+  it("invokes delete_download_task with a structured Tauri request payload", async () => {
+    vi.mocked(invoke).mockResolvedValue(undefined)
+
+    await expect(deleteDownloadTask("download-000001")).resolves.toBeUndefined()
+
+    expect(invoke).toHaveBeenCalledWith("delete_download_task", {
+      request: {
+        taskId: "download-000001",
+      },
     })
   })
 })

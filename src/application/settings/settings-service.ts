@@ -2,21 +2,26 @@ import {
   loadDownloadDirectorySettings,
   loadNetworkProxySettings,
   loadStoredWallhavenKey,
-  loadUserPreferences,
+  loadUserPreferences as loadUserPreferencesFromRepository,
   saveDownloadDirectorySettings,
   saveNetworkProxySettings,
   saveStoredWallhavenKey,
   saveUserPreferences,
 } from "@/infrastructure/tauri/settings-repository";
 
-import type { SaveSettingsInput, SettingsSnapshot } from "./settings.types";
+import type {
+  DownloadDirectorySettings,
+  SaveSettingsInput,
+  SettingsPreferences,
+  SettingsSnapshot,
+} from "./settings.types";
 
 export async function loadSettings(): Promise<SettingsSnapshot> {
   const [wallhavenKey, downloadDirectory, networkProxy, preferences] = await Promise.all([
     loadStoredWallhavenKey(),
     loadDownloadDirectorySettings(),
     loadNetworkProxySettings(),
-    loadUserPreferences(),
+    loadUserPreferencesFromRepository(),
   ]);
 
   return {
@@ -49,4 +54,12 @@ export async function saveSettings(input: SaveSettingsInput): Promise<SettingsSn
     networkProxy: savedNetworkProxy,
     preferences,
   };
+}
+
+export async function loadSettingsPreferences(): Promise<SettingsPreferences> {
+  return loadUserPreferencesFromRepository()
+}
+
+export async function loadDownloadDirectory(): Promise<DownloadDirectorySettings> {
+  return loadDownloadDirectorySettings()
 }

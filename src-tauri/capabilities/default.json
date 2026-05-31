@@ -7,6 +7,9 @@
   ],
   "permissions": [
     "core:default",
+    "dialog:allow-open",
+    "opener:allow-open-path",
+    "opener:allow-reveal-item-in-dir",
     "store:allow-load",
     "store:allow-get",
     "store:allow-set",

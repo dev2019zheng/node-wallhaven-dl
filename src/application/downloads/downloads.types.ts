@@ -8,10 +8,14 @@ export type DownloadTaskStatus =
 export type DownloadRecord = {
   id: string
   wallpaperId: string
+  sourceUrl?: string
   fileName: string
   relativeFilePath: string
+  absolutePath?: string
   status: DownloadTaskStatus
   failureReason?: string
+  purity?: "sfw" | "sketchy" | "nsfw"
+  category?: "general" | "anime" | "people"
 }
 
 export type DownloadListItem = DownloadRecord & {

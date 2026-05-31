@@ -26,14 +26,18 @@ pub fn run() {
             app.manage(download_manager_state);
             Ok(())
         })
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             get_default_download_strategy,
             commands::downloads::download_wallpaper,
             commands::downloads::list_downloads,
+            commands::downloads::delete_download_task,
             commands::gallery::list_gallery_items,
             commands::gallery::set_gallery_favorite,
             commands::gallery::update_gallery_tags,
+            commands::gallery::delete_gallery_item,
             commands::media::load_remote_image,
             commands::search::search_wallpapers,
             commands::settings::get_download_directory_settings,

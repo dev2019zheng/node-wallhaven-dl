@@ -11,8 +11,8 @@ use uuid::Uuid;
 
 use crate::db::archive_repository::ArchiveRepository;
 use crate::models::download::{
-    ArchiveRecord, ArchiveRecordError, DownloadRequest, DownloadRequestError, DownloadStrategy,
-    DownloadTarget, DownloadTask, DownloadTaskError,
+    ArchiveRecord, ArchiveRecordError, DownloadRequest, DownloadRequestError, DownloadStatus,
+    DownloadStrategy, DownloadTarget, DownloadTask, DownloadTaskError,
 };
 use crate::services::archive_service::ArchiveStoreError;
 use crate::services::download_events::{
@@ -188,6 +188,10 @@ impl DownloadManagerState {
 
     pub fn list_downloads(&self) -> DownloadManagerResult<Vec<DownloadTask>> {
         Ok(self.lock()?.tasks_by_id.values().cloned().collect())
+    }
+
+    pub fn remove_task(&self, task_id: &str) -> DownloadManagerResult<DownloadTask> {
+        self.lock()?.remove_task(task_id)
     }
 
     pub async fn find_archive_record(
@@ -372,6 +376,31 @@ impl DownloadStore {
             .ok_or_else(|| DownloadManagerError::MissingTask(task_id.to_string()))?;
         task.mark_failed(reason)?;
         Ok(task.clone())
+    }
+
+    fn remove_task(&mut self, task_id: &str) -> DownloadManagerResult<DownloadTask> {
+        let existing_task = self
+            .tasks_by_id
+            .get(task_id)
+            .cloned()
+            .ok_or_else(|| DownloadManagerError::MissingTask(task_id.to_string()))?;
+
+        if matches!(
+            existing_task.status,
+            DownloadStatus::Queued | DownloadStatus::Running
+        ) {
+            return Err(DownloadManagerError::TaskState(format!(
+                "download task {task_id} is still active and cannot be deleted"
+            )));
+        }
+
+        let task = self
+            .tasks_by_id
+            .remove(task_id)
+            .ok_or_else(|| DownloadManagerError::MissingTask(task_id.to_string()))?;
+        let target_key = download_target_key(&task);
+        self.release_reserved_download_target(task_id, &target_key);
+        Ok(task)
     }
 }
 

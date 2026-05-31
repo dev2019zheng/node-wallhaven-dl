@@ -12,7 +12,7 @@ export function PageHeading({ eyebrow, title, description, badge }: PageHeadingP
       <h2 className="text-[28px] font-semibold leading-[34px] tracking-normal text-foreground">{title}</h2>
       <p className="text-[14px] font-medium text-muted-foreground">{description}</p>
       {badge ? (
-        <div className="ml-auto inline-flex h-8 min-w-[176px] items-center justify-center gap-2 rounded-full border border-emerald-500/35 bg-emerald-500/16 px-4 text-[12px] font-semibold text-emerald-200">
+        <div className="wh-soft-success ml-auto inline-flex h-8 min-w-[176px] items-center justify-center gap-2 rounded-full px-4 text-[12px] font-semibold">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
           {badge}
         </div>

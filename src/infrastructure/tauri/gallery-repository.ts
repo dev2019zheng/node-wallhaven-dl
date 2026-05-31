@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core"
 
 import type {
+  DeleteGalleryItemInput,
+  DeleteGalleryItemResult,
   GalleryCommandError,
   GalleryItem,
   GalleryListRequest,
@@ -39,6 +41,18 @@ export async function updateGalleryTags(
 ): Promise<GalleryItem> {
   try {
     return await invoke<GalleryItem>("update_gallery_tags", {
+      request,
+    })
+  } catch (error) {
+    throw toGalleryCommandError(error) as GalleryCommandError
+  }
+}
+
+export async function deleteGalleryItem(
+  request: DeleteGalleryItemInput,
+): Promise<DeleteGalleryItemResult> {
+  try {
+    return await invoke<DeleteGalleryItemResult>("delete_gallery_item", {
       request,
     })
   } catch (error) {

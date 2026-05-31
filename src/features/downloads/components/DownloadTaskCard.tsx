@@ -1,4 +1,5 @@
-import { Check, Copy, ExternalLink, Pause, RefreshCw, RotateCcw, Trash2, XCircle } from "lucide-react";
+import type { ReactNode } from "react";
+import { Copy, ExternalLink, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 
 import type {
   DownloadListItem,
@@ -7,6 +8,10 @@ import type {
 
 type DownloadTaskCardProps = {
   download: DownloadListItem;
+  onCopyPath: (download: DownloadListItem) => void;
+  onDelete: (download: DownloadListItem) => void;
+  onPrimaryAction: (download: DownloadListItem) => void;
+  pendingAction: "copy" | "delete" | "primary" | null;
 };
 
 const statusTextClasses: Record<DownloadTaskStatus, string> = {
@@ -115,29 +120,51 @@ function getProgressBarClass(status: DownloadTaskStatus): string {
   }
 }
 
-function getActionIcon(status: DownloadTaskStatus) {
-  switch (status) {
+function getPrimaryActionMeta(download: DownloadListItem): {
+  icon: ReactNode;
+  label: string;
+} {
+  switch (download.status) {
     case "queued":
-      return <RefreshCw className="h-4 w-4" />;
     case "running":
-      return <Pause className="h-4 w-4" />;
+      return {
+        icon: <FolderOpen className="h-4 w-4" />,
+        label: `Open folder for task ${download.id}`,
+      };
     case "succeeded":
     case "skipped_existing":
-      return <ExternalLink className="h-4 w-4" />;
+      return {
+        icon: <ExternalLink className="h-4 w-4" />,
+        label: `Open file for task ${download.id}`,
+      };
     case "failed":
-      return <RotateCcw className="h-4 w-4" />;
+      return {
+        icon: <RotateCcw className="h-4 w-4" />,
+        label: `Retry task ${download.id}`,
+      };
   }
 }
 
-export function DownloadTaskCard({ download }: DownloadTaskCardProps) {
+export function DownloadTaskCard({
+  download,
+  onCopyPath,
+  onDelete,
+  onPrimaryAction,
+  pendingAction,
+}: DownloadTaskCardProps) {
   const progressLabel = getProgressLabel(download);
   const progressPercent = getProgressPercent(download) ?? 0;
+  const primaryAction = getPrimaryActionMeta(download);
+  const isDeleteDisabled =
+    pendingAction === "delete" ||
+    download.status === "queued" ||
+    download.status === "running";
 
   return (
     <article className="group h-[94px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3 transition duration-200 hover:border-border-strong">
       <div className="grid h-full grid-cols-[74px_minmax(0,1fr)_118px_34px] items-center gap-4">
         <div className="h-[54px] w-[74px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)]">
-          <div className="h-full w-full bg-[linear-gradient(150deg,#253956_0%,#1b2b43_46%,#0b1726_47%,#0b1726_100%)]" />
+          <div className="h-full w-full" style={{ background: "var(--thumbnail-gradient)" }} />
         </div>
 
         <div className="min-w-0 space-y-3">
@@ -167,17 +194,19 @@ export function DownloadTaskCard({ download }: DownloadTaskCardProps) {
 
         <div className="flex items-center justify-end gap-2 opacity-100 transition group-hover:opacity-100">
           <button
-            aria-label={`Primary action for task ${download.id}`}
+            aria-label={primaryAction.label}
             className="wh-icon-button h-8 w-8"
-            disabled
+            disabled={pendingAction === "primary"}
+            onClick={() => onPrimaryAction(download)}
             type="button"
           >
-            {download.status === "succeeded" || download.status === "skipped_existing" ? <Check className="h-4 w-4 text-emerald-400" /> : getActionIcon(download.status)}
+            {primaryAction.icon}
           </button>
           <button
             aria-label={`Copy path for task ${download.id}`}
             className="wh-icon-button h-8 w-8"
-            disabled
+            disabled={pendingAction === "copy"}
+            onClick={() => onCopyPath(download)}
             type="button"
           >
             <Copy className="h-4 w-4" />
@@ -185,10 +214,11 @@ export function DownloadTaskCard({ download }: DownloadTaskCardProps) {
           <button
             aria-label={`Delete task ${download.id}`}
             className="wh-icon-button h-8 w-8"
-            disabled
+            disabled={isDeleteDisabled}
+            onClick={() => onDelete(download)}
             type="button"
           >
-            {download.status === "running" ? <XCircle className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
 

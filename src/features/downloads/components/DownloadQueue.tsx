@@ -9,6 +9,10 @@ type DownloadQueueProps = {
   downloads: DownloadListItem[]
   filter: DownloadQueueFilter
   isLoading: boolean
+  onCopyPath: (download: DownloadListItem) => void
+  onDelete: (download: DownloadListItem) => void
+  onPrimaryAction: (download: DownloadListItem) => void
+  pendingActionByTaskId: Record<string, "copy" | "delete" | "primary" | null>
 }
 
 function getEmptyStateCopy(filter: DownloadQueueFilter): string {
@@ -26,7 +30,15 @@ function getEmptyStateCopy(filter: DownloadQueueFilter): string {
   }
 }
 
-export function DownloadQueue({ downloads, filter, isLoading }: DownloadQueueProps) {
+export function DownloadQueue({
+  downloads,
+  filter,
+  isLoading,
+  onCopyPath,
+  onDelete,
+  onPrimaryAction,
+  pendingActionByTaskId,
+}: DownloadQueueProps) {
   if (isLoading && downloads.length === 0) {
     return <LoadingSkeleton label="Loading existing downloads..." />
   }
@@ -38,7 +50,14 @@ export function DownloadQueue({ downloads, filter, isLoading }: DownloadQueuePro
   return (
     <div className="max-h-[548px] space-y-[18px] overflow-y-auto pr-1">
       {downloads.map((download) => (
-        <DownloadTaskCard download={download} key={download.id} />
+        <DownloadTaskCard
+          download={download}
+          key={download.id}
+          onCopyPath={onCopyPath}
+          onDelete={onDelete}
+          onPrimaryAction={onPrimaryAction}
+          pendingAction={pendingActionByTaskId[download.id] ?? null}
+        />
       ))}
     </div>
   )

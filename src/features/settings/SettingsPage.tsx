@@ -26,6 +26,7 @@ import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import { chooseDirectory, revealPath } from "@/infrastructure/tauri/native-shell";
 import { cn } from "@/lib/utils";
 
 const settingsSchema = z.object({
@@ -115,7 +116,7 @@ function Toggle({
         aria-label={label}
         className={cn(
           "relative h-[22px] w-10 shrink-0 rounded-full transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
-          checked ? "bg-[#123252]" : "bg-[#223044]",
+          checked ? "bg-[var(--switch-track-on)]" : "bg-[var(--switch-track-off)]",
         )}
         onClick={() => onChange(!checked)}
         role="switch"
@@ -157,6 +158,8 @@ export function SettingsPage() {
   const [proxyStatus, setProxyStatus] = useState<SaveFeedback | null>(null);
   const [isTestingProxy, setIsTestingProxy] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isChoosingDirectory, setIsChoosingDirectory] = useState(false);
+  const [isRevealingDirectory, setIsRevealingDirectory] = useState(false);
   const enqueueToast = useUiShellStore((state) => state.enqueueToast);
   const setConfirm = useUiShellStore((state) => state.setConfirm);
 
@@ -237,6 +240,60 @@ export function SettingsPage() {
     setSaveFeedback(null);
     setApiKeyStatus(null);
     setProxyStatus(null);
+  };
+
+  const handleChooseDirectory = async () => {
+    setIsChoosingDirectory(true);
+
+    try {
+      const selectedPath = await chooseDirectory(
+        trimmedDirectory || effectiveDestination?.effectiveDirectoryPath || downloadDirectory?.effectiveDirectoryPath,
+      );
+
+      if (!selectedPath) {
+        return;
+      }
+
+      setValue("customDownloadDirectoryPath", selectedPath, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      clearInlineFeedback();
+    } catch (error) {
+      const message = getErrorMessage(error, "Unable to open the native directory picker.");
+      setSaveFeedback({ tone: "error", message });
+      enqueueToast({
+        id: `settings-directory-picker-${Date.now()}`,
+        title: "Directory picker failed",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      setIsChoosingDirectory(false);
+    }
+  };
+
+  const handleRevealDirectory = async () => {
+    if (!effectiveDestination || effectiveDestination.hasWarning) {
+      return;
+    }
+
+    setIsRevealingDirectory(true);
+
+    try {
+      await revealPath(effectiveDestination.effectiveDirectoryPath);
+    } catch (error) {
+      const message = getErrorMessage(error, "Unable to reveal the download directory.");
+      setSaveFeedback({ tone: "error", message });
+      enqueueToast({
+        id: `settings-reveal-directory-${Date.now()}`,
+        title: "Reveal failed",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      setIsRevealingDirectory(false);
+    }
   };
 
   const showSettingsInfo = (message: string) => {
@@ -453,13 +510,13 @@ export function SettingsPage() {
               />
               <Button
                 className="h-[42px] rounded-[14px]"
-                disabled={isLoading}
-                onClick={() => showSettingsInfo("Paste an absolute folder path; native directory picker is not bundled in this build.")}
+                disabled={isLoading || isChoosingDirectory}
+                onClick={handleChooseDirectory}
                 type="button"
                 variant="outline"
               >
                 <FolderOpen className="h-4 w-4" />
-                Choose
+                {isChoosingDirectory ? "Choosing" : "Choose"}
               </Button>
             </div>
             {directoryError ? (
@@ -502,7 +559,7 @@ export function SettingsPage() {
                     aria-pressed={values.networkProxyScheme === option.value}
                     className={cn(
                       "text-[13px] font-semibold transition",
-                      values.networkProxyScheme === option.value ? "bg-[#123252] text-foreground" : "text-muted-foreground hover:text-foreground",
+                      values.networkProxyScheme === option.value ? "wh-selected-surface text-foreground" : "text-muted-foreground hover:text-foreground",
                     )}
                     key={option.value}
                     onClick={() => {
@@ -604,14 +661,14 @@ export function SettingsPage() {
 
           {effectiveDestination ? (
             <div className="space-y-6">
-              <div className={cn("rounded-[18px] border p-5", effectiveDestination.hasWarning ? "border-amber-400/45 bg-amber-400/10" : "border-primary/35 bg-primary/12")}>
+              <div className={cn("rounded-[18px] p-5", effectiveDestination.hasWarning ? "wh-soft-warning" : "wh-soft-primary")}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Next downloads</p>
                     <h3 className="mt-2 text-[20px] font-semibold leading-7 text-foreground">Effective Destination</h3>
                   </div>
                   {formState.isDirty ? (
-                    <span className="rounded-full border border-amber-400/35 bg-amber-400/12 px-3 py-1 text-[12px] font-semibold text-amber-200">
+                    <span className="wh-soft-warning rounded-full px-3 py-1 text-[12px] font-semibold">
                       Unsaved changes
                     </span>
                   ) : null}
@@ -650,12 +707,13 @@ export function SettingsPage() {
                 </Button>
                 <Button
                   className="h-10 rounded-[14px]"
-                  onClick={() => showSettingsInfo("Reveal is available from the native shell integration in packaged builds.")}
+                  disabled={!effectiveDestination || effectiveDestination.hasWarning || isRevealingDirectory}
+                  onClick={handleRevealDirectory}
                   type="button"
                   variant="ghost"
                 >
                   <FolderOpen className="h-4 w-4" />
-                  Reveal
+                  {isRevealingDirectory ? "Revealing" : "Reveal"}
                 </Button>
               </div>
             </div>

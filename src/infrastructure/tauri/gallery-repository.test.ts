@@ -9,7 +9,12 @@ import {
   type GalleryListResponse,
 } from "@/application/gallery/gallery.types"
 
-import { listGalleryItems, setGalleryFavorite, updateGalleryTags } from "./gallery-repository"
+import {
+  deleteGalleryItem,
+  listGalleryItems,
+  setGalleryFavorite,
+  updateGalleryTags,
+} from "./gallery-repository"
 
 const sampleResponse: GalleryListResponse = {
   items: [
@@ -93,6 +98,24 @@ describe("gallery-repository", () => {
       request: {
         wallpaperId: "kxpkmm",
         tags: ["OLED", "Landscape"],
+      },
+    })
+  })
+
+  it("invokes delete_gallery_item with a structured Tauri request payload", async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      wallpaperId: "kxpkmm",
+    })
+
+    await expect(
+      deleteGalleryItem({ wallpaperId: "kxpkmm" }),
+    ).resolves.toEqual({
+      wallpaperId: "kxpkmm",
+    })
+
+    expect(invoke).toHaveBeenCalledWith("delete_gallery_item", {
+      request: {
+        wallpaperId: "kxpkmm",
       },
     })
   })

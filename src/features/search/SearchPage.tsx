@@ -722,7 +722,7 @@ export function SearchPage() {
                 className={
                   downloadFeedback.tone === "error"
                     ? "rounded-[14px] border border-destructive/40 bg-destructive/10 px-4 py-3 text-[13px] text-destructive"
-                    : "rounded-[14px] border border-emerald-500/35 bg-emerald-500/12 px-4 py-3 text-[13px] font-medium text-emerald-200"
+                    : "wh-soft-success rounded-[14px] px-4 py-3 text-[13px] font-medium"
                 }
                 role={downloadFeedback.tone === "error" ? "alert" : "status"}
               >

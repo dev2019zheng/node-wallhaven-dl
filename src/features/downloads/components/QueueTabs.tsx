@@ -53,7 +53,7 @@ export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
             className={cn(
               "inline-flex h-9 items-center justify-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition-colors",
               isActive
-                ? "border-[#1e5a91] bg-[#123252] text-foreground"
+                ? "wh-selected-surface text-foreground"
                 : "border-border bg-[var(--surface-deep)] text-muted-foreground hover:border-border-strong hover:text-foreground",
             )}
             key={tab.filter}

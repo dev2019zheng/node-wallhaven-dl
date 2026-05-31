@@ -18,13 +18,13 @@ export function FeaturePlaceholder({
   return (
     <section className="space-y-6">
       <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-300">{eyebrow}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">{eyebrow}</p>
         <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <h2 className="text-3xl font-semibold tracking-tight text-foreground">{title}</h2>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+          <div className="wh-soft-success inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
             {status}
           </div>

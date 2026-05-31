@@ -1,5 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 
+import { ThemeAccentProvider } from "./components/theme-accent-provider";
+import { ThemeProvider } from "./components/theme-provider";
 import App from "./App";
 
 describe("App routing", () => {
@@ -9,7 +11,13 @@ describe("App routing", () => {
   });
 
   it("boots into the search page through the new desktop shell", async () => {
-    render(<App />);
+    render(
+      <ThemeProvider>
+        <ThemeAccentProvider>
+          <App />
+        </ThemeAccentProvider>
+      </ThemeProvider>,
+    );
 
     await waitFor(() => {
       expect(window.location.pathname).toBe("/");
@@ -24,6 +32,6 @@ describe("App routing", () => {
     expect(searchLink).toHaveAttribute("aria-current", "page");
     expect(await screen.findByRole("heading", { name: "Search" })).toBeInTheDocument();
     expect(screen.getByText("Enterprise v3.0")).toBeInTheDocument();
-    expect(screen.getByText("API synced")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
   });
 });

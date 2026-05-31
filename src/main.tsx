@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import { ConfirmDialog } from "./components/confirm-dialog";
+import { ThemeAccentProvider } from "./components/theme-accent-provider";
 import { ThemeProvider } from "./components/theme-provider";
 import { ToastProvider } from "./components/toast-provider";
 import "./styles/index.css";
@@ -16,9 +17,11 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
-      <ToastProvider />
-      <ConfirmDialog />
+      <ThemeAccentProvider>
+        <App />
+        <ToastProvider />
+        <ConfirmDialog />
+      </ThemeAccentProvider>
     </ThemeProvider>
   </StrictMode>,
 );

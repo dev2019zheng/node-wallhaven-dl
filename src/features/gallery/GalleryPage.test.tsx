@@ -1,12 +1,18 @@
 const {
+  deleteGalleryItem,
   downloadWallpaper,
   loadInitialGalleryItems,
+  loadSettingsPreferences,
+  revealPath,
   setGalleryFavorite,
   updateGalleryTags,
   convertFileSrc,
 } = vi.hoisted(() => ({
+  deleteGalleryItem: vi.fn(),
   downloadWallpaper: vi.fn(),
   loadInitialGalleryItems: vi.fn(),
+  loadSettingsPreferences: vi.fn(),
+  revealPath: vi.fn(),
   setGalleryFavorite: vi.fn(),
   updateGalleryTags: vi.fn(),
   convertFileSrc: vi.fn((path: string) => `asset://${path}`),
@@ -17,9 +23,18 @@ vi.mock("@/application/downloads/downloads-service", () => ({
 }))
 
 vi.mock("@/application/gallery/gallery-service", () => ({
+  deleteGalleryItem,
   loadInitialGalleryItems,
   setGalleryFavorite,
   updateGalleryTags,
+}))
+
+vi.mock("@/application/settings/settings-service", () => ({
+  loadSettingsPreferences,
+}))
+
+vi.mock("@/infrastructure/tauri/native-shell", () => ({
+  revealPath,
 }))
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -90,6 +105,13 @@ describe("GalleryPage", () => {
         writeText: clipboardWriteText.mockResolvedValue(undefined),
       },
     })
+    vi.mocked(loadSettingsPreferences).mockResolvedValue({
+      launchAtLogin: false,
+      confirmBeforeDelete: false,
+      telemetryEnabled: false,
+      cacheSizeBytes: 38_400_000,
+    })
+    vi.mocked(revealPath).mockResolvedValue(undefined)
     useUiShellStore.setState({ galleryView: "grid", toasts: [] })
   })
 
@@ -284,5 +306,34 @@ describe("GalleryPage", () => {
     await waitFor(() => {
       expect(useUiShellStore.getState().toasts[0]?.title).toBe("Path copied")
     })
+  })
+
+  it("reveals the selected local file in the native shell", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole("button", { name: /^Reveal$/i }))
+
+    expect(revealPath).toHaveBeenCalledWith(
+      "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/wallhaven-kxpkmm.jpg",
+    )
+  })
+
+  it("deletes the selected local wallpaper and removes it from the grid", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+    vi.mocked(deleteGalleryItem).mockResolvedValue({ wallpaperId: "kxpkmm" })
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole("button", { name: /^Delete$/i }))
+
+    expect(deleteGalleryItem).toHaveBeenCalledWith({ wallpaperId: "kxpkmm" })
+    await waitFor(() => {
+      expect(useUiShellStore.getState().toasts[0]?.title).toBe("Wallpaper deleted")
+    })
+    expect(screen.queryAllByText("wallhaven-kxpkmm.jpg")).toHaveLength(0)
   })
 })

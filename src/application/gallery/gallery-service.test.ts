@@ -1,10 +1,12 @@
-const { listGalleryItems, setGalleryFavorite, updateGalleryTags } = vi.hoisted(() => ({
+const { deleteGalleryItem, listGalleryItems, setGalleryFavorite, updateGalleryTags } = vi.hoisted(() => ({
+  deleteGalleryItem: vi.fn(),
   listGalleryItems: vi.fn(),
   setGalleryFavorite: vi.fn(),
   updateGalleryTags: vi.fn(),
 }))
 
 vi.mock("@/infrastructure/tauri/gallery-repository", () => ({
+  deleteGalleryItem,
   listGalleryItems,
   setGalleryFavorite,
   updateGalleryTags,
@@ -12,6 +14,7 @@ vi.mock("@/infrastructure/tauri/gallery-repository", () => ({
 
 import {
   DEFAULT_GALLERY_PAGE_SIZE,
+  deleteGalleryItem as deleteGalleryItemInService,
   loadInitialGalleryItems,
   setGalleryFavorite as setGalleryFavoriteInService,
   updateGalleryTags as updateGalleryTagsInService,
@@ -86,6 +89,22 @@ describe("gallery-service", () => {
     expect(updateGalleryTags).toHaveBeenCalledWith({
       wallpaperId: "wh-1",
       tags: ["OLED"],
+    })
+  })
+
+  it("deletes gallery items through the repository", async () => {
+    vi.mocked(deleteGalleryItem).mockResolvedValue({
+      wallpaperId: "wh-1",
+    })
+
+    await expect(
+      deleteGalleryItemInService({ wallpaperId: "wh-1" }),
+    ).resolves.toEqual({
+      wallpaperId: "wh-1",
+    })
+
+    expect(deleteGalleryItem).toHaveBeenCalledWith({
+      wallpaperId: "wh-1",
     })
   })
 })

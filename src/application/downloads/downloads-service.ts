@@ -3,6 +3,7 @@ import type {
   DownloadTaskStatusEventPayload,
 } from "@/infrastructure/tauri/download-events"
 import {
+  deleteDownloadTask as deleteDownloadTaskInRepository,
   downloadWallpaper as downloadWallpaperInRepository,
   listDownloads as listDownloadsInRepository,
 } from "@/infrastructure/tauri/download-repository"
@@ -65,19 +66,29 @@ function toDownloadListItem(
   const status = mergeStatus(existing, record.status)
   const failureReason =
     status === existing?.status ? existing.failureReason : record.failureReason
+  const sourceUrl = record.sourceUrl ?? existing?.sourceUrl
+  const absolutePath = record.absolutePath ?? existing?.absolutePath
+  const purity = record.purity ?? existing?.purity
+  const category = record.category ?? existing?.category
+  const totalBytes =
+    existing?.totalBytes ?? ("totalBytes" in record ? record.totalBytes : undefined)
+  const downloadedBytes =
+    existing?.downloadedBytes ??
+    ("downloadedBytes" in record ? record.downloadedBytes : 0)
 
   return {
     id: record.id,
     wallpaperId: record.wallpaperId,
+    ...(sourceUrl ? { sourceUrl } : {}),
     fileName: record.fileName,
     relativeFilePath: record.relativeFilePath,
+    ...(absolutePath ? { absolutePath } : {}),
     status,
-    failureReason,
-    downloadedBytes:
-      existing?.downloadedBytes ??
-      ("downloadedBytes" in record ? record.downloadedBytes : 0),
-    totalBytes:
-      existing?.totalBytes ?? ("totalBytes" in record ? record.totalBytes : undefined),
+    ...(failureReason !== undefined ? { failureReason } : {}),
+    ...(purity ? { purity } : {}),
+    ...(category ? { category } : {}),
+    downloadedBytes,
+    ...(totalBytes !== undefined ? { totalBytes } : {}),
   }
 }
 
@@ -106,6 +117,10 @@ export async function downloadWallpaper(
 ): Promise<DownloadListItem> {
   const download = await downloadWallpaperInRepository(input)
   return toDownloadListItem(download)
+}
+
+export async function deleteDownloadTask(taskId: string): Promise<void> {
+  await deleteDownloadTaskInRepository(taskId)
 }
 
 export function summarizeDownloads(downloads: DownloadListItem[]): DownloadsSummary {
@@ -200,13 +215,17 @@ export function applyDownloadStatusEvent(
   return upsertDownload(currentDownloads, {
     id: event.taskId,
     wallpaperId: event.wallpaperId,
+    ...(currentDownload?.sourceUrl ? { sourceUrl: currentDownload.sourceUrl } : {}),
     fileName: event.fileName,
     relativeFilePath:
       event.relativeFilePath || currentDownload?.relativeFilePath || "",
+    ...(currentDownload?.absolutePath ? { absolutePath: currentDownload.absolutePath } : {}),
     status: event.status,
-    failureReason: event.failureReason,
+    ...(event.failureReason !== undefined ? { failureReason: event.failureReason } : {}),
+    ...(currentDownload?.purity ? { purity: currentDownload.purity } : {}),
+    ...(currentDownload?.category ? { category: currentDownload.category } : {}),
     downloadedBytes: currentDownload?.downloadedBytes ?? 0,
-    totalBytes: currentDownload?.totalBytes,
+    ...(currentDownload?.totalBytes !== undefined ? { totalBytes: currentDownload.totalBytes } : {}),
   })
 }
 
@@ -221,11 +240,17 @@ export function applyDownloadProgressEvent(
   return upsertDownload(currentDownloads, {
     id: event.taskId,
     wallpaperId: event.wallpaperId,
+    ...(currentDownload?.sourceUrl ? { sourceUrl: currentDownload.sourceUrl } : {}),
     fileName: event.fileName,
+    ...(currentDownload?.absolutePath ? { absolutePath: currentDownload.absolutePath } : {}),
     relativeFilePath: currentDownload?.relativeFilePath ?? "",
     status: currentDownload?.status ?? "running",
-    failureReason: currentDownload?.failureReason,
+    ...(currentDownload?.failureReason !== undefined ? { failureReason: currentDownload.failureReason } : {}),
+    ...(currentDownload?.purity ? { purity: currentDownload.purity } : {}),
+    ...(currentDownload?.category ? { category: currentDownload.category } : {}),
     downloadedBytes: event.downloadedBytes,
-    totalBytes: event.totalBytes ?? currentDownload?.totalBytes,
+    ...((event.totalBytes ?? currentDownload?.totalBytes) !== undefined
+      ? { totalBytes: event.totalBytes ?? currentDownload?.totalBytes }
+      : {}),
   })
 }

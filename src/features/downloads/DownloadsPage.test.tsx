@@ -1,15 +1,26 @@
 const {
+  deleteDownloadTask,
+  downloadWallpaper,
   listDownloads,
+  loadDownloadDirectory,
+  loadSettingsPreferences,
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
+  openNativePath,
 } = vi.hoisted(() => ({
+  deleteDownloadTask: vi.fn(),
+  downloadWallpaper: vi.fn(),
   listDownloads: vi.fn(),
+  loadDownloadDirectory: vi.fn(),
+  loadSettingsPreferences: vi.fn(),
   listenForDownloadProgressEvents: vi.fn(),
   listenForDownloadStatusEvents: vi.fn(),
+  openNativePath: vi.fn(),
 }))
 
 vi.mock("@/infrastructure/tauri/download-repository", () => ({
-  downloadWallpaper: vi.fn(),
+  deleteDownloadTask,
+  downloadWallpaper,
   listDownloads,
 }))
 
@@ -18,12 +29,24 @@ vi.mock("@/infrastructure/tauri/download-events", () => ({
   listenForDownloadStatusEvents,
 }))
 
-import { act, render, screen, waitFor } from "@testing-library/react"
+vi.mock("@/application/settings/settings-service", () => ({
+  loadDownloadDirectory,
+  loadSettingsPreferences,
+}))
+
+vi.mock("@/infrastructure/tauri/native-shell", () => ({
+  openNativePath,
+}))
+
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
 
 import { DownloadsPage } from "./DownloadsPage"
+
+const clipboardWriteText = vi.fn()
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -66,13 +89,42 @@ describe("DownloadsPage", () => {
     statusHandler = undefined
     progressHandler = undefined
     vi.resetAllMocks()
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: clipboardWriteText.mockResolvedValue(undefined),
+      },
+    })
     useUiShellStore.setState({
       downloadSummary: {
         activeCount: 0,
         completedCount: 0,
         failedCount: 0,
       },
+      confirm: null,
+      toasts: [],
     })
+    vi.mocked(loadSettingsPreferences).mockResolvedValue({
+      launchAtLogin: false,
+      confirmBeforeDelete: true,
+      telemetryEnabled: false,
+      cacheSizeBytes: 38_400_000,
+    })
+    vi.mocked(loadDownloadDirectory).mockResolvedValue({
+      customDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      defaultDirectoryPath: "/Users/test/Pictures/Wallhaven",
+      isUsingDefaultDirectory: false,
+    })
+    vi.mocked(openNativePath).mockResolvedValue(undefined)
+    vi.mocked(downloadWallpaper).mockResolvedValue({
+      id: "download-retry",
+      wallpaperId: "retry123",
+      fileName: "retry.jpg",
+      relativeFilePath: "wallpapers/retry.jpg",
+      status: "queued",
+    })
+    vi.mocked(deleteDownloadTask).mockResolvedValue(undefined)
 
     vi.mocked(listenForDownloadStatusEvents).mockImplementation(async (handler) => {
       statusHandler = handler as typeof statusHandler
@@ -325,6 +377,112 @@ describe("DownloadsPage", () => {
     render(<DownloadsPage />)
 
     expect(await screen.findByText(/No downloads yet/i)).toBeInTheDocument()
+  })
+
+  it("opens the effective download directory from the command center", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([])
+
+    render(<DownloadsPage />)
+
+    const user = userEvent.setup()
+    await screen.findByText(/No downloads yet/i)
+    await user.click(screen.getByRole("button", { name: /Open folder/i }))
+
+    expect(loadDownloadDirectory).toHaveBeenCalledTimes(1)
+    expect(openNativePath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven")
+  })
+
+  it("opens completed files through the native shell", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-open",
+        wallpaperId: "open123",
+        sourceUrl: "https://w.wallhaven.cc/full/open123.jpg",
+        fileName: "wallhaven-open123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-open123.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-open123.jpg",
+        status: "succeeded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    const user = userEvent.setup()
+    await screen.findByText("wallhaven-open123.jpg")
+    await user.click(screen.getByRole("button", { name: /Open file for task download-open/i }))
+
+    expect(openNativePath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-open123.jpg")
+  })
+
+  it("copies completed download paths to the clipboard", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-copy",
+        wallpaperId: "copy123",
+        sourceUrl: "https://w.wallhaven.cc/full/copy123.jpg",
+        fileName: "wallhaven-copy123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-copy123.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-copy123.jpg",
+        status: "succeeded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    const user = userEvent.setup()
+    await screen.findByText("wallhaven-copy123.jpg")
+    await user.click(screen.getByRole("button", { name: /Copy path for task download-copy/i }))
+
+    await waitFor(() => {
+      expect(useUiShellStore.getState().toasts[0]?.title).toBe("Path copied")
+    })
+  })
+
+  it("retries failed downloads and deletes terminal tasks through the confirmation dialog", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-failed-action",
+        wallpaperId: "fail123",
+        sourceUrl: "https://w.wallhaven.cc/full/fail123.jpg",
+        fileName: "wallhaven-fail123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-fail123.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-fail123.jpg",
+        status: "failed",
+        failureReason: "Connection reset",
+        purity: "sfw",
+        category: "general",
+      },
+    ])
+
+    render(
+      <>
+        <DownloadsPage />
+        <ConfirmDialog />
+      </>,
+    )
+
+    const user = userEvent.setup()
+    await screen.findByText("wallhaven-fail123.jpg")
+    await user.click(screen.getByRole("button", { name: /Retry task download-failed-action/i }))
+
+    expect(downloadWallpaper).toHaveBeenCalledWith({
+      wallpaperId: "fail123",
+      imageUrl: "https://w.wallhaven.cc/full/fail123.jpg",
+      fileName: "wallhaven-fail123.jpg",
+      purity: "sfw",
+      category: "general",
+    })
+
+    await user.click(screen.getByRole("button", { name: /Delete task download-failed-action/i }))
+    expect(screen.getByRole("dialog", { name: /Delete download task/i })).toBeInTheDocument()
+    await user.click(
+      within(screen.getByRole("dialog", { name: /Delete download task/i })).getByRole("button", { name: /^Delete task$/i }),
+    )
+
+    expect(deleteDownloadTask).toHaveBeenCalledWith("download-failed-action")
+    await waitFor(() => {
+      expect(screen.queryByText("wallhaven-fail123.jpg")).not.toBeInTheDocument()
+    })
   })
 
   it("keeps a newer status event when the loaded snapshot resolves later with stale data", async () => {
