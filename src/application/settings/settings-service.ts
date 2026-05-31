@@ -1,4 +1,5 @@
 import {
+  defaultSettingsPreferences,
   loadDownloadDirectorySettings,
   loadNetworkProxySettings,
   loadStoredWallhavenKey,
@@ -16,12 +17,20 @@ import type {
   SettingsSnapshot,
 } from "./settings.types";
 
+async function loadOptionalSetting<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await loader();
+  } catch {
+    return fallback;
+  }
+}
+
 export async function loadSettings(): Promise<SettingsSnapshot> {
-  const [wallhavenKey, downloadDirectory, networkProxy, preferences] = await Promise.all([
-    loadStoredWallhavenKey(),
+  const [downloadDirectory, wallhavenKey, networkProxy, preferences] = await Promise.all([
     loadDownloadDirectorySettings(),
-    loadNetworkProxySettings(),
-    loadUserPreferencesFromRepository(),
+    loadOptionalSetting(loadStoredWallhavenKey, ""),
+    loadOptionalSetting(loadNetworkProxySettings, null),
+    loadOptionalSetting(loadUserPreferencesFromRepository, defaultSettingsPreferences),
   ]);
 
   return {

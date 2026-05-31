@@ -3,10 +3,15 @@ vi.mock("yet-another-react-lightbox", () => ({
     open ? <div data-testid="lightbox">{slides[index]?.src}</div> : null,
 }));
 
-import { render, screen } from "@testing-library/react";
+vi.mock("@/infrastructure/tauri/media-repository", () => ({
+  loadRemoteImageObjectUrl: vi.fn(),
+}));
+
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { SearchWallpaper } from "@/application/search/search.types";
+import { loadRemoteImageObjectUrl } from "@/infrastructure/tauri/media-repository";
 
 import { SearchResultGrid } from "./SearchResultGrid";
 
@@ -38,13 +43,26 @@ const wallpapers: SearchWallpaper[] = [
 ];
 
 describe("SearchResultGrid", () => {
-  it("renders thumbnail cards with key metadata", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
+  });
+
+  it("renders thumbnail cards with key metadata through the proxy loader", async () => {
+    vi.mocked(loadRemoteImageObjectUrl).mockResolvedValue("blob://proxied-thumbnail");
+
     render(<SearchResultGrid wallpapers={wallpapers} />);
 
-    expect(screen.getByRole("img", { name: /Wallpaper kxpkmm/i })).toHaveAttribute(
-      "src",
-      "https://th.wallhaven.cc/lg/kx/kxpkmm.jpg",
-    );
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: /Wallpaper kxpkmm/i })).toHaveAttribute(
+        "src",
+        "blob://proxied-thumbnail",
+      );
+    });
+    expect(loadRemoteImageObjectUrl).toHaveBeenCalledWith("https://th.wallhaven.cc/lg/kx/kxpkmm.jpg");
     expect(screen.getByText("1966x3000")).toBeInTheDocument();
     expect(screen.getByText("79")).toBeInTheDocument();
     expect(screen.getByText("2572")).toBeInTheDocument();
@@ -53,6 +71,8 @@ describe("SearchResultGrid", () => {
   });
 
   it("opens a preview lightbox for the selected wallpaper", async () => {
+    vi.mocked(loadRemoteImageObjectUrl).mockResolvedValue("blob://proxied-thumbnail");
+
     render(<SearchResultGrid wallpapers={wallpapers} />);
 
     const user = userEvent.setup();

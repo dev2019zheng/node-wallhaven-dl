@@ -31,7 +31,7 @@ describe("App routing", () => {
     expect(topBar).toBeInTheDocument();
     expect(searchLink).toHaveAttribute("aria-current", "page");
     expect(await screen.findByRole("heading", { name: "Search" })).toBeInTheDocument();
-    expect(screen.getByText("Enterprise v3.0")).toBeInTheDocument();
+    expect(screen.queryByText("Enterprise v3.0")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
   });
 });

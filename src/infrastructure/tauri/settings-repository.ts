@@ -21,12 +21,19 @@ export const defaultSettingsPreferences: SettingsPreferences = {
 
 async function withSettingsStore<T>(callback: (store: Store) => Promise<T>): Promise<T> {
   const store = await Store.load(SETTINGS_STORE_PATH);
+  let result!: T;
 
   try {
-    return await callback(store);
+    result = await callback(store);
   } finally {
-    await store.close();
+    try {
+      await store.close();
+    } catch {
+      // Closing releases a Tauri resource, but a close failure should not invalidate a completed read/write.
+    }
   }
+
+  return result;
 }
 
 export async function loadStoredWallhavenKey(): Promise<string> {

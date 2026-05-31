@@ -583,104 +583,104 @@ export function SearchPage() {
         title="Search"
       />
 
-      <div className="grid grid-cols-[minmax(820px,1fr)_260px] items-start gap-[26px]">
+      <div className="grid grid-cols-1 items-start gap-[22px] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1440px]:gap-[26px]">
         <div className="min-w-0 space-y-6">
           <section aria-label="Search filters">
-          <form className="space-y-4" onSubmit={onSubmit}>
-            <div className="grid grid-cols-[1fr_122px] gap-[18px]">
-              <label className="relative block" htmlFor="search-query">
-                <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  aria-invalid={formState.errors.q ? true : undefined}
-                  aria-label="关键词"
-                  className="wh-control h-[42px] w-full pl-12 pr-4 text-[13px]"
-                  id="search-query"
-                  placeholder="Search for wallpapers  (e.g. mountains, anime, space...)"
-                  {...register("q")}
-                />
-              </label>
-              <Button
-                aria-label="搜索"
-                className="h-[42px] rounded-[14px] text-[14px]"
-                disabled={formState.isSubmitting || isBulkDownloading}
-                type="submit"
-              >
-                {formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Search
-              </Button>
-            </div>
-
-            {formState.errors.q ? (
-              <p className="-mt-2 text-[12px] text-destructive" role="alert">
-                {formState.errors.q.message}
-              </p>
-            ) : null}
-
-            <div className="grid grid-cols-[repeat(5,1fr)_142px] gap-[12px]">
-              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-category">
-                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Category</span>
-                <select aria-label="分类" className="bg-transparent text-[13px] font-semibold outline-none" id="search-category" {...register("category")}>
-                  <option value="all">All</option>
-                  <option value="general">General</option>
-                  <option value="anime">Anime</option>
-                  <option value="people">People</option>
-                  <option value="ga">General + Anime</option>
-                  <option value="gp">General + People</option>
-                </select>
-              </label>
-              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-purity">
-                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Purity</span>
-                <select aria-label="纯净度" className="bg-transparent text-[13px] font-semibold outline-none" id="search-purity" {...register("purityPreset")}>
-                  <option value="sfw">SFW</option>
-                  <option value="sketchy">Sketchy</option>
-                  <option value="nsfw">NSFW</option>
-                  <option value="ws">SFW + Sketchy</option>
-                  <option value="wn">SFW + NSFW</option>
-                  <option value="sn">Sketchy + NSFW</option>
-                  <option value="all">All purity levels</option>
-                </select>
-              </label>
-              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-sorting">
-                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Sorting</span>
-                <select aria-label="排序" className="bg-transparent text-[13px] font-semibold outline-none" id="search-sorting" {...register("sorting")}>
-                  <option value="date_added">Date added</option>
-                  <option value="toplist">Toplist</option>
-                </select>
-              </label>
-              <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Resolution">
-                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Resolution</span>
-                <span className="text-[13px] font-semibold">All</span>
+            <form className="space-y-4" onSubmit={onSubmit}>
+              <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-[minmax(0,1fr)_122px] sm:gap-[18px]">
+                <label className="relative block" htmlFor="search-query">
+                  <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    aria-invalid={formState.errors.q ? true : undefined}
+                    aria-label="关键词"
+                    className="wh-control h-[42px] w-full pl-12 pr-4 text-[13px]"
+                    id="search-query"
+                    placeholder="Search for wallpapers  (e.g. mountains, anime, space...)"
+                    {...register("q")}
+                  />
+                </label>
+                <Button
+                  aria-label="搜索"
+                  className="h-[42px] rounded-[14px] text-[14px]"
+                  disabled={formState.isSubmitting || isBulkDownloading}
+                  type="submit"
+                >
+                  {formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Search
+                </Button>
               </div>
-              <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Aspect Ratio">
-                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Aspect Ratio</span>
-                <span className="text-[13px] font-semibold">16:9</span>
+
+              {formState.errors.q ? (
+                <p className="-mt-2 text-[12px] text-destructive" role="alert">
+                  {formState.errors.q.message}
+                </p>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 lg:grid-cols-3 min-[1500px]:grid-cols-[repeat(5,minmax(0,1fr))_142px]">
+                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-category">
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Category</span>
+                  <select aria-label="分类" className="bg-transparent text-[13px] font-semibold outline-none" id="search-category" {...register("category")}>
+                    <option value="all">All</option>
+                    <option value="general">General</option>
+                    <option value="anime">Anime</option>
+                    <option value="people">People</option>
+                    <option value="ga">General + Anime</option>
+                    <option value="gp">General + People</option>
+                  </select>
+                </label>
+                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-purity">
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Purity</span>
+                  <select aria-label="纯净度" className="bg-transparent text-[13px] font-semibold outline-none" id="search-purity" {...register("purityPreset")}>
+                    <option value="sfw">SFW</option>
+                    <option value="sketchy">Sketchy</option>
+                    <option value="nsfw">NSFW</option>
+                    <option value="ws">SFW + Sketchy</option>
+                    <option value="wn">SFW + NSFW</option>
+                    <option value="sn">Sketchy + NSFW</option>
+                    <option value="all">All purity levels</option>
+                  </select>
+                </label>
+                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-sorting">
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Sorting</span>
+                  <select aria-label="排序" className="bg-transparent text-[13px] font-semibold outline-none" id="search-sorting" {...register("sorting")}>
+                    <option value="date_added">Date added</option>
+                    <option value="toplist">Toplist</option>
+                  </select>
+                </label>
+                <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Resolution">
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Resolution</span>
+                  <span className="text-[13px] font-semibold">All</span>
+                </div>
+                <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Aspect Ratio">
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Aspect Ratio</span>
+                  <span className="text-[13px] font-semibold">16:9</span>
+                </div>
+                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-top-range">
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">More Filters</span>
+                  <span className="flex items-center justify-between gap-3">
+                    {formValues.sorting === "toplist" ? (
+                      <select aria-label="热榜范围" className="min-w-0 bg-transparent text-[13px] font-semibold outline-none" id="search-top-range" {...register("topRange")}>
+                        <option value="1M">Advanced</option>
+                        <option value="1d">Past day</option>
+                        <option value="3d">Past 3 days</option>
+                        <option value="1w">Past week</option>
+                        <option value="3M">Past 3 months</option>
+                        <option value="6M">Past 6 months</option>
+                        <option value="1y">Past year</option>
+                      </select>
+                    ) : (
+                      <span className="text-[13px] font-semibold">Advanced</span>
+                    )}
+                    <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
+                  </span>
+                </label>
               </div>
-              <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-top-range">
-                <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">More Filters</span>
-                <span className="flex items-center justify-between gap-3">
-                  {formValues.sorting === "toplist" ? (
-                    <select aria-label="热榜范围" className="min-w-0 bg-transparent text-[13px] font-semibold outline-none" id="search-top-range" {...register("topRange")}>
-                      <option value="1M">Advanced</option>
-                      <option value="1d">Past day</option>
-                      <option value="3d">Past 3 days</option>
-                      <option value="1w">Past week</option>
-                      <option value="3M">Past 3 months</option>
-                      <option value="6M">Past 6 months</option>
-                      <option value="1y">Past year</option>
-                    </select>
-                  ) : (
-                    <span className="text-[13px] font-semibold">Advanced</span>
-                  )}
-                  <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
-                </span>
-              </label>
-            </div>
-          </form>
+            </form>
           </section>
 
           <section aria-label="Search results" className="space-y-4">
-            <div className="flex h-[42px] items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex min-h-[42px] flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <h3 className="text-[14px] font-semibold text-foreground">
                   {resultSummaryLabel ?? "Start with a query"}
                 </h3>
@@ -691,7 +691,7 @@ export function SearchPage() {
                 ) : null}
               </div>
               {result && result.data.length > 0 ? (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                   <Button
                     aria-label={bulkDownloadLabel}
                     className="h-[42px] rounded-[14px] px-4"
@@ -735,7 +735,7 @@ export function SearchPage() {
             ) : null}
 
             {formState.isSubmitting ? (
-              <div className="grid grid-cols-3 gap-[18px]" aria-label="Loading search results">
+              <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-3" aria-label="Loading search results">
                 {Array.from({ length: 9 }, (_, index) => (
                   <div className="h-[156px] animate-pulse rounded-2xl border border-border bg-[var(--surface-deep)]" key={index} />
                 ))}
@@ -768,7 +768,7 @@ export function SearchPage() {
           </section>
         </div>
 
-        <aside className="app-panel min-h-[716px] space-y-6 p-6" aria-label="Inspector">
+        <aside className="app-panel space-y-6 p-6 min-[1180px]:min-h-[600px]" aria-label="Inspector">
           <div className="space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-foreground">Inspector</h3>
             <p className="text-[13px] font-medium text-muted-foreground">

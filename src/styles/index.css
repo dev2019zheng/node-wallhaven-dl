@@ -234,11 +234,11 @@
 @layer components {
   .wh-desktop-shell {
     position: relative;
-    width: 100vw;
-    min-width: 1180px;
+    width: 100%;
+    min-width: 0;
     height: 100vh;
-    min-height: 760px;
-    overflow: auto;
+    min-height: 0;
+    overflow: hidden;
     background:
       radial-gradient(circle at 76% 14%, var(--shell-radial-glow), transparent 22%),
       linear-gradient(135deg, var(--app-gradient-start) 0%, var(--app-gradient-end) 100%);
@@ -246,11 +246,11 @@
 
   .wh-window-chrome {
     display: flex;
-    height: 58px;
+    height: 46px;
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--border);
-    padding: 0 22px;
+    padding: 0 clamp(12px, 2vw, 22px);
     background: color-mix(in srgb, var(--panel) 88%, transparent);
     backdrop-filter: blur(22px);
   }
@@ -281,22 +281,29 @@
 
   .wh-workspace {
     display: grid;
-    grid-template-columns: 198px minmax(0, 1fr);
-    column-gap: 30px;
-    min-height: calc(100vh - 58px);
-    padding: 12px 28px 22px 16px;
+    grid-template-columns: minmax(172px, 198px) minmax(0, 1fr);
+    column-gap: clamp(14px, 2vw, 30px);
+    height: calc(100vh - 46px);
+    min-height: 0;
+    padding: 12px clamp(12px, 2vw, 28px) 22px 16px;
+    overflow: hidden;
   }
 
   .app-shell-sidebar {
-    height: calc(100vh - 92px);
-    min-height: 720px;
+    height: calc(100vh - 80px);
+    min-height: 0;
+    overflow-y: auto;
     border-radius: 20px;
   }
 
   .app-shell-main {
     position: relative;
-    min-height: calc(100vh - 92px);
+    height: calc(100vh - 80px);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding-top: 12px;
+    padding-right: 2px;
     animation: wh-page-in var(--motion-page);
   }
 
@@ -455,6 +462,63 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .wh-workspace {
+      grid-template-columns: minmax(62px, 72px) minmax(0, 1fr);
+      column-gap: 12px;
+      padding: 10px 12px 14px;
+    }
+
+    .app-shell-sidebar {
+      padding-inline: 10px;
+    }
+
+    .app-shell-sidebar nav a,
+    .app-shell-sidebar > div:first-child {
+      justify-content: center;
+    }
+
+    .app-shell-sidebar nav a span,
+    .app-shell-sidebar > div:first-child p,
+    .app-shell-sidebar > div:nth-of-type(2),
+    .app-shell-sidebar > section {
+      display: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .wh-workspace {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      row-gap: 10px;
+      padding: 10px;
+    }
+
+    .app-shell-sidebar {
+      height: auto;
+      border-radius: 16px;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .app-shell-sidebar nav {
+      display: flex;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .app-shell-sidebar nav a {
+      width: 42px;
+      flex: 0 0 42px;
+      padding-inline: 0;
+    }
+
+    .app-shell-main {
+      height: auto;
+      min-height: 0;
     }
   }
 }
