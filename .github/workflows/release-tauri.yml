@@ -2,30 +2,146 @@ name: release-tauri
 
 on:
   push:
+    branches:
+      - master
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/master' }}
+
 jobs:
-  create-release:
+  prepare-release:
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+      release_title: ${{ steps.metadata.outputs.release_title }}
+      release_channel: ${{ steps.metadata.outputs.release_channel }}
+      is_prerelease: ${{ steps.metadata.outputs.is_prerelease }}
+      app_version: ${{ steps.metadata.outputs.app_version }}
     steps:
-      - name: Create GitHub release if missing
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare release metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_version="$(
+            python3 - <<'PY'
+          import json
+          with open('src-tauri/tauri.conf.json', encoding='utf-8') as config:
+              print(json.load(config)['version'])
+          PY
+          )"
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            release_channel="stable"
+            release_tag="$GITHUB_REF_NAME"
+            release_title="Wallhaven Desktop $GITHUB_REF_NAME"
+            is_prerelease="false"
+          elif [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
+            release_channel="nightly"
+            release_tag="nightly"
+            release_title="Wallhaven Desktop Nightly"
+            is_prerelease="true"
+          else
+            echo "Unsupported release ref: $GITHUB_REF" >&2
+            exit 1
+          fi
+
+          {
+            echo "release_channel=$release_channel"
+            echo "release_tag=$release_tag"
+            echo "release_title=$release_title"
+            echo "is_prerelease=$is_prerelease"
+            echo "app_version=$app_version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub release
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG_NAME: ${{ github.ref_name }}
+          RELEASE_CHANNEL: ${{ steps.metadata.outputs.release_channel }}
+          RELEASE_TAG: ${{ steps.metadata.outputs.release_tag }}
+          RELEASE_TITLE: ${{ steps.metadata.outputs.release_title }}
+          APP_VERSION: ${{ steps.metadata.outputs.app_version }}
         run: |
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            echo "Release $TAG_NAME already exists."
-          else
-            gh release create "$TAG_NAME" --title "Wallhaven Desktop $TAG_NAME" --generate-notes
+          set -euo pipefail
+
+          if [[ "$RELEASE_CHANNEL" == "stable" ]]; then
+            if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "Release $RELEASE_TAG already exists."
+            else
+              gh release create "$RELEASE_TAG" \
+                --title "$RELEASE_TITLE" \
+                --generate-notes \
+                --verify-tag
+            fi
+            exit 0
           fi
 
+          notes_file="$(mktemp)"
+          cleanup() {
+            rm -f "$notes_file"
+          }
+          trap cleanup EXIT
+
+          cat > "$notes_file" <<EOF
+          Rolling Nightly prerelease for the latest master branch build.
+
+          - Version: $APP_VERSION
+          - Commit: $GITHUB_SHA
+          - Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+
+          This prerelease is replaced on each successful master build and is not the stable GitHub Latest release.
+          EOF
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TITLE" \
+              --notes-file "$notes_file" \
+              --prerelease
+          else
+            gh release create "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TITLE" \
+              --notes-file "$notes_file" \
+              --prerelease \
+              --latest=false
+          fi
+
+          target_commitish="$(gh release view "$RELEASE_TAG" --json targetCommitish --jq '.targetCommitish')"
+          if [[ "$target_commitish" != "$GITHUB_SHA" ]]; then
+            echo "Release target is $target_commitish, expected $GITHUB_SHA. Force-updating nightly tag." >&2
+            git tag -f "$RELEASE_TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$RELEASE_TAG" --force
+            gh release edit "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TITLE" \
+              --notes-file "$notes_file" \
+              --prerelease
+
+            target_commitish="$(gh release view "$RELEASE_TAG" --json targetCommitish --jq '.targetCommitish')"
+            if [[ "$target_commitish" != "$GITHUB_SHA" ]]; then
+              echo "Nightly release still points at $target_commitish after tag update; expected $GITHUB_SHA." >&2
+              exit 1
+            fi
+          fi
+
+
   build-release-assets:
-    needs: create-release
+    needs: prepare-release
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
@@ -33,20 +149,24 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
+            asset_pattern: "_aarch64.dmg$"
             bundle_command: npm run tauri:build:dmg -- --target aarch64-apple-darwin
-            upload_command: gh release upload "$GITHUB_REF_NAME" src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg --clobber
+            upload_command: gh release upload "$RELEASE_TAG" src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg --clobber
           - platform: macos-latest
             target: x86_64-apple-darwin
+            asset_pattern: "_x64.dmg$"
             bundle_command: npm run tauri:build:dmg -- --target x86_64-apple-darwin
-            upload_command: gh release upload "$GITHUB_REF_NAME" src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg --clobber
+            upload_command: gh release upload "$RELEASE_TAG" src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg --clobber
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            asset_pattern: "\\.(AppImage|deb)$"
             bundle_command: npm run tauri build -- --bundles appimage,deb
-            upload_command: gh release upload "$GITHUB_REF_NAME" src-tauri/target/release/bundle/appimage/*.AppImage src-tauri/target/release/bundle/deb/*.deb --clobber
+            upload_command: gh release upload "$RELEASE_TAG" src-tauri/target/release/bundle/appimage/*.AppImage src-tauri/target/release/bundle/deb/*.deb --clobber
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
+            asset_pattern: "\\.exe$"
             bundle_command: npm run tauri build -- --bundles nsis
-            upload_command: gh release upload "$GITHUB_REF_NAME" src-tauri/target/release/bundle/nsis/*.exe --clobber
+            upload_command: gh release upload "$RELEASE_TAG" src-tauri/target/release/bundle/nsis/*.exe --clobber
 
     steps:
       - uses: actions/checkout@v4
@@ -71,13 +191,28 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            libfuse2 \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            wget
 
       - name: Install frontend dependencies
         run: npm ci
 
       - name: Run frontend tests
         run: npm run test:run
+
+      - name: Run frontend typecheck
+        run: npm run typecheck
 
       - name: Run Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
@@ -91,6 +226,86 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+          RELEASE_CHANNEL: ${{ needs.prepare-release.outputs.release_channel }}
+          ASSET_PATTERN: ${{ matrix.asset_pattern }}
         run: |
+          set -euo pipefail
           shopt -s nullglob
+
+          if [[ "$RELEASE_CHANNEL" == "nightly" ]]; then
+            asset_names="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
+            if [[ -n "$asset_names" ]]; then
+              while IFS= read -r asset_name; do
+                [[ -n "$asset_name" ]] || continue
+                if [[ "$asset_name" =~ $ASSET_PATTERN ]]; then
+                  gh release delete-asset "$RELEASE_TAG" "$asset_name" --yes
+                fi
+              done <<< "$asset_names"
+            fi
+          fi
+
           ${{ matrix.upload_command }}
+
+  verify-release:
+    needs:
+      - prepare-release
+      - build-release-assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify release metadata and assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
+          RELEASE_CHANNEL: ${{ needs.prepare-release.outputs.release_channel }}
+        run: |
+          set -euo pipefail
+
+          release_json="$(gh release view "$RELEASE_TAG" --json tagName,targetCommitish,isPrerelease,name,assets)"
+          echo "$release_json"
+
+          actual_tag="$(gh release view "$RELEASE_TAG" --json tagName --jq '.tagName')"
+          is_prerelease="$(gh release view "$RELEASE_TAG" --json isPrerelease --jq '.isPrerelease')"
+          asset_names="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
+
+          if [[ "$actual_tag" != "$RELEASE_TAG" ]]; then
+            echo "Release tag mismatch: expected $RELEASE_TAG, got $actual_tag" >&2
+            exit 1
+          fi
+
+          if [[ "$RELEASE_CHANNEL" == "nightly" && "$is_prerelease" != "true" ]]; then
+            echo "Nightly release must be marked as prerelease." >&2
+            exit 1
+          fi
+
+          if [[ "$RELEASE_CHANNEL" == "stable" && "$is_prerelease" != "false" ]]; then
+            echo "Stable release must not be marked as prerelease." >&2
+            exit 1
+          fi
+
+          dmg_count="$(printf '%s\n' "$asset_names" | grep -Ec '\.dmg$' || true)"
+          appimage_count="$(printf '%s\n' "$asset_names" | grep -Ec '\.AppImage$' || true)"
+          deb_count="$(printf '%s\n' "$asset_names" | grep -Ec '\.deb$' || true)"
+          exe_count="$(printf '%s\n' "$asset_names" | grep -Ec '\.exe$' || true)"
+
+          if [[ "$dmg_count" -lt 2 ]]; then
+            echo "Expected at least 2 macOS DMG assets, found $dmg_count." >&2
+            exit 1
+          fi
+
+          if [[ "$appimage_count" -lt 1 ]]; then
+            echo "Expected at least 1 Linux AppImage asset, found $appimage_count." >&2
+            exit 1
+          fi
+
+          if [[ "$deb_count" -lt 1 ]]; then
+            echo "Expected at least 1 Linux deb asset, found $deb_count." >&2
+            exit 1
+          fi
+
+          if [[ "$exe_count" -lt 1 ]]; then
+            echo "Expected at least 1 Windows exe asset, found $exe_count." >&2
+            exit 1
+          fi

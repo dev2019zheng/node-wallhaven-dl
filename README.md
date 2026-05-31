@@ -24,7 +24,13 @@ npm run tauri:build:dmg
 
 ## Release automation
 
-Pushing a tag that starts with `v` triggers `.github/workflows/release-tauri.yml` to build platform installers and upload them to the matching GitHub Release page.
+`.github/workflows/release-tauri.yml` builds and publishes desktop installers for macOS, Linux, and Windows.
+
+- Pushing to `master` creates or updates the rolling `nightly` prerelease. This release reuses one `nightly` tag and replaces its assets on each successful master build, so the Releases page does not get a new entry for every merge.
+- Pushing a tag that starts with `v` creates or updates the matching stable GitHub Release and uploads the platform installers to that release.
+- GitHub treats prereleases separately from the stable Latest release. The `nightly` prerelease is a moving preview build, not the stable Latest release.
+
+Current CI artifacts are unsigned. macOS Gatekeeper and Windows SmartScreen may warn on first launch until code signing and notarization are configured.
 
 Local macOS DMG verification uses the same wrapper script as CI:
 
