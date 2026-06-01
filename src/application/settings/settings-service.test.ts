@@ -5,6 +5,7 @@ vi.mock("@/infrastructure/tauri/settings-repository", () => ({
     telemetryEnabled: false,
     cacheSizeBytes: 38_400_000,
   },
+  diagnoseWallhavenAccess: vi.fn(),
   loadStoredWallhavenKey: vi.fn(),
   saveStoredWallhavenKey: vi.fn(),
   loadDownloadDirectorySettings: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("@/infrastructure/tauri/settings-repository", () => ({
 }));
 
 import {
+  diagnoseWallhavenAccess as diagnoseWallhavenAccessInRepository,
   loadDownloadDirectorySettings,
   loadNetworkProxySettings,
   loadStoredWallhavenKey,
@@ -26,7 +28,11 @@ import {
   saveUserPreferences,
 } from "@/infrastructure/tauri/settings-repository";
 
-import { loadSettings, saveSettings } from "./settings-service";
+import {
+  diagnoseWallhavenAccess,
+  loadSettings,
+  saveSettings,
+} from "./settings-service";
 
 describe("settings-service", () => {
   const preferences = {
@@ -165,5 +171,51 @@ describe("settings-service", () => {
     });
 
     expect(saveNetworkProxySettings).toHaveBeenCalledWith(null);
+  });
+
+  it("diagnoses Wallhaven access with the current unsaved proxy and API key", async () => {
+    vi.mocked(diagnoseWallhavenAccessInRepository).mockResolvedValue({
+      usesProxy: true,
+      authenticated: true,
+      total: 42,
+    });
+
+    await expect(
+      diagnoseWallhavenAccess({
+        wallhavenKey: " test-key ",
+        networkProxyScheme: "socks5",
+        networkProxyAddress: " 127.0.0.1:7897 ",
+      }),
+    ).resolves.toEqual({
+      usesProxy: true,
+      authenticated: true,
+      total: 42,
+    });
+
+    expect(diagnoseWallhavenAccessInRepository).toHaveBeenCalledWith({
+      apiKey: "test-key",
+      proxy: {
+        scheme: "socks5",
+        address: "127.0.0.1:7897",
+      },
+    });
+  });
+
+  it("diagnoses direct Wallhaven access when proxy and API key are blank", async () => {
+    vi.mocked(diagnoseWallhavenAccessInRepository).mockResolvedValue({
+      usesProxy: false,
+      authenticated: false,
+      total: 12,
+    });
+
+    await diagnoseWallhavenAccess({
+      wallhavenKey: " ",
+      networkProxyScheme: "http",
+      networkProxyAddress: " ",
+    });
+
+    expect(diagnoseWallhavenAccessInRepository).toHaveBeenCalledWith({
+      proxy: null,
+    });
   });
 });

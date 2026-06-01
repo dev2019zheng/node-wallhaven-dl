@@ -4,12 +4,16 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::db::settings_repository::{SettingsRepository, SettingsStoreError};
 use crate::db::DatabaseState;
+use crate::models::search::{
+    WallhavenCategoryFilter, WallhavenPurityFilter, WallhavenSearchRequest, WallhavenSorting,
+};
 use crate::models::settings::{
     NetworkProxyScheme, NetworkProxySettings, NetworkProxySettingsError,
 };
 use crate::services::path_service::{
     resolve_effective_download_directory, ResolveDownloadPathError,
 };
+use crate::services::wallhaven_client::{WallhavenClient, WallhavenClientError};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,11 +51,29 @@ pub struct SaveNetworkProxySettingsRequest {
     pub proxy: Option<NetworkProxySettingsDto>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnoseWallhavenAccessRequest {
+    pub proxy: Option<NetworkProxySettingsDto>,
+    pub api_key: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WallhavenAccessDiagnosticDto {
+    pub uses_proxy: bool,
+    pub authenticated: bool,
+    pub total: u64,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SettingsCommandErrorKind {
     InvalidRequest,
     ResolvePath,
+    UpstreamStatus,
+    Timeout,
+    Network,
     Internal,
 }
 
@@ -60,14 +82,51 @@ pub enum SettingsCommandErrorKind {
 pub struct SettingsCommandError {
     pub kind: SettingsCommandErrorKind,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_code: Option<u16>,
 }
 
 impl SettingsCommandError {
-    fn internal(message: impl Into<String>) -> Self {
+    fn new(kind: SettingsCommandErrorKind, message: impl Into<String>) -> Self {
         Self {
-            kind: SettingsCommandErrorKind::Internal,
+            kind,
             message: message.into(),
+            status_code: None,
         }
+    }
+
+    fn internal(message: impl Into<String>) -> Self {
+        Self::new(SettingsCommandErrorKind::Internal, message)
+    }
+
+    fn with_status(
+        kind: SettingsCommandErrorKind,
+        message: impl Into<String>,
+        status_code: u16,
+    ) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+            status_code: Some(status_code),
+        }
+    }
+
+    fn from_reqwest_error(error: reqwest::Error) -> Self {
+        let message = error.to_string();
+
+        if let Some(status) = error.status() {
+            return Self::with_status(
+                SettingsCommandErrorKind::UpstreamStatus,
+                message,
+                status.as_u16(),
+            );
+        }
+
+        if error.is_timeout() {
+            return Self::new(SettingsCommandErrorKind::Timeout, message);
+        }
+
+        Self::new(SettingsCommandErrorKind::Network, message)
     }
 }
 
@@ -83,10 +142,12 @@ impl From<ResolveDownloadPathError> for SettingsCommandError {
             ResolveDownloadPathError::InvalidRootPath(message) => Self {
                 kind: SettingsCommandErrorKind::InvalidRequest,
                 message: message.to_string(),
+                status_code: None,
             },
             other => Self {
                 kind: SettingsCommandErrorKind::ResolvePath,
                 message: other.to_string(),
+                status_code: None,
             },
         }
     }
@@ -94,9 +155,21 @@ impl From<ResolveDownloadPathError> for SettingsCommandError {
 
 impl From<NetworkProxySettingsError> for SettingsCommandError {
     fn from(error: NetworkProxySettingsError) -> Self {
-        Self {
-            kind: SettingsCommandErrorKind::InvalidRequest,
-            message: error.to_string(),
+        Self::new(SettingsCommandErrorKind::InvalidRequest, error.to_string())
+    }
+}
+
+impl From<WallhavenClientError> for SettingsCommandError {
+    fn from(error: WallhavenClientError) -> Self {
+        match error {
+            WallhavenClientError::InvalidBaseUrl(message)
+            | WallhavenClientError::InvalidProxy(message) => {
+                Self::new(SettingsCommandErrorKind::InvalidRequest, message)
+            }
+            WallhavenClientError::InvalidRequest(error) => {
+                Self::new(SettingsCommandErrorKind::InvalidRequest, error.to_string())
+            }
+            WallhavenClientError::Request(error) => Self::from_reqwest_error(error),
         }
     }
 }
@@ -185,6 +258,7 @@ pub async fn get_download_directory_settings(
         .map_err(|error| SettingsCommandError {
             kind: SettingsCommandErrorKind::ResolvePath,
             message: error.to_string(),
+            status_code: None,
         })?;
 
     load_download_directory_settings_from_repository(
@@ -206,6 +280,7 @@ pub async fn save_download_directory_settings(
         .map_err(|error| SettingsCommandError {
             kind: SettingsCommandErrorKind::ResolvePath,
             message: error.to_string(),
+            status_code: None,
         })?;
     let custom_directory_path = normalize_custom_directory_input(request.custom_directory_path);
 
@@ -260,14 +335,55 @@ pub async fn save_network_proxy_settings(
         .map_err(Into::into)
 }
 
+#[tauri::command]
+pub async fn diagnose_wallhaven_access(
+    request: DiagnoseWallhavenAccessRequest,
+) -> Result<WallhavenAccessDiagnosticDto, SettingsCommandError> {
+    let proxy = request
+        .proxy
+        .map(NetworkProxySettings::try_from)
+        .transpose()?;
+    let api_key = request
+        .api_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|key| !key.is_empty())
+        .map(str::to_string);
+    let client = WallhavenClient::with_proxy(proxy.as_ref())?;
+    let response = client
+        .search(&WallhavenSearchRequest {
+            categories: Some(WallhavenCategoryFilter::General),
+            purity: Some(WallhavenPurityFilter {
+                sfw: true,
+                sketchy: false,
+                nsfw: false,
+            }),
+            sorting: Some(WallhavenSorting::DateAdded),
+            top_range: None,
+            q: None,
+            page: Some(1),
+            at_least: None,
+            ratios: None,
+            api_key: api_key.clone(),
+        })
+        .await?;
+
+    Ok(WallhavenAccessDiagnosticDto {
+        uses_proxy: proxy.is_some(),
+        authenticated: api_key.is_some(),
+        total: response.meta.total,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
     use super::{
-        DownloadDirectorySettingsDto, NetworkProxySchemeDto, NetworkProxySettingsDto,
-        SaveDownloadDirectorySettingsRequest, SaveNetworkProxySettingsRequest,
-        SettingsCommandError, SettingsCommandErrorKind,
+        DiagnoseWallhavenAccessRequest, DownloadDirectorySettingsDto, NetworkProxySchemeDto,
+        NetworkProxySettingsDto, SaveDownloadDirectorySettingsRequest,
+        SaveNetworkProxySettingsRequest, SettingsCommandError, SettingsCommandErrorKind,
+        WallhavenAccessDiagnosticDto,
     };
     use crate::models::settings::NetworkProxySettingsError;
     use crate::services::path_service::{ResolveDownloadPathError, RootPathError};
@@ -343,6 +459,47 @@ mod tests {
                     address: "127.0.0.1:7897".into(),
                 })
             }
+        );
+    }
+
+    #[test]
+    fn diagnose_wallhaven_access_request_deserializes_in_camel_case() {
+        let request: DiagnoseWallhavenAccessRequest = serde_json::from_value(json!({
+            "proxy": {
+                "scheme": "socks5",
+                "address": "127.0.0.1:7897"
+            },
+            "apiKey": "test-key"
+        }))
+        .unwrap();
+
+        assert_eq!(
+            request,
+            DiagnoseWallhavenAccessRequest {
+                proxy: Some(NetworkProxySettingsDto {
+                    scheme: NetworkProxySchemeDto::Socks5,
+                    address: "127.0.0.1:7897".into(),
+                }),
+                api_key: Some("test-key".into())
+            }
+        );
+    }
+
+    #[test]
+    fn wallhaven_access_diagnostic_dto_serializes_in_camel_case() {
+        let dto = WallhavenAccessDiagnosticDto {
+            uses_proxy: true,
+            authenticated: true,
+            total: 42,
+        };
+
+        assert_eq!(
+            serde_json::to_value(dto).unwrap(),
+            json!({
+                "usesProxy": true,
+                "authenticated": true,
+                "total": 42
+            })
         );
     }
 

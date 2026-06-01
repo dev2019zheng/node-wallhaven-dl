@@ -12,6 +12,12 @@ export type NetworkProxySettings = {
   address: string;
 };
 
+export type WallhavenAccessDiagnostic = {
+  usesProxy: boolean;
+  authenticated: boolean;
+  total: number;
+};
+
 export type SettingsPreferences = {
   launchAtLogin: boolean;
   confirmBeforeDelete: boolean;
@@ -37,20 +43,26 @@ export type SaveSettingsInput = {
 export type SettingsCommandErrorKind =
   | "invalidRequest"
   | "resolvePath"
+  | "upstreamStatus"
+  | "timeout"
+  | "network"
   | "internal";
 
 export type SettingsCommandErrorPayload = {
   kind: SettingsCommandErrorKind;
   message: string;
+  statusCode?: number;
 };
 
 export class SettingsCommandError extends Error {
   kind: SettingsCommandErrorKind;
+  statusCode?: number;
 
-  constructor({ kind, message }: SettingsCommandErrorPayload) {
+  constructor({ kind, message, statusCode }: SettingsCommandErrorPayload) {
     super(message);
     this.name = "SettingsCommandError";
     this.kind = kind;
+    this.statusCode = statusCode;
   }
 }
 

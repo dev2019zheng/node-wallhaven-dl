@@ -6,6 +6,7 @@ import type {
   NetworkProxySettings,
   SettingsCommandError,
   SettingsPreferences,
+  WallhavenAccessDiagnostic,
 } from "@/application/settings/settings.types";
 import { toSettingsCommandError } from "@/application/settings/settings.types";
 
@@ -17,6 +18,11 @@ export const defaultSettingsPreferences: SettingsPreferences = {
   confirmBeforeDelete: true,
   telemetryEnabled: false,
   cacheSizeBytes: 38_400_000,
+};
+
+type DiagnoseWallhavenAccessCommandRequest = {
+  proxy: NetworkProxySettings | null;
+  apiKey?: string;
 };
 
 async function withSettingsStore<T>(callback: (store: Store) => Promise<T>): Promise<T> {
@@ -132,6 +138,18 @@ export async function saveNetworkProxySettings(
       request: {
         proxy,
       },
+    });
+  } catch (error) {
+    throw toSettingsCommandError(error) as SettingsCommandError;
+  }
+}
+
+export async function diagnoseWallhavenAccess(
+  request: DiagnoseWallhavenAccessCommandRequest,
+): Promise<WallhavenAccessDiagnostic> {
+  try {
+    return await invoke<WallhavenAccessDiagnostic>("diagnose_wallhaven_access", {
+      request,
     });
   } catch (error) {
     throw toSettingsCommandError(error) as SettingsCommandError;

@@ -1,5 +1,6 @@
 import {
   defaultSettingsPreferences,
+  diagnoseWallhavenAccess as diagnoseWallhavenAccessInRepository,
   loadDownloadDirectorySettings,
   loadNetworkProxySettings,
   loadStoredWallhavenKey,
@@ -15,7 +16,14 @@ import type {
   SaveSettingsInput,
   SettingsPreferences,
   SettingsSnapshot,
+  WallhavenAccessDiagnostic,
 } from "./settings.types";
+
+type DiagnoseWallhavenAccessInput = {
+  wallhavenKey?: string;
+  networkProxyScheme: SaveSettingsInput["networkProxyScheme"];
+  networkProxyAddress: string;
+};
 
 async function loadOptionalSetting<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -63,6 +71,27 @@ export async function saveSettings(input: SaveSettingsInput): Promise<SettingsSn
     networkProxy: savedNetworkProxy,
     preferences,
   };
+}
+
+export async function diagnoseWallhavenAccess(
+  input: DiagnoseWallhavenAccessInput,
+): Promise<WallhavenAccessDiagnostic> {
+  const networkProxyAddress = input.networkProxyAddress.trim();
+  const wallhavenKey = input.wallhavenKey?.trim();
+  const request: Parameters<typeof diagnoseWallhavenAccessInRepository>[0] = {
+    proxy: networkProxyAddress
+      ? {
+          scheme: input.networkProxyScheme,
+          address: networkProxyAddress,
+        }
+      : null,
+  };
+
+  if (wallhavenKey) {
+    request.apiKey = wallhavenKey;
+  }
+
+  return diagnoseWallhavenAccessInRepository(request);
 }
 
 export async function loadSettingsPreferences(): Promise<SettingsPreferences> {
