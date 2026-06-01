@@ -16,7 +16,10 @@ import { ErrorState } from "@/components/error-state"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { PageHeading } from "@/components/page-heading"
 import { Button } from "@/components/ui/button"
-import { useUiShellStore } from "@/features/shell/ui-shell-store"
+import {
+  type GalleryCollectionShortcut,
+  useUiShellStore,
+} from "@/features/shell/ui-shell-store"
 import { revealPath } from "@/infrastructure/tauri/native-shell"
 
 import { GalleryGrid, type GalleryGridItem } from "./components/GalleryGrid"
@@ -44,6 +47,12 @@ function matchesLocalQuery(item: GalleryGridItem, query: string): boolean {
 }
 
 const filterChips = ["All", "Favorites", "SFW", "Sketchy", "NSFW", "Anime"] as const
+type FilterChip = (typeof filterChips)[number]
+
+const collectionChipByShortcut: Partial<Record<GalleryCollectionShortcut, FilterChip>> = {
+  Favorites: "Favorites",
+  Anime: "Anime",
+}
 
 function formatDisplayPath(path: string | null): string {
   if (!path) {
@@ -109,17 +118,101 @@ function parseTagDraft(value: string): string[] {
   return Array.from(new Set(tags))
 }
 
+function matchesTermBucket(item: GalleryGridItem, terms: string[]): boolean {
+  const searchableText = [
+    item.fileName,
+    item.relativeFilePath,
+    item.sourceUrl,
+    item.category ?? "",
+    item.purity ?? "",
+    ...item.tags,
+  ]
+    .join(" ")
+    .toLowerCase()
+
+  return terms.some((term) => searchableText.includes(term))
+}
+
+function matchesCollectionShortcut(item: GalleryGridItem, shortcut: GalleryCollectionShortcut | null): boolean {
+  if (!shortcut) {
+    return true
+  }
+
+  switch (shortcut) {
+    case "Favorites":
+      return item.isFavorite
+    case "Anime":
+      return item.category === "anime" || matchesTermBucket(item, ["anime"])
+    case "Nature":
+      return matchesTermBucket(item, ["nature", "forest", "mountain", "landscape", "river", "sky"])
+    case "Space":
+      return matchesTermBucket(item, ["space", "star", "galaxy", "nebula", "planet"])
+    case "4K Ultra":
+      return matchesTermBucket(item, ["4k", "uhd", "3840", "2160"])
+  }
+}
+
+type ImportGroupLabel = "Today" | "Yesterday" | "Last 7 days" | "This month"
+
+const importGroupLabels: ImportGroupLabel[] = ["Today", "Yesterday", "Last 7 days", "This month"]
+
+function parseCreatedAt(createdAt: string): Date | null {
+  const createdDate = new Date(createdAt.replace(" ", "T"))
+
+  if (Number.isNaN(createdDate.getTime())) {
+    return null
+  }
+
+  return createdDate
+}
+
+function isInImportGroup(createdAt: string, group: string | null, now = new Date()): boolean {
+  if (!group) {
+    return true
+  }
+
+  const createdDate = parseCreatedAt(createdAt)
+  if (!createdDate) {
+    return group === "This month"
+  }
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfTomorrow = new Date(startOfToday)
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1)
+  const startOfYesterday = new Date(startOfToday)
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1)
+  const startOfSevenDays = new Date(startOfToday)
+  startOfSevenDays.setDate(startOfSevenDays.getDate() - 6)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  switch (group) {
+    case "Today":
+      return createdDate >= startOfToday && createdDate < startOfTomorrow
+    case "Yesterday":
+      return createdDate >= startOfYesterday && createdDate < startOfToday
+    case "Last 7 days":
+      return createdDate >= startOfSevenDays && createdDate < startOfTomorrow
+    case "This month":
+      return createdDate >= startOfMonth && createdDate < startOfTomorrow
+    default:
+      return true
+  }
+}
+
 export function GalleryPage() {
   const [gallery, setGallery] = useState<GalleryListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [localQuery, setLocalQuery] = useState("")
   const [activeChip, setActiveChip] = useState<(typeof filterChips)[number]>("SFW")
+  const [activeCollectionShortcut, setActiveCollectionShortcut] = useState<GalleryCollectionShortcut | null>(null)
+  const [activeImportGroup, setActiveImportGroup] = useState<ImportGroupLabel | null>(null)
   const [selectedWallpaperId, setSelectedWallpaperId] = useState<string | null>(null)
   const [tagDraft, setTagDraft] = useState("")
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(true)
   const galleryView = useUiShellStore((state) => state.galleryView)
+  const galleryCollectionRequest = useUiShellStore((state) => state.galleryCollectionRequest)
   const setGalleryView = useUiShellStore((state) => state.setGalleryView)
   const enqueueToast = useUiShellStore((state) => state.enqueueToast)
   const setConfirm = useUiShellStore((state) => state.setConfirm)
@@ -167,6 +260,19 @@ export function GalleryPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!galleryCollectionRequest) {
+      return
+    }
+
+    const chip = collectionChipByShortcut[galleryCollectionRequest.label]
+    setActiveChip(chip ?? "All")
+    setActiveCollectionShortcut(chip ? null : galleryCollectionRequest.label)
+    setActiveImportGroup(null)
+    setLocalQuery("")
+    setSelectedWallpaperId(null)
+  }, [galleryCollectionRequest])
+
   const galleryItems = useMemo(
     () =>
       gallery?.items.map((item) => ({
@@ -183,10 +289,6 @@ export function GalleryPage() {
           return false
         }
 
-        if (activeChip === "All") {
-          return true
-        }
-
         if (activeChip === "Favorites") {
           return item.isFavorite
         }
@@ -199,9 +301,17 @@ export function GalleryPage() {
           return item.category === "anime" || item.fileName.toLowerCase().includes("anime")
         }
 
+        if (!matchesCollectionShortcut(item, activeCollectionShortcut)) {
+          return false
+        }
+
+        if (!isInImportGroup(item.createdAt, activeImportGroup)) {
+          return false
+        }
+
         return true
       }),
-    [activeChip, galleryItems, normalizedLocalQuery],
+    [activeChip, activeCollectionShortcut, activeImportGroup, galleryItems, normalizedLocalQuery],
   )
 
   const selectedItem = useMemo(
@@ -217,15 +327,32 @@ export function GalleryPage() {
         gallery,
         filteredGalleryItems.length,
         galleryItems.length,
-        normalizedLocalQuery.length > 0 || activeChip !== "All",
+        normalizedLocalQuery.length > 0 ||
+          activeChip !== "All" ||
+          activeCollectionShortcut !== null ||
+          activeImportGroup !== null,
       ),
-    [activeChip, filteredGalleryItems.length, gallery, galleryItems.length, normalizedLocalQuery.length],
+    [
+      activeChip,
+      activeCollectionShortcut,
+      activeImportGroup,
+      filteredGalleryItems.length,
+      gallery,
+      galleryItems.length,
+      normalizedLocalQuery.length,
+    ],
   )
   const galleryPathLabel = useMemo(
     () => formatDisplayPath(selectedItem?.absolutePath ?? galleryItems[0]?.absolutePath ?? null),
     [galleryItems, selectedItem],
   )
   const selectedTags = useMemo(() => getDetailTags(selectedItem), [selectedItem])
+  const timelineGroups = useMemo(() => {
+    return importGroupLabels.map((label) => ({
+      label,
+      count: galleryItems.filter((item) => isInImportGroup(item.createdAt, label)).length,
+    }))
+  }, [galleryItems])
 
   useEffect(() => {
     setTagDraft(selectedItem?.tags.join(", ") ?? "")
@@ -399,6 +526,8 @@ export function GalleryPage() {
               disabled={isLoading && !gallery}
               onChange={(event) => {
                 setLocalQuery(event.currentTarget.value)
+                setActiveCollectionShortcut(null)
+                setActiveImportGroup(null)
               }}
               placeholder="Search local library"
               type="search"
@@ -415,7 +544,11 @@ export function GalleryPage() {
                   : "h-[42px] rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground transition hover:border-border-strong hover:text-foreground"
               }
               key={chip}
-              onClick={() => setActiveChip(chip)}
+              onClick={() => {
+                setActiveChip(chip)
+                setActiveCollectionShortcut(null)
+                setActiveImportGroup(null)
+              }}
               type="button"
             >
               {chip}
@@ -497,22 +630,31 @@ export function GalleryPage() {
                 <h3 className="text-[20px] font-semibold leading-7 text-foreground">Timeline</h3>
                 <div className="mt-6 grid grid-cols-[1fr_296px] gap-6">
                   <div className="space-y-5">
-                    {[
-                      ["Today", "24 imported"],
-                      ["Yesterday", "16 imported"],
-                      ["Last 7 days", `${Math.max(galleryItems.length, 1)} imported`],
-                      ["This month", `${gallery?.total ?? galleryItems.length} archived`],
-                    ].map(([label, count], index) => (
+                    {timelineGroups.map(({ label, count }, index) => (
                       <div className="grid grid-cols-[18px_1fr_120px] items-center gap-4" key={label}>
-                        <span className={index === 0 ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
+                        <span className={activeImportGroup === label || (!activeImportGroup && index === 0) ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
                         <span className="text-[14px] font-semibold text-foreground">{label}</span>
-                        <span className="text-[13px] font-medium text-muted-foreground">{count}</span>
+                        <span className="text-[13px] font-medium text-muted-foreground">{count} imported</span>
                       </div>
                     ))}
                   </div>
                   <div className="space-y-3">
-                    {["Today", "Yesterday", "Last 7 days", "This month"].map((label) => (
-                      <Button className="h-10 w-full justify-start rounded-[14px]" key={label} type="button" variant="outline">
+                    {timelineGroups.map(({ label, count }) => (
+                      <Button
+                        aria-label={`Open group ${label}`}
+                        className="h-10 w-full justify-start rounded-[14px]"
+                        disabled={count === 0}
+                        key={label}
+                        onClick={() => {
+                          setActiveChip("All")
+                          setActiveCollectionShortcut(null)
+                          setActiveImportGroup(label)
+                          setLocalQuery("")
+                          setSelectedWallpaperId(null)
+                        }}
+                        type="button"
+                        variant="outline"
+                      >
                         Open group
                         <span className="sr-only">{label}</span>
                       </Button>

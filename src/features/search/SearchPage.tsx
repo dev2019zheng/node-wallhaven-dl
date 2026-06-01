@@ -35,6 +35,8 @@ const searchSchema = z.object({
   purityPreset: z.enum(["sfw", "sketchy", "nsfw", "ws", "wn", "sn", "all"]),
   sorting: z.enum(["date_added", "toplist"]),
   topRange: z.enum(VALID_TOPLIST_RANGES),
+  resolution: z.enum(["all", "1920x1080", "2560x1440", "3840x2160"]),
+  aspectRatio: z.enum(["all", "16x9", "16x10", "21x9", "4x3", "portrait"]),
   q: z.string().max(200, "Query is unexpectedly long."),
   page: z.number().int().min(1, "Page must be at least 1."),
   pagesToDownload: z.number().int().min(1, "Pages to download must be at least 1."),
@@ -80,6 +82,8 @@ function buildSearchFilters(values: SearchPageFormValues): WallhavenQueryFilters
     purity: buildPurityFilter(values.purityPreset),
     q: values.q.trim(),
     page: values.page,
+    ...(values.resolution === "all" ? {} : { atLeast: values.resolution }),
+    ...(values.aspectRatio === "all" ? {} : { ratios: values.aspectRatio }),
   };
 
   if (values.sorting === "toplist") {
@@ -116,6 +120,8 @@ function areFormValuesEqual(
     left.purityPreset === right.purityPreset &&
     left.sorting === right.sorting &&
     left.topRange === right.topRange &&
+    left.resolution === right.resolution &&
+    left.aspectRatio === right.aspectRatio &&
     left.q === right.q &&
     left.page === right.page &&
     left.pagesToDownload === right.pagesToDownload
@@ -249,6 +255,8 @@ export function SearchPage() {
       purityPreset: "sfw",
       sorting: "date_added",
       topRange: "1M",
+      resolution: "all",
+      aspectRatio: "16x9",
       q: "",
       page: 1,
       pagesToDownload: 1,
@@ -325,6 +333,17 @@ export function SearchPage() {
     return `${result.meta.total.toLocaleString()} results · Page ${result.meta.currentPage} of ${result.meta.lastPage}`;
   }, [result]);
   const inspectorWallpaper = selectedWallpapers[0] ?? null;
+
+  const saveSelectedToCollection = () => {
+    if (selectedWallpapers.length === 0) {
+      return;
+    }
+
+    setDownloadFeedback({
+      tone: "success",
+      message: `${formatWallpaperCount(selectedWallpapers.length)} 已保留为当前选择，可继续批量下载或清除选择。`,
+    });
+  };
 
   const onSubmit = handleSubmit(async (values) => {
     setSearchError(null);
@@ -647,14 +666,26 @@ export function SearchPage() {
                     <option value="toplist">Toplist</option>
                   </select>
                 </label>
-                <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Resolution">
+                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-resolution">
                   <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Resolution</span>
-                  <span className="text-[13px] font-semibold">All</span>
-                </div>
-                <div className="wh-control flex h-[54px] flex-col justify-center px-4" aria-label="Aspect Ratio">
+                  <select aria-label="分辨率" className="bg-transparent text-[13px] font-semibold outline-none" id="search-resolution" {...register("resolution")}>
+                    <option value="all">All</option>
+                    <option value="1920x1080">1080p+</option>
+                    <option value="2560x1440">2K+</option>
+                    <option value="3840x2160">4K+</option>
+                  </select>
+                </label>
+                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-aspect-ratio">
                   <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Aspect Ratio</span>
-                  <span className="text-[13px] font-semibold">16:9</span>
-                </div>
+                  <select aria-label="宽高比" className="bg-transparent text-[13px] font-semibold outline-none" id="search-aspect-ratio" {...register("aspectRatio")}>
+                    <option value="all">All</option>
+                    <option value="16x9">16:9</option>
+                    <option value="16x10">16:10</option>
+                    <option value="21x9">21:9</option>
+                    <option value="4x3">4:3</option>
+                    <option value="portrait">Portrait</option>
+                  </select>
+                </label>
                 <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-top-range">
                   <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">More Filters</span>
                   <span className="flex items-center justify-between gap-3">
@@ -708,8 +739,14 @@ export function SearchPage() {
                     24 per page
                     <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <button aria-label="Grid view" className="wh-icon-button h-[42px] w-[42px]" type="button">
-                    <SlidersHorizontal className="h-4 w-4 text-primary" />
+                  <button
+                    aria-label="Clear selection"
+                    className="wh-icon-button h-[42px] w-[42px]"
+                    disabled={selectedSearchIds.length === 0 || isSelectedDownloading}
+                    onClick={clearSelectedSearchIds}
+                    type="button"
+                  >
+                    <X className="h-4 w-4 text-primary" />
                   </button>
                 </div>
               ) : null}
@@ -799,9 +836,14 @@ export function SearchPage() {
                 {isSelectedDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 Start download
               </Button>
-              <Button className="h-12 w-full rounded-[14px]" type="button" variant="outline">
+              <Button
+                className="h-12 w-full rounded-[14px]"
+                onClick={saveSelectedToCollection}
+                type="button"
+                variant="outline"
+              >
                 <Save className="h-4 w-4" />
-                Save to collection
+                Keep selection
               </Button>
               <Button
                 aria-label="清除选择"

@@ -12,6 +12,8 @@ describe("buildWallhavenQueryParams", () => {
         topRange: "1M",
         q: "landscape",
         page: 2,
+        atLeast: "1920x1080",
+        ratios: "16x9,16x10",
       }),
     ).toEqual({
       categories: "110",
@@ -21,6 +23,8 @@ describe("buildWallhavenQueryParams", () => {
       order: "desc",
       q: "landscape",
       page: "2",
+      atleast: "1920x1080",
+      ratios: "16x9,16x10",
     });
   });
 

@@ -63,6 +63,25 @@ import { GalleryPage } from "./GalleryPage"
 
 const clipboardWriteText = vi.fn()
 
+function formatGalleryDate(date: Date): string {
+  const datePart = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-")
+  const timePart = [
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0"),
+  ].join(":")
+
+  return `${datePart} ${timePart}`
+}
+
+const now = new Date()
+const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0)
+const sixDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 12, 0, 0)
+
 const sampleResponse: GalleryListResponse = {
   items: [
     {
@@ -75,7 +94,7 @@ const sampleResponse: GalleryListResponse = {
       category: "general",
       tags: ["Nature"],
       isFavorite: false,
-      createdAt: "2026-05-24 12:00:00",
+      createdAt: formatGalleryDate(sixDaysAgo),
     },
     {
       wallpaperId: "pqrs12",
@@ -87,12 +106,24 @@ const sampleResponse: GalleryListResponse = {
       category: "anime",
       tags: ["Forest"],
       isFavorite: true,
-      createdAt: "2026-05-25 09:30:00",
+      createdAt: formatGalleryDate(sixDaysAgo),
+    },
+    {
+      wallpaperId: "space4k",
+      sourceUrl: "https://wallhaven.cc/w/space4k",
+      fileName: "space-4k-ultra.jpg",
+      relativeFilePath: "wallpapers/space-4k-ultra.jpg",
+      absolutePath: "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/space-4k-ultra.jpg",
+      purity: "sfw",
+      category: "general",
+      tags: ["Space", "UHD"],
+      isFavorite: false,
+      createdAt: formatGalleryDate(today),
     },
   ],
   page: 1,
   pageSize: 60,
-  total: 2,
+  total: 3,
 }
 
 describe("GalleryPage", () => {
@@ -112,7 +143,11 @@ describe("GalleryPage", () => {
       cacheSizeBytes: 38_400_000,
     })
     vi.mocked(revealPath).mockResolvedValue(undefined)
-    useUiShellStore.setState({ galleryView: "grid", toasts: [] })
+    useUiShellStore.setState({
+      galleryCollectionRequest: null,
+      galleryView: "grid",
+      toasts: [],
+    })
   })
 
   it("loads gallery items on entry and renders an empty state when the archive is empty", async () => {
@@ -164,6 +199,7 @@ describe("GalleryPage", () => {
 
     expect(await screen.findByRole("button", { name: "SFW", pressed: true })).toBeInTheDocument()
     expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("space-4k-ultra.jpg").length).toBeGreaterThan(0)
     expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
   })
 
@@ -181,6 +217,33 @@ describe("GalleryPage", () => {
 
     expect(screen.getAllByText("forest-scene.png").length).toBeGreaterThan(0)
     expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
+  })
+
+  it("applies sidebar collection requests to the gallery archive", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    expect((await screen.findAllByText("wallhaven-kxpkmm.jpg")).length).toBeGreaterThan(0)
+
+    useUiShellStore.getState().requestGalleryCollection("Space")
+
+    expect(await screen.findByText("space-4k-ultra.jpg")).toBeInTheDocument()
+    expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
+    expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
+  })
+
+  it("opens timeline groups as local gallery filters", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole("button", { name: /Open group Today/i }))
+
+    expect(screen.getAllByText("space-4k-ultra.jpg").length).toBeGreaterThan(0)
+    expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
+    expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
   })
 
   it("persists the selected gallery view in the shell store", async () => {

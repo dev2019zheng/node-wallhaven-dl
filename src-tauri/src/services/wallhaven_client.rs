@@ -190,6 +190,8 @@ mod tests {
                     top_range: Some(WallhavenToplistRange::OneMonth),
                     q: Some("landscape".into()),
                     page: Some(2),
+                    at_least: None,
+                    ratios: None,
                     api_key: Some("test-key".into()),
                 })
                 .await

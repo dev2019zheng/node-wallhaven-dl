@@ -13,6 +13,8 @@ describe("buildSearchWallpapersCommandPayload", () => {
       topRange: "1M",
       q: "landscape",
       page: 2,
+      atLeast: "1920x1080",
+      ratios: "16x9,16x10",
     } as const;
 
     const commandPayload = buildSearchWallpapersCommandPayload(filters, {
@@ -26,6 +28,8 @@ describe("buildSearchWallpapersCommandPayload", () => {
       topRange: "1M",
       q: "landscape",
       page: 2,
+      atLeast: "1920x1080",
+      ratios: "16x9,16x10",
       apiKey: "test-key",
     });
 

@@ -31,6 +31,14 @@ function buildWallhavenQueryParamsBase(
     params.page = String(filters.page);
   }
 
+  if (filters.atLeast !== undefined) {
+    params.atleast = filters.atLeast;
+  }
+
+  if (filters.ratios !== undefined) {
+    params.ratios = filters.ratios;
+  }
+
   return params;
 }
 

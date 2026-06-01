@@ -1,6 +1,8 @@
 import { create } from "zustand";
 
 export type GalleryView = "grid" | "timeline" | "list" | "compact";
+export type GalleryCollectionShortcut = "Favorites" | "4K Ultra" | "Nature" | "Anime" | "Space";
+export type ShellPanel = "quick-navigation" | "help";
 
 export type DownloadSummary = {
   activeCount: number;
@@ -25,21 +27,30 @@ export type ConfirmState = {
   onCancel?: () => void;
 };
 
+export type GalleryCollectionRequest = {
+  label: GalleryCollectionShortcut;
+  requestId: number;
+};
+
 type UiShellState = {
   globalQuery: string;
   selectedSearchIds: string[];
   galleryView: GalleryView;
+  galleryCollectionRequest: GalleryCollectionRequest | null;
   downloadSummary: DownloadSummary;
   toasts: ShellToast[];
   confirm: ConfirmState | null;
+  activeShellPanel: ShellPanel | null;
   setGlobalQuery: (value: string) => void;
   setSelectedSearchIds: (ids: string[]) => void;
   clearSelectedSearchIds: () => void;
   setGalleryView: (view: GalleryView) => void;
+  requestGalleryCollection: (label: GalleryCollectionShortcut) => void;
   setDownloadSummary: (summary: DownloadSummary) => void;
   enqueueToast: (toast: ShellToast) => void;
   dismissToast: (id: string) => void;
   setConfirm: (confirm: ConfirmState | null) => void;
+  setActiveShellPanel: (panel: ShellPanel | null) => void;
 };
 
 export const defaultDownloadSummary: DownloadSummary = {
@@ -52,9 +63,11 @@ export const useUiShellStore = create<UiShellState>((set) => ({
   globalQuery: "",
   selectedSearchIds: [],
   galleryView: "grid",
+  galleryCollectionRequest: null,
   downloadSummary: { ...defaultDownloadSummary },
   toasts: [],
   confirm: null,
+  activeShellPanel: null,
   setGlobalQuery: (value) => {
     set({ globalQuery: value });
   },
@@ -66,6 +79,14 @@ export const useUiShellStore = create<UiShellState>((set) => ({
   },
   setGalleryView: (view) => {
     set({ galleryView: view });
+  },
+  requestGalleryCollection: (label) => {
+    set((state) => ({
+      galleryCollectionRequest: {
+        label,
+        requestId: (state.galleryCollectionRequest?.requestId ?? 0) + 1,
+      },
+    }));
   },
   setDownloadSummary: (summary) => {
     set({ downloadSummary: { ...summary } });
@@ -82,5 +103,8 @@ export const useUiShellStore = create<UiShellState>((set) => ({
   },
   setConfirm: (confirm) => {
     set({ confirm });
+  },
+  setActiveShellPanel: (panel) => {
+    set({ activeShellPanel: panel });
   },
 }));
