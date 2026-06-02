@@ -1,4 +1,4 @@
-import { FolderOpen, Pause, Radio } from "lucide-react"
+import { FolderOpen, Radio, RefreshCcw } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import {
@@ -276,6 +276,24 @@ export function DownloadsPage() {
     }
   }
 
+  const refreshDownloads = async () => {
+    setIsLoading(true)
+    setLoadError(null)
+
+    try {
+      const loadedDownloads = await listDownloadsInService()
+      setDownloads((currentDownloads) =>
+        mergeLoadedDownloads(currentDownloads, loadedDownloads),
+      )
+      showToast("Queue refreshed", `${loadedDownloads.length} tasks loaded.`, "info")
+    } catch (error) {
+      setLoadError(getErrorMessage(error, "Failed to refresh downloads."))
+      showToast("Refresh failed", getErrorMessage(error, "Unable to reload download tasks."), "error")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handlePrimaryAction = async (download: DownloadListItem) => {
     setPendingTaskAction(download.id, "primary")
 
@@ -438,9 +456,17 @@ export function DownloadsPage() {
                 进入页面后先拉取已有任务，再持续接收状态与进度事件。
               </p>
             </div>
-            <Button className="h-10 rounded-[14px]" disabled type="button" variant="outline">
-              <Pause className="h-4 w-4" />
-              Pause all
+            <Button
+              className="h-10 rounded-[14px]"
+              disabled={isLoading}
+              onClick={() => {
+                void refreshDownloads()
+              }}
+              type="button"
+              variant="outline"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Refresh
             </Button>
           </div>
 

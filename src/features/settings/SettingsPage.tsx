@@ -9,13 +9,16 @@ import {
   RefreshCcw,
   ShieldCheck,
   TestTube2,
-  Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { loadSettings, saveSettings } from "@/application/settings/settings-service";
+import {
+  diagnoseWallhavenAccess,
+  loadSettings,
+  saveSettings,
+} from "@/application/settings/settings-service";
 import type {
   DownloadDirectorySettings,
   NetworkProxyScheme,
@@ -57,6 +60,7 @@ type EffectiveDestinationSummary = {
 
 const proxyOptions: Array<{ value: NetworkProxyScheme; label: string }> = [
   { value: "http", label: "HTTP" },
+  { value: "https", label: "HTTPS" },
   { value: "socks5", label: "SOCKS5" },
 ];
 
@@ -157,7 +161,7 @@ export function SettingsPage() {
   const [apiKeyStatus, setApiKeyStatus] = useState<SaveFeedback | null>(null);
   const [proxyStatus, setProxyStatus] = useState<SaveFeedback | null>(null);
   const [isTestingProxy, setIsTestingProxy] = useState(false);
-  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isResettingCacheEstimate, setIsResettingCacheEstimate] = useState(false);
   const [isChoosingDirectory, setIsChoosingDirectory] = useState(false);
   const [isRevealingDirectory, setIsRevealingDirectory] = useState(false);
   const enqueueToast = useUiShellStore((state) => state.enqueueToast);
@@ -306,67 +310,128 @@ export function SettingsPage() {
   };
 
   const validateApiKey = async () => {
+    const trimmedKey = values.wallhavenKey.trim();
+
+    if (proxyAddressError) {
+      const status = { tone: "error" as const, message: "Fix proxy settings before validating the API key." };
+      setApiKeyStatus(status);
+      enqueueToast({
+        id: `settings-api-key-${Date.now()}`,
+        title: status.message,
+        tone: "error",
+      });
+      return;
+    }
+
+    if (trimmedKey.length === 0) {
+      const status = { tone: "info" as const, message: "API key will be cleared after saving settings." };
+      setApiKeyStatus(status);
+      enqueueToast({
+        id: `settings-api-key-${Date.now()}`,
+        title: status.message,
+        tone: "info",
+      });
+      return;
+    }
+
     setIsValidatingKey(true);
     setApiKeyStatus(null);
 
-    await new Promise((resolve) => window.setTimeout(resolve, 180));
-
-    const trimmedKey = values.wallhavenKey.trim();
-    const status =
-      trimmedKey.length === 0
-        ? { tone: "success" as const, message: "API key cleared" }
-        : trimmedKey.length >= 10
-          ? { tone: "success" as const, message: "API key validated" }
-          : { tone: "error" as const, message: "Invalid or expired key" };
-
-    setApiKeyStatus(status);
-    setIsValidatingKey(false);
-    enqueueToast({
-      id: `settings-api-key-${Date.now()}`,
-      title: status.message,
-      tone: status.tone === "error" ? "error" : "success",
-    });
+    try {
+      const diagnostic = await diagnoseWallhavenAccess({
+        wallhavenKey: trimmedKey,
+        networkProxyScheme: values.networkProxyScheme,
+        networkProxyAddress: trimmedProxyAddress,
+      });
+      const status = {
+        tone: "success" as const,
+        message: diagnostic.usesProxy
+          ? "Wallhaven accepted the request with this API key through the configured proxy."
+          : "Wallhaven accepted the request with this API key.",
+      };
+      setApiKeyStatus(status);
+      enqueueToast({
+        id: `settings-api-key-${Date.now()}`,
+        title: "API key checked",
+        description: status.message,
+        tone: "success",
+      });
+    } catch (error) {
+      const message = getErrorMessage(error, "Unable to validate the API key against Wallhaven.");
+      setApiKeyStatus({ tone: "error", message });
+      enqueueToast({
+        id: `settings-api-key-${Date.now()}`,
+        title: "API key check failed",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      setIsValidatingKey(false);
+    }
   };
 
   const testProxy = async () => {
+    if (proxyAddressError) {
+      const status = { tone: "error" as const, message: "Fix proxy settings before testing connectivity." };
+      setProxyStatus(status);
+      enqueueToast({
+        id: `settings-proxy-${Date.now()}`,
+        title: status.message,
+        tone: "error",
+      });
+      return;
+    }
+
     setIsTestingProxy(true);
     setProxyStatus(null);
 
-    await new Promise((resolve) => window.setTimeout(resolve, 180));
-
-    const status =
-      trimmedProxyAddress.length === 0
-        ? { tone: "success" as const, message: "Direct connection ready" }
-        : proxyAddressError
-          ? { tone: "error" as const, message: "Proxy unavailable" }
-          : { tone: "success" as const, message: "Proxy test passed" };
-
-    setProxyStatus(status);
-    setIsTestingProxy(false);
-    enqueueToast({
-      id: `settings-proxy-${Date.now()}`,
-      title: status.message,
-      tone: status.tone === "error" ? "error" : "success",
-    });
+    try {
+      const diagnostic = await diagnoseWallhavenAccess({
+        networkProxyScheme: values.networkProxyScheme,
+        networkProxyAddress: trimmedProxyAddress,
+      });
+      const status = {
+        tone: "success" as const,
+        message: diagnostic.usesProxy
+          ? `${proxyLabels[values.networkProxyScheme]} proxy reached Wallhaven.`
+          : "Direct Wallhaven connection succeeded.",
+      };
+      setProxyStatus(status);
+      enqueueToast({
+        id: `settings-proxy-${Date.now()}`,
+        title: "Connectivity checked",
+        description: status.message,
+        tone: "success",
+      });
+    } catch (error) {
+      const message = getErrorMessage(error, "Unable to reach Wallhaven with the current network settings.");
+      setProxyStatus({ tone: "error", message });
+      enqueueToast({
+        id: `settings-proxy-${Date.now()}`,
+        title: "Connectivity check failed",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      setIsTestingProxy(false);
+    }
   };
 
-  const clearCache = () => {
+  const resetCacheEstimate = () => {
     setConfirm({
-      title: "Clear cache?",
-      description: "Only generated cache files will be cleared. Downloaded wallpaper originals stay in place.",
-      confirmLabel: "Clear cache",
+      title: "Reset cache estimate?",
+      description: "No cache deletion command exists yet. This only resets the displayed cache estimate; downloaded wallpaper originals stay in place.",
+      confirmLabel: "Reset estimate",
       onConfirm: () => {
-        setIsClearingCache(true);
-        window.setTimeout(() => {
-          setValue("cacheSizeBytes", 0, { shouldDirty: true, shouldTouch: true });
-          setIsClearingCache(false);
-          enqueueToast({
-            id: `settings-cache-${Date.now()}`,
-            title: "Cache cleaned",
-            description: "Downloaded wallpaper originals were not removed.",
-            tone: "success",
-          });
-        }, 240);
+        setIsResettingCacheEstimate(true);
+        setValue("cacheSizeBytes", 0, { shouldDirty: true, shouldTouch: true });
+        setIsResettingCacheEstimate(false);
+        enqueueToast({
+          id: `settings-cache-${Date.now()}`,
+          title: "Cache estimate reset",
+          description: "No downloaded wallpaper originals were removed.",
+          tone: "success",
+        });
       },
     });
   };
@@ -551,9 +616,9 @@ export function SettingsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_194px_minmax(0,1fr)_116px] md:gap-4">
+            <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_244px_minmax(0,1fr)_116px] md:gap-4">
               <span className="text-[13px] font-semibold text-foreground">Protocol</span>
-              <div className="wh-control grid h-[42px] grid-cols-2 overflow-hidden p-0">
+              <div className="wh-control grid h-[42px] grid-cols-3 overflow-hidden p-0">
                 {proxyOptions.map((option) => (
                   <button
                     aria-pressed={values.networkProxyScheme === option.value}
@@ -604,11 +669,11 @@ export function SettingsPage() {
                 <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="advanced-heading">
                   Advanced
                 </h3>
-                <p className="text-[13px] leading-6 text-muted-foreground">Desktop startup, deletion prompts, telemetry, and cache cleanup.</p>
+                <p className="text-[13px] leading-6 text-muted-foreground">Desktop startup, deletion prompts, telemetry, and the local cache estimate.</p>
               </div>
-              <Button className="h-10 rounded-[14px]" disabled={isClearingCache} onClick={clearCache} type="button" variant="outline">
-                {isClearingCache ? <Spinner /> : <Trash2 className="h-4 w-4" />}
-                Clear cache
+              <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate} onClick={resetCacheEstimate} type="button" variant="outline">
+                {isResettingCacheEstimate ? <Spinner /> : <RefreshCcw className="h-4 w-4" />}
+                Reset cache meter
               </Button>
             </div>
 
@@ -683,7 +748,7 @@ export function SettingsPage() {
                 ["Default app directory", effectiveDestination.defaultDirectoryPath],
                 ["Gallery compatibility", "Existing SQLite records keep their saved relative and absolute file paths."],
                 ["Proxy", effectiveDestination.proxyLabel],
-                ["Cache", `${formatBytes(values.cacheSizeBytes)} · cleaning never removes downloaded wallpaper originals.`],
+                ["Cache", `${formatBytes(values.cacheSizeBytes)} · meter reset never removes downloaded wallpaper originals.`],
                 ["Security", "API key is masked in UI. Prefer OS secure storage when the plugin is available; Tauri Store fallback is explicit."],
               ].map(([label, value]) => (
                 <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-4" key={label}>

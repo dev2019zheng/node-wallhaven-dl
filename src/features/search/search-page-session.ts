@@ -10,6 +10,8 @@ export type SearchPageFormValues = {
   purityPreset: "sfw" | "sketchy" | "nsfw" | "ws" | "wn" | "sn" | "all";
   sorting: "date_added" | "toplist";
   topRange: WallhavenToplistRange;
+  resolution: "all" | "1920x1080" | "2560x1440" | "3840x2160";
+  aspectRatio: "all" | "16x9" | "16x10" | "21x9" | "4x3" | "portrait";
   q: string;
   page: number;
   pagesToDownload: number;

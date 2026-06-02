@@ -1,9 +1,11 @@
 import { Bell, Search as SearchIcon, Settings2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
 
 export function TopBar() {
+  const navigate = useNavigate();
   const globalQuery = useUiShellStore((state) => state.globalQuery);
   const setGlobalQuery = useUiShellStore((state) => state.setGlobalQuery);
   const downloadSummary = useUiShellStore((state) => state.downloadSummary);
@@ -48,6 +50,7 @@ export function TopBar() {
           <button
             aria-label="Open settings shortcuts"
             className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/50 text-muted-foreground transition hover:text-foreground"
+            onClick={() => navigate("/settings")}
             type="button"
           >
             <Settings2 className="h-4 w-4" />
@@ -55,6 +58,7 @@ export function TopBar() {
           <button
             aria-label="Open task notifications"
             className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/50 text-muted-foreground transition hover:text-foreground"
+            onClick={() => navigate("/downloads")}
             type="button"
           >
             <Bell className="h-4 w-4" />

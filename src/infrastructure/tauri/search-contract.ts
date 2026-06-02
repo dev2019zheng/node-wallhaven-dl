@@ -11,6 +11,8 @@ interface SearchWallpapersCommandPayloadBase {
   purity?: WallhavenPurityFilter;
   q?: string;
   page?: number;
+  atLeast?: string;
+  ratios?: string;
   apiKey?: string;
 }
 
@@ -59,6 +61,14 @@ function buildCommandPayloadBase(
 
   if (filters.page !== undefined) {
     payload.page = filters.page;
+  }
+
+  if (filters.atLeast !== undefined) {
+    payload.atLeast = filters.atLeast;
+  }
+
+  if (filters.ratios !== undefined) {
+    payload.ratios = filters.ratios;
   }
 
   const apiKey = normalizeApiKey(options.apiKey);

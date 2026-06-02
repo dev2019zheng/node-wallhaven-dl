@@ -180,6 +180,7 @@ describe("SearchPage", () => {
         purity: { sfw: true, sketchy: true, nsfw: false },
         sorting: "toplist",
         topRange: "1M",
+        ratios: "16x9",
         q: "aurora",
         page: 2,
       })
@@ -309,6 +310,7 @@ describe("SearchPage", () => {
         categories: "all",
         purity: { sfw: true, sketchy: false, nsfw: false },
         sorting: "date_added",
+        ratios: "16x9",
         q: "",
         page: 2,
       })
@@ -735,6 +737,29 @@ describe("SearchPage", () => {
     expect(screen.getByLabelText(/批量页数/i)).toHaveValue(3)
     expect(screen.getByText(/1966x3000/i)).toBeInTheDocument()
     expect(searchWallpapers).toHaveBeenCalledTimes(1)
+  })
+
+  it("submits resolution and aspect ratio filters through the structured search contract", async () => {
+    vi.mocked(searchWallpapers).mockResolvedValue(sampleResponse)
+
+    render(<SearchPage />)
+
+    const user = userEvent.setup()
+    await user.selectOptions(screen.getByLabelText(/分辨率/i), "3840x2160")
+    await user.selectOptions(screen.getByLabelText(/宽高比/i), "21x9")
+    await user.click(screen.getByRole("button", { name: /搜索/i }))
+
+    await waitFor(() => {
+      expect(searchWallpapers).toHaveBeenCalledWith({
+        categories: "all",
+        purity: { sfw: true, sketchy: false, nsfw: false },
+        sorting: "date_added",
+        atLeast: "3840x2160",
+        ratios: "21x9",
+        q: "",
+        page: 1,
+      })
+    })
   })
 
   it("keeps draft form values but clears stale results after remount when the draft diverges from the last submitted search", async () => {

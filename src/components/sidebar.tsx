@@ -1,9 +1,12 @@
 import { Download, Heart, Images, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
-import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import {
+  type GalleryCollectionShortcut,
+  useUiShellStore,
+} from "@/features/shell/ui-shell-store";
 
 type NavigationItem = {
   to: string;
@@ -18,16 +21,18 @@ const navigationItems: NavigationItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-const collectionItems = [
-  { label: "Favorites", count: 128, icon: Heart },
-  { label: "4K Ultra", count: 86, icon: Heart },
-  { label: "Nature", count: 42, icon: Heart },
-  { label: "Anime", count: 36, icon: Heart },
-  { label: "Space", count: 50, icon: Heart },
+const collectionItems: Array<{ label: GalleryCollectionShortcut; icon: LucideIcon }> = [
+  { label: "Favorites", icon: Heart },
+  { label: "4K Ultra", icon: Heart },
+  { label: "Nature", icon: Heart },
+  { label: "Anime", icon: Heart },
+  { label: "Space", icon: Heart },
 ];
 
 export function Sidebar() {
+  const navigate = useNavigate();
   const downloadSummary = useUiShellStore((state) => state.downloadSummary);
+  const requestGalleryCollection = useUiShellStore((state) => state.requestGalleryCollection);
 
   return (
     <aside
@@ -79,13 +84,20 @@ export function Sidebar() {
           {collectionItems.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="flex h-[32px] items-center justify-between rounded-xl px-2 text-[13px] font-medium text-muted-foreground transition hover:bg-[var(--surface-hover)]/65 hover:text-foreground">
+              <button
+                className="flex h-[32px] w-full items-center justify-between rounded-xl px-2 text-left text-[13px] font-medium text-muted-foreground transition hover:bg-[var(--surface-hover)]/65 hover:text-foreground"
+                key={item.label}
+                onClick={() => {
+                  requestGalleryCollection(item.label);
+                  navigate("/gallery");
+                }}
+                type="button"
+              >
                 <div className="flex items-center gap-2">
                   <Icon className="h-4 w-4" />
                   <span>{item.label}</span>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground/90">{item.count}</span>
-              </div>
+              </button>
             );
           })}
         </div>

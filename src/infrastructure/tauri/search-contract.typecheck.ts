@@ -7,6 +7,8 @@ export const validToplistCommandPayload: SearchWallpapersCommandPayload = {
   topRange: "1M",
   q: "landscape",
   page: 2,
+  atLeast: "1920x1080",
+  ratios: "16x9",
   apiKey: "test-key",
 };
 

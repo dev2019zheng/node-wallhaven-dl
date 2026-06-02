@@ -42,6 +42,8 @@ export interface WallhavenQueryFilterBase {
   purity?: WallhavenPurityFilter;
   q?: string;
   page?: number;
+  atLeast?: string;
+  ratios?: string;
 }
 
 export interface WallhavenToplistQueryFilters extends WallhavenQueryFilterBase {
@@ -63,6 +65,8 @@ export interface WallhavenQueryParamsBase {
   purity?: WallhavenPurityCode;
   q?: string;
   page?: string;
+  atleast?: string;
+  ratios?: string;
 }
 
 export interface WallhavenToplistQueryParams extends WallhavenQueryParamsBase {

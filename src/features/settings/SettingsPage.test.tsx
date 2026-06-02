@@ -2,7 +2,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { loadSettings, saveSettings } from "@/application/settings/settings-service";
+import {
+  diagnoseWallhavenAccess,
+  loadSettings,
+  saveSettings,
+} from "@/application/settings/settings-service";
 import type { SettingsSnapshot } from "@/application/settings/settings.types";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
 
@@ -14,6 +18,7 @@ const { chooseDirectory, revealPath } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/application/settings/settings-service", () => ({
+  diagnoseWallhavenAccess: vi.fn(),
   loadSettings: vi.fn(),
   saveSettings: vi.fn(),
 }));
@@ -66,6 +71,11 @@ describe("SettingsPage", () => {
     useUiShellStore.setState({ toasts: [], confirm: null });
     vi.mocked(loadSettings).mockResolvedValue(defaultSnapshot);
     vi.mocked(saveSettings).mockResolvedValue(defaultSnapshot);
+    vi.mocked(diagnoseWallhavenAccess).mockResolvedValue({
+      usesProxy: true,
+      authenticated: true,
+      total: 128,
+    });
     vi.mocked(chooseDirectory).mockResolvedValue(null);
     vi.mocked(revealPath).mockResolvedValue(undefined);
   });
@@ -86,6 +96,8 @@ describe("SettingsPage", () => {
     expect(await screen.findByLabelText(/^API Key$/i, { selector: "input" })).toHaveValue("existing-key");
     expect(screen.getByLabelText(/Download path/i)).toHaveValue("/Users/test/Pictures/Wallhaven");
     expect(screen.getByLabelText(/Proxy address/i)).toHaveValue("127.0.0.1:7897");
+    expect(screen.getByRole("button", { name: /^HTTP$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^HTTPS$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /SOCKS5/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("switch", { name: /Ask before deleting/i })).toHaveAttribute("aria-checked", "true");
   });
@@ -193,7 +205,7 @@ describe("SettingsPage", () => {
     expect(revealPath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven");
   });
 
-  it("validates masked API key input and reports success without exposing logs", async () => {
+  it("validates masked API key input through the Wallhaven diagnostic service", async () => {
     render(
       <>
         <SettingsPage />
@@ -205,8 +217,35 @@ describe("SettingsPage", () => {
     await screen.findByLabelText(/^API Key$/i, { selector: "input" });
     await user.click(screen.getByRole("button", { name: /Validate key/i }));
 
-    expect((await screen.findAllByText(/API key validated/i)).length).toBeGreaterThan(0);
-    expect(await screen.findByRole("status")).toHaveTextContent(/API key validated/i);
+    await waitFor(() => {
+      expect(diagnoseWallhavenAccess).toHaveBeenCalledWith({
+        wallhavenKey: "existing-key",
+        networkProxyScheme: "socks5",
+        networkProxyAddress: "127.0.0.1:7897",
+      });
+    });
+    expect((await screen.findAllByText(/Wallhaven accepted the request/i)).length).toBeGreaterThan(0);
+  });
+
+  it("tests proxy connectivity through the Wallhaven diagnostic service", async () => {
+    render(
+      <>
+        <SettingsPage />
+        <ToastProbe />
+      </>,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByLabelText(/^API Key$/i, { selector: "input" });
+    await user.click(screen.getByRole("button", { name: /^Test$/i }));
+
+    await waitFor(() => {
+      expect(diagnoseWallhavenAccess).toHaveBeenCalledWith({
+        networkProxyScheme: "socks5",
+        networkProxyAddress: "127.0.0.1:7897",
+      });
+    });
+    expect((await screen.findAllByText(/SOCKS5 proxy reached Wallhaven/i)).length).toBeGreaterThan(0);
   });
 
   it("blocks saving invalid directory and proxy values near the controls", async () => {
@@ -223,7 +262,7 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: /Save settings/i })).toBeDisabled();
   });
 
-  it("clears cache through the confirmation dialog without deleting originals", async () => {
+  it("resets the cache estimate through the confirmation dialog without deleting originals", async () => {
     render(
       <>
         <SettingsPage />
@@ -233,13 +272,13 @@ describe("SettingsPage", () => {
 
     const user = userEvent.setup();
     await screen.findByLabelText(/^API Key$/i, { selector: "input" });
-    await user.click(screen.getByRole("button", { name: /Clear cache/i }));
+    await user.click(screen.getByRole("button", { name: /Reset cache meter/i }));
 
-    expect(screen.getByRole("dialog", { name: /Clear cache/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /Reset cache estimate/i })).toBeInTheDocument();
     expect(screen.getByText(/Downloaded wallpaper originals stay in place/i)).toBeInTheDocument();
-    await user.click(within(screen.getByRole("dialog", { name: /Clear cache/i })).getByRole("button", { name: /^Clear cache$/i }));
+    await user.click(within(screen.getByRole("dialog", { name: /Reset cache estimate/i })).getByRole("button", { name: /^Reset estimate$/i }));
 
-    expect(await screen.findByText(/0 MB · cleaning never removes downloaded wallpaper originals/i)).toBeInTheDocument();
+    expect(await screen.findByText(/0 MB · meter reset never removes downloaded wallpaper originals/i)).toBeInTheDocument();
   });
 
   it("shows the shared storage error state and disables saving when settings fail to load", async () => {

@@ -379,6 +379,31 @@ describe("DownloadsPage", () => {
     expect(await screen.findByText(/No downloads yet/i)).toBeInTheDocument()
   })
 
+  it("refreshes the download queue from the tasks header", async () => {
+    vi.mocked(listDownloads)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "download-refresh",
+          wallpaperId: "refresh123",
+          fileName: "wallhaven-refresh123.jpg",
+          relativeFilePath: "wallpapers/wallhaven-refresh123.jpg",
+          status: "succeeded",
+        },
+      ])
+
+    render(<DownloadsPage />)
+
+    const user = userEvent.setup()
+    await screen.findByText(/No downloads yet/i)
+    await user.click(screen.getByRole("button", { name: /Refresh/i }))
+
+    expect(await screen.findByText("wallhaven-refresh123.jpg")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useUiShellStore.getState().toasts[0]?.title).toBe("Queue refreshed")
+    })
+  })
+
   it("opens the effective download directory from the command center", async () => {
     vi.mocked(listDownloads).mockResolvedValue([])
 

@@ -14,6 +14,7 @@ import { Store } from "@tauri-apps/plugin-store";
 import { SettingsCommandError } from "@/application/settings/settings.types";
 
 import {
+  diagnoseWallhavenAccess,
   loadDownloadDirectorySettings,
   loadNetworkProxySettings,
   loadStoredWallhavenKey,
@@ -194,6 +195,38 @@ describe("settings-repository", () => {
     expect(invoke).toHaveBeenCalledWith("save_network_proxy_settings", {
       request: {
         proxy: null,
+      },
+    });
+  });
+
+  it("invokes the Wallhaven access diagnostic command with unsaved proxy and API key input", async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      usesProxy: true,
+      authenticated: true,
+      total: 42,
+    });
+
+    await expect(
+      diagnoseWallhavenAccess({
+        apiKey: "test-key",
+        proxy: {
+          scheme: "socks5",
+          address: "127.0.0.1:7897",
+        },
+      }),
+    ).resolves.toEqual({
+      usesProxy: true,
+      authenticated: true,
+      total: 42,
+    });
+
+    expect(invoke).toHaveBeenCalledWith("diagnose_wallhaven_access", {
+      request: {
+        apiKey: "test-key",
+        proxy: {
+          scheme: "socks5",
+          address: "127.0.0.1:7897",
+        },
       },
     });
   });

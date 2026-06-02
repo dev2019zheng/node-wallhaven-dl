@@ -43,7 +43,8 @@ pub fn run() {
             commands::settings::get_download_directory_settings,
             commands::settings::save_download_directory_settings,
             commands::settings::get_network_proxy_settings,
-            commands::settings::save_network_proxy_settings
+            commands::settings::save_network_proxy_settings,
+            commands::settings::diagnose_wallhaven_access
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

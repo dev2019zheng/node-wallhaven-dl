@@ -12,6 +12,8 @@ pub struct WallhavenSearchRequest {
     pub top_range: Option<WallhavenToplistRange>,
     pub q: Option<String>,
     pub page: Option<u32>,
+    pub at_least: Option<String>,
+    pub ratios: Option<String>,
     pub api_key: Option<String>,
 }
 
@@ -215,6 +217,14 @@ impl WallhavenSearchRequest {
             params.push(("page".into(), page.to_string()));
         }
 
+        if let Some(at_least) = &self.at_least {
+            params.push(("atleast".into(), at_least.clone()));
+        }
+
+        if let Some(ratios) = &self.ratios {
+            params.push(("ratios".into(), ratios.clone()));
+        }
+
         match (&self.sorting, &self.top_range) {
             (None, Some(_)) => return Err(WallhavenRequestError::TopRangeRequiresToplist),
             (Some(WallhavenSorting::Toplist), None) => {
@@ -264,6 +274,8 @@ mod tests {
             top_range: Some(WallhavenToplistRange::OneMonth),
             q: Some("landscape".into()),
             page: Some(2),
+            at_least: Some("1920x1080".into()),
+            ratios: Some("16x9,16x10".into()),
             api_key: Some("test-key".into()),
         };
 
@@ -274,6 +286,8 @@ mod tests {
                 ("purity".into(), "110".into()),
                 ("q".into(), "landscape".into()),
                 ("page".into(), "2".into()),
+                ("atleast".into(), "1920x1080".into()),
+                ("ratios".into(), "16x9,16x10".into()),
                 ("sorting".into(), "toplist".into()),
                 ("topRange".into(), "1M".into()),
                 ("order".into(), "desc".into()),
