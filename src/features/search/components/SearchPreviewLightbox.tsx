@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, type MouseEvent } from "react"
 
 import type { SearchWallpaper } from "@/application/search/search.types"
 import { ProxiedImage } from "@/components/proxied-image"
@@ -22,6 +22,11 @@ export function SearchPreviewLightbox({
   const wallpaper = wallpapers[index]
   const canGoPrevious = index > 0
   const canGoNext = index < wallpapers.length - 1
+  const handleBackdropMouseDown = (event: MouseEvent<HTMLElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose()
+    }
+  }
 
   useEffect(() => {
     if (!open) {
@@ -87,7 +92,11 @@ export function SearchPreviewLightbox({
         </div>
       </div>
 
-      <div className="grid min-h-0 grid-cols-[72px_minmax(0,1fr)_72px] items-center gap-4 px-6 py-5">
+      <div
+        className="grid min-h-0 grid-cols-[72px_minmax(0,1fr)_72px] items-center gap-4 px-6 py-5"
+        data-testid="lightbox-stage"
+        onMouseDown={handleBackdropMouseDown}
+      >
         <button
           aria-label="Previous wallpaper"
           className="wh-icon-button h-12 w-12 justify-self-center disabled:cursor-not-allowed disabled:opacity-40"
@@ -98,7 +107,11 @@ export function SearchPreviewLightbox({
           <ChevronLeft className="h-5 w-5" />
         </button>
 
-        <div className="flex h-full min-h-0 items-center justify-center overflow-hidden rounded-[18px] border border-white/10 bg-black/30">
+        <div
+          className="flex h-full min-h-0 items-center justify-center overflow-hidden rounded-[18px] border border-white/10 bg-black/30"
+          data-testid="lightbox-image-backdrop"
+          onMouseDown={handleBackdropMouseDown}
+        >
           <ProxiedImage
             alt={`Wallpaper ${wallpaper.id}`}
             className="max-h-full max-w-full object-contain"

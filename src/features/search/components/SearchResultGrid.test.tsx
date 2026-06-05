@@ -7,7 +7,7 @@ vi.mock("@/infrastructure/tauri/media-repository", () => ({
   loadRemoteImageObjectUrl: vi.fn(),
 }));
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { SearchWallpaper } from "@/application/search/search.types";
@@ -84,5 +84,25 @@ describe("SearchResultGrid", () => {
     expect(
       screen.getByRole("link", { name: /Open Wallhaven page for wallpaper kxpkmm/i }),
     ).toHaveAttribute("href", "https://wallhaven.cc/w/kxpkmm");
+  });
+
+  it("closes the preview from escape and image backdrop clicks", async () => {
+    vi.mocked(loadRemoteImageObjectUrl).mockResolvedValue("blob://proxied-thumbnail");
+
+    render(<SearchResultGrid wallpapers={wallpapers} />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Preview wallpaper kxpkmm/i }));
+
+    expect(screen.getByRole("dialog", { name: /Preview wallpaper kxpkmm/i })).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog", { name: /Preview wallpaper kxpkmm/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Preview wallpaper kxpkmm/i }));
+    fireEvent.mouseDown(screen.getByTestId("lightbox-image-backdrop"));
+
+    expect(screen.queryByRole("dialog", { name: /Preview wallpaper kxpkmm/i })).not.toBeInTheDocument();
   });
 });
