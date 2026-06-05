@@ -516,8 +516,8 @@ export function GalleryPage() {
       />
 
       <section aria-label="Gallery archive" className="space-y-6">
-        <div className="grid grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] items-center gap-4">
-          <label className="relative block">
+        <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[minmax(240px,1fr)_repeat(2,minmax(88px,1fr))] xl:grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] xl:gap-4">
+          <label className="relative block md:col-span-3 xl:col-span-1">
             <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               aria-label="Search local gallery"
@@ -610,7 +610,7 @@ export function GalleryPage() {
         ) : null}
 
         {!loadError && filteredGalleryItems.length > 0 ? (
-          <div className="grid grid-cols-[minmax(716px,1fr)_428px] items-start gap-6">
+          <div className="grid grid-cols-1 items-start gap-6 min-[1280px]:grid-cols-[minmax(0,1fr)_360px] min-[1500px]:grid-cols-[minmax(0,1fr)_428px]">
             <div className="space-y-9">
               <GalleryGrid
                 items={filteredGalleryItems}
@@ -628,11 +628,11 @@ export function GalleryPage() {
 
               <section className="app-panel h-[252px] p-6">
                 <h3 className="text-[20px] font-semibold leading-7 text-foreground">Timeline</h3>
-                <div className="mt-6 grid grid-cols-[1fr_296px] gap-6">
+                <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[1fr_240px] min-[1400px]:grid-cols-[1fr_296px]">
                   <div className="space-y-5">
-                    {timelineGroups.map(({ label, count }, index) => (
+                    {timelineGroups.map(({ label, count }) => (
                       <div className="grid grid-cols-[18px_1fr_120px] items-center gap-4" key={label}>
-                        <span className={activeImportGroup === label || (!activeImportGroup && index === 0) ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
+                        <span className={activeImportGroup === label ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
                         <span className="text-[14px] font-semibold text-foreground">{label}</span>
                         <span className="text-[13px] font-medium text-muted-foreground">{count} imported</span>
                       </div>
@@ -655,8 +655,7 @@ export function GalleryPage() {
                         type="button"
                         variant="outline"
                       >
-                        Open group
-                        <span className="sr-only">{label}</span>
+                        Open {label}
                       </Button>
                     ))}
                   </div>

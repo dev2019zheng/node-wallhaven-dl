@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Download, Loader2, Save, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
+import { Copy, Download, Loader2, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -334,15 +334,23 @@ export function SearchPage() {
   }, [result]);
   const inspectorWallpaper = selectedWallpapers[0] ?? null;
 
-  const saveSelectedToCollection = () => {
+  const copySelectedLinks = async () => {
     if (selectedWallpapers.length === 0) {
       return;
     }
 
-    setDownloadFeedback({
-      tone: "success",
-      message: `${formatWallpaperCount(selectedWallpapers.length)} 已保留为当前选择，可继续批量下载或清除选择。`,
-    });
+    try {
+      await navigator.clipboard.writeText(selectedWallpapers.map((wallpaper) => wallpaper.shortUrl).join("\n"));
+      setDownloadFeedback({
+        tone: "success",
+        message: `Copied ${formatWallpaperCount(selectedWallpapers.length)} Wallhaven links to clipboard.`,
+      });
+    } catch (error) {
+      setDownloadFeedback({
+        tone: "error",
+        message: getErrorMessage(error, "Clipboard is unavailable."),
+      });
+    }
   };
 
   const onSubmit = handleSubmit(async (values) => {
@@ -691,7 +699,7 @@ export function SearchPage() {
                   <span className="flex items-center justify-between gap-3">
                     {formValues.sorting === "toplist" ? (
                       <select aria-label="热榜范围" className="min-w-0 bg-transparent text-[13px] font-semibold outline-none" id="search-top-range" {...register("topRange")}>
-                        <option value="1M">Advanced</option>
+                        <option value="1M">Past month</option>
                         <option value="1d">Past day</option>
                         <option value="3d">Past 3 days</option>
                         <option value="1w">Past week</option>
@@ -700,7 +708,7 @@ export function SearchPage() {
                         <option value="1y">Past year</option>
                       </select>
                     ) : (
-                      <span className="text-[13px] font-semibold">Advanced</span>
+                      <span className="text-[13px] font-semibold text-muted-foreground">Use Toplist</span>
                     )}
                     <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
                   </span>
@@ -735,9 +743,8 @@ export function SearchPage() {
                     {isBulkDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                     <span className="sr-only">{bulkDownloadLabel}</span>
                   </Button>
-                  <div className="wh-control flex h-[42px] w-[126px] items-center justify-between px-4 text-[13px] font-semibold">
+                  <div className="inline-flex h-[42px] items-center rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground">
                     24 per page
-                    <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <button
                     aria-label="Clear selection"
@@ -838,12 +845,14 @@ export function SearchPage() {
               </Button>
               <Button
                 className="h-12 w-full rounded-[14px]"
-                onClick={saveSelectedToCollection}
+                onClick={() => {
+                  void copySelectedLinks();
+                }}
                 type="button"
                 variant="outline"
               >
-                <Save className="h-4 w-4" />
-                Keep selection
+                <Copy className="h-4 w-4" />
+                Copy links
               </Button>
               <Button
                 aria-label="清除选择"

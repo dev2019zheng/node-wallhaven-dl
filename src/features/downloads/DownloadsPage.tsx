@@ -398,8 +398,8 @@ export function DownloadsPage() {
         title="Downloads"
       />
 
-      <section className="grid grid-cols-[260px_minmax(656px,1fr)_260px] items-start gap-6">
-        <aside className="app-panel h-[698px] space-y-6 p-6">
+      <section className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)] min-[1500px]:grid-cols-[260px_minmax(0,1fr)_260px]">
+        <aside className="app-panel space-y-6 p-6 min-[1500px]:h-[698px]">
           <div className="space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-foreground">Command Center</h3>
             <p className="text-[13px] font-medium text-muted-foreground">Queue health</p>
@@ -448,7 +448,7 @@ export function DownloadsPage() {
           </Button>
         </aside>
 
-        <section className="app-panel h-[698px] space-y-6 p-6">
+        <section className="app-panel min-h-[520px] space-y-6 p-6 min-[1500px]:h-[698px]">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <h3 className="text-[20px] font-semibold leading-7 text-foreground">Tasks</h3>
@@ -489,7 +489,7 @@ export function DownloadsPage() {
           />
         </section>
 
-        <aside className="app-panel h-[698px] space-y-6 p-6">
+        <aside className="app-panel space-y-6 p-6 xl:col-span-2 min-[1500px]:col-span-1 min-[1500px]:h-[698px]">
           <div className="space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-foreground">Live Events</h3>
             <p className="sr-only">最新状态事件会插入顶部，帮助确认队列是否仍在流动。</p>

@@ -1,5 +1,6 @@
-const { downloadWallpaper } = vi.hoisted(() => ({
+const { downloadWallpaper, writeClipboardText } = vi.hoisted(() => ({
   downloadWallpaper: vi.fn(),
+  writeClipboardText: vi.fn(),
 }))
 
 vi.mock("@/application/downloads/downloads-service", () => ({
@@ -10,7 +11,7 @@ vi.mock("@/application/search/search-service", () => ({
   searchWallpapers: vi.fn(),
 }))
 
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { searchWallpapers } from "@/application/search/search-service"
@@ -149,6 +150,13 @@ const multiChunkResponse: SearchWallpapersResponse = {
 describe("SearchPage", () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: writeClipboardText,
+      },
+    })
+    writeClipboardText.mockResolvedValue(undefined)
     clearSearchPageSessionSnapshot()
     useUiShellStore.setState({ selectedSearchIds: [] })
   })
@@ -474,6 +482,40 @@ describe("SearchPage", () => {
       purity: "sfw",
       category: "anime",
     })
+  })
+
+  it("copies selected wallpaper links from the inspector", async () => {
+    vi.mocked(searchWallpapers).mockResolvedValue(multiWallpaperResponse)
+
+    render(<SearchPage />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: /搜索/i }))
+
+    await user.click(
+      await screen.findByRole("checkbox", {
+        name: /Select wallpaper kxpkmm/i,
+      }),
+    )
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Select wallpaper zz9xwy/i,
+      }),
+    )
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: writeClipboardText,
+      },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /Copy links/i }))
+
+    await waitFor(() => {
+      expect(writeClipboardText).toHaveBeenCalledWith(
+        "https://whvn.cc/kxpkmm\nhttps://whvn.cc/zz9xwy",
+      )
+    })
+    expect(await screen.findByText(/Copied 2 张壁纸 Wallhaven links/i)).toBeInTheDocument()
   })
 
   it("skips wallpapers that are already downloading when starting a selected download", async () => {

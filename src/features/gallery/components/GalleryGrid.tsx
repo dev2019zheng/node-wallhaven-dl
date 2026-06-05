@@ -38,7 +38,7 @@ export function GalleryGrid({
       <div
         className={cn(
           view === "grid"
-            ? "grid max-h-[calc(100vh-418px)] min-h-[282px] grid-cols-3 gap-x-4 gap-y-[18px] overflow-y-auto pr-1"
+            ? "grid max-h-[calc(100vh-418px)] min-h-[282px] grid-cols-1 gap-x-4 gap-y-[18px] overflow-y-auto pr-1 sm:grid-cols-2 min-[1400px]:grid-cols-3"
             : "max-h-[calc(100vh-418px)] min-h-[282px] space-y-4 overflow-y-auto pr-1",
         )}
         style={view === "grid" ? { contentVisibility: "auto", containIntrinsicSize: "716px 420px" } : undefined}

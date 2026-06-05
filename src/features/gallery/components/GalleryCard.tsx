@@ -93,7 +93,15 @@ export function GalleryCard({
             >
               <Tag className="h-4 w-4" />
             </button>
-            <button aria-label={`Preview wallpaper ${item.wallpaperId}`} className="wh-icon-button h-8 w-8" onClick={onPreview} type="button">
+            <button
+              aria-label={`Preview wallpaper ${item.wallpaperId}`}
+              className="wh-icon-button h-8 w-8"
+              onClick={() => {
+                onSelect?.()
+                onPreview()
+              }}
+              type="button"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </div>

@@ -272,6 +272,22 @@ describe("GalleryPage", () => {
     )
   })
 
+  it("selects a non-default gallery card before opening it from the preview action", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole("button", { name: /Preview wallpaper space4k/i }),
+    )
+
+    expect(screen.getByRole("img", { name: /Selected wallpaper space4k/i })).toBeInTheDocument()
+    expect(screen.getByTestId("lightbox")).toHaveTextContent(
+      "asset:///Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/space-4k-ultra.jpg",
+    )
+  })
+
   it("shows an error state when the gallery command fails", async () => {
     vi.mocked(loadInitialGalleryItems).mockRejectedValue(new Error("gallery unavailable"))
 
