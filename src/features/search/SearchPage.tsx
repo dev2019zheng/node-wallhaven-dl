@@ -129,6 +129,10 @@ function areFormValuesEqual(
   );
 }
 
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 function getRestoredSearchState(snapshot: ReturnType<typeof getSearchPageSessionSnapshot>) {
   if (!snapshot) {
     return {
@@ -316,6 +320,27 @@ export function SearchPage() {
     () => result?.data.filter((wallpaper) => selectedWallpaperSet.has(wallpaper.id)) ?? [],
     [result, selectedWallpaperSet],
   );
+
+  useEffect(() => {
+    if (selectedSearchIds.length === 0) {
+      return;
+    }
+
+    if (!result) {
+      clearSelectedSearchIds();
+      return;
+    }
+
+    const resultWallpaperIds = new Set(result.data.map((wallpaper) => wallpaper.id));
+    const visibleSelectedIds = selectedSearchIds.filter((wallpaperId) =>
+      resultWallpaperIds.has(wallpaperId),
+    );
+
+    if (!areStringArraysEqual(selectedSearchIds, visibleSelectedIds)) {
+      setSelectedSearchIds(visibleSelectedIds);
+    }
+  }, [clearSelectedSearchIds, result, selectedSearchIds, setSelectedSearchIds]);
+
   const resultCountLabel = useMemo(() => {
     if (!result || result.data.length === 0) {
       return null;

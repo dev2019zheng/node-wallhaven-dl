@@ -24,7 +24,11 @@ import type { SearchWallpaper, SearchWallpapersResponse } from "@/application/se
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
 
 import { SearchPage } from "./SearchPage"
-import { clearSearchPageSessionSnapshot } from "./search-page-session"
+import {
+  clearSearchPageSessionSnapshot,
+  saveSearchPageSessionSnapshot,
+  type SearchPageFormValues,
+} from "./search-page-session"
 
 function createWallpaper(id: string, overrides: Partial<SearchWallpaper> = {}): SearchWallpaper {
   return {
@@ -151,6 +155,18 @@ const multiChunkResponse: SearchWallpapersResponse = {
   },
 }
 
+const defaultFormValues: SearchPageFormValues = {
+  category: "all",
+  purityPreset: "sfw",
+  sorting: "date_added",
+  topRange: "1M",
+  resolution: "all",
+  aspectRatio: "16x9",
+  q: "",
+  page: 1,
+  pagesToDownload: 1,
+}
+
 async function findFirstBulkButton(name: RegExp) {
   const buttons = await screen.findAllByRole("button", { name })
   return buttons[0]!
@@ -203,7 +219,7 @@ describe("SearchPage", () => {
       })
     })
 
-    expect(await screen.findByText(/1966x3000/i)).toBeInTheDocument()
+    expect((await screen.findAllByText(/1966x3000/i)).length).toBeGreaterThan(0)
   })
 
   it("turns the compact toplist affordance into an active toplist filter", async () => {
@@ -494,12 +510,51 @@ describe("SearchPage", () => {
     await user.type(queryInput, "forest")
     await user.click(screen.getByRole("button", { name: "搜索" }))
 
-    expect(await screen.findByText(/1966x3000/i)).toBeInTheDocument()
+    expect((await screen.findAllByText(/1966x3000/i)).length).toBeGreaterThan(0)
     expect(screen.queryByText(/已选择 1 项/i)).not.toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: /下载选中/i }),
     ).not.toBeInTheDocument()
     expect(useUiShellStore.getState().selectedSearchIds).toEqual([])
+  })
+
+  it("prunes restored selected ids that are not in the current search results", async () => {
+    saveSearchPageSessionSnapshot({
+      formValues: defaultFormValues,
+      submittedFormValues: defaultFormValues,
+      result: sampleResponse,
+      searchError: null,
+      activeFilters: {
+        categories: "all",
+        purity: { sfw: true, sketchy: false, nsfw: false },
+        sorting: "date_added",
+        ratios: "16x9",
+        q: "",
+        page: 1,
+      },
+    })
+    useUiShellStore.setState({ selectedSearchIds: ["ghost-id", "kxpkmm"] })
+
+    render(<SearchPage />)
+
+    expect((await screen.findAllByText(/1966x3000/i)).length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(useUiShellStore.getState().selectedSearchIds).toEqual(["kxpkmm"])
+    })
+    expect(screen.getByRole("button", { name: /下载选中/i })).toBeInTheDocument()
+    expect(screen.getByText(/已选择 1 项/i)).toBeInTheDocument()
+    expect(screen.getByRole("checkbox", { name: /Select wallpaper kxpkmm/i })).toBeChecked()
+  })
+
+  it("clears restored selected ids when no search result is active", async () => {
+    useUiShellStore.setState({ selectedSearchIds: ["ghost-id"] })
+
+    render(<SearchPage />)
+
+    await waitFor(() => {
+      expect(useUiShellStore.getState().selectedSearchIds).toEqual([])
+    })
+    expect(screen.queryByRole("button", { name: /清除选择/i })).not.toBeInTheDocument()
   })
 
   it("downloads the selected wallpapers from the sticky selection bar", async () => {
