@@ -424,11 +424,19 @@ export function DownloadsPage() {
       },
     })
   }
+  const headingBadge = isLoading
+    ? { label: "Loading queue", tone: "info" as const }
+    : loadError
+      ? { label: "Queue unavailable", tone: "error" as const }
+      : summary.activeCount > 0
+        ? { label: "Transfers active", tone: "success" as const }
+        : { label: "Queue ready", tone: "info" as const }
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="Event stream live"
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
         description="Track queued, running, completed and failed transfers."
         eyebrow="Wallpaper transfer queue"
         title="Downloads"

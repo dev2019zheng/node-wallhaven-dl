@@ -383,6 +383,16 @@ describe("DownloadsPage", () => {
     render(<DownloadsPage />)
 
     expect(await screen.findByText(/No downloads yet/i)).toBeInTheDocument()
+    expect(screen.getByText("Queue ready")).toBeInTheDocument()
+  })
+
+  it("marks the queue unavailable when the initial download load fails", async () => {
+    vi.mocked(listDownloads).mockRejectedValue(new Error("download store unavailable"))
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("download store unavailable")
+    expect(screen.getByText("Queue unavailable")).toBeInTheDocument()
   })
 
   it("refreshes the download queue from the tasks header", async () => {

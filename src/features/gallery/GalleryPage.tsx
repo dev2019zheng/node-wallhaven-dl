@@ -528,11 +528,19 @@ export function GalleryPage() {
       },
     })
   }
+  const headingBadge = isLoading && !gallery
+    ? { label: "Loading archive", tone: "info" as const }
+    : loadError
+      ? { label: "Archive unavailable", tone: "error" as const }
+      : galleryItems.length > 0
+        ? { label: "Archive loaded", tone: "success" as const }
+        : { label: "Archive empty", tone: "info" as const }
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="SQLite archive ready"
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
         description="Browse archived local wallpapers."
         eyebrow="Local wallpaper library"
         title="Gallery"

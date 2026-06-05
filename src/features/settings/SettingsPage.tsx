@@ -503,11 +503,21 @@ export function SettingsPage() {
       });
     }
   });
+  const headingBadge = isLoading
+    ? { label: "Loading settings", tone: "info" as const }
+    : loadError
+      ? { label: "Settings unavailable", tone: "error" as const }
+      : formState.isSubmitting
+        ? { label: "Saving settings", tone: "info" as const }
+        : formState.isDirty
+          ? { label: "Unsaved changes", tone: "warning" as const }
+          : { label: "Settings loaded", tone: "success" as const };
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge={formState.isDirty ? "Unsaved changes" : "Settings synced"}
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
         description="API key, downloads, proxy, cache, and deletion safety."
         eyebrow="Application settings"
         title="Settings"

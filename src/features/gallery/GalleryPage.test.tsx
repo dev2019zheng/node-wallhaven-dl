@@ -161,6 +161,7 @@ describe("GalleryPage", () => {
 
     expect(loadInitialGalleryItems).toHaveBeenCalledTimes(1)
     expect(await screen.findByText(/No archived wallpapers yet/i)).toBeInTheDocument()
+    expect(screen.getByText("Archive empty")).toBeInTheDocument()
   })
 
   it("renders archived wallpaper cards using local asset URLs", async () => {
@@ -176,6 +177,7 @@ describe("GalleryPage", () => {
     )
     expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
     expect(screen.getAllByText("wallpapers/wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
+    expect(screen.getByText("Archive loaded")).toBeInTheDocument()
     expect(screen.getByText("Local asset · SFW · general")).toBeInTheDocument()
     expect(screen.queryByText(/3840 × 2160/i)).not.toBeInTheDocument()
   })
@@ -295,6 +297,7 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     expect(await screen.findByRole("alert")).toHaveTextContent("gallery unavailable")
+    expect(screen.getByText("Archive unavailable")).toBeInTheDocument()
   })
 
   it("filters the local archive with v3 collection chips", async () => {

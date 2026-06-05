@@ -90,6 +90,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     expect(await screen.findByRole("region", { name: /wallhaven access/i })).toBeInTheDocument();
+    expect(screen.getByText("Settings loaded")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /download directory/i })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /network proxy/i })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /advanced/i })).toBeInTheDocument();
@@ -331,6 +332,7 @@ describe("SettingsPage", () => {
       await screen.findByText(/Cannot read properties of undefined \(reading 'invoke'\)/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Storage unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Settings unavailable")).toBeInTheDocument();
     expect(screen.getByText("Settings failed to load, so storage summary is unavailable.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Save settings/i })).toBeDisabled();
   });

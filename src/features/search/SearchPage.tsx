@@ -609,11 +609,19 @@ export function SearchPage() {
       }
     }
   };
+  const headingBadge = formState.isSubmitting
+    ? { label: "Searching", tone: "info" as const }
+    : searchError
+      ? { label: "Search error", tone: "error" as const }
+      : result
+        ? { label: "Results loaded", tone: "success" as const }
+        : { label: "Ready to search", tone: "info" as const };
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="API synced"
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
         description="Search and discover wallpapers from Wallhaven."
         eyebrow="Wallpaper discovery"
         title="Search"

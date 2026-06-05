@@ -223,12 +223,15 @@ describe("SearchPage", () => {
 
     render(<SearchPage />)
 
+    expect(screen.getByText("Ready to search")).toBeInTheDocument()
+
     const user = userEvent.setup()
     await user.click(screen.getByRole("button", { name: /搜索/i }))
 
     expect(
       await screen.findByRole("region", { name: /search filters/i }),
     ).toBeInTheDocument()
+    expect(screen.getByText("Results loaded")).toBeInTheDocument()
     expect(screen.getByRole("region", { name: /search results/i })).toBeInTheDocument()
     expect(screen.getByText("1966x3000")).toBeInTheDocument()
     expect(screen.getByText(/0.66 · anime/i)).toBeInTheDocument()
@@ -264,6 +267,7 @@ describe("SearchPage", () => {
     await user.click(screen.getByRole("button", { name: /搜索/i }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent("503 Service Unavailable")
+    expect(screen.getByText("Search error")).toBeInTheDocument()
   })
 
   it("starts a wallpaper download from a search result card and disables the button while the request is running", async () => {
