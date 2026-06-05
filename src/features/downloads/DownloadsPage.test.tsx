@@ -7,6 +7,7 @@ const {
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
   openNativePath,
+  writeClipboardText,
 } = vi.hoisted(() => ({
   deleteDownloadTask: vi.fn(),
   downloadWallpaper: vi.fn(),
@@ -16,6 +17,7 @@ const {
   listenForDownloadProgressEvents: vi.fn(),
   listenForDownloadStatusEvents: vi.fn(),
   openNativePath: vi.fn(),
+  writeClipboardText: vi.fn(),
 }))
 
 vi.mock("@/infrastructure/tauri/download-repository", () => ({
@@ -38,6 +40,10 @@ vi.mock("@/infrastructure/tauri/native-shell", () => ({
   openNativePath,
 }))
 
+vi.mock("@/infrastructure/browser/clipboard", () => ({
+  writeClipboardText,
+}))
+
 import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
@@ -45,8 +51,6 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
 
 import { DownloadsPage } from "./DownloadsPage"
-
-const clipboardWriteText = vi.fn()
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -89,12 +93,7 @@ describe("DownloadsPage", () => {
     statusHandler = undefined
     progressHandler = undefined
     vi.resetAllMocks()
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: clipboardWriteText.mockResolvedValue(undefined),
-      },
-    })
+    vi.mocked(writeClipboardText).mockResolvedValue(undefined)
     useUiShellStore.setState({
       downloadSummary: {
         activeCount: 0,
@@ -458,6 +457,7 @@ describe("DownloadsPage", () => {
     await screen.findByText("wallhaven-copy123.jpg")
     await user.click(screen.getByRole("button", { name: /Copy path for task download-copy/i }))
 
+    expect(writeClipboardText).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-copy123.jpg")
     await waitFor(() => {
       expect(useUiShellStore.getState().toasts[0]?.title).toBe("Path copied")
     })

@@ -12,9 +12,10 @@ import { useUiShellStore } from "@/features/shell/ui-shell-store";
 
 import { SettingsPage } from "./SettingsPage";
 
-const { chooseDirectory, revealPath } = vi.hoisted(() => ({
+const { chooseDirectory, revealPath, writeClipboardText } = vi.hoisted(() => ({
   chooseDirectory: vi.fn(),
   revealPath: vi.fn(),
+  writeClipboardText: vi.fn(),
 }));
 
 vi.mock("@/application/settings/settings-service", () => ({
@@ -26,6 +27,10 @@ vi.mock("@/application/settings/settings-service", () => ({
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
   chooseDirectory,
   revealPath,
+}));
+
+vi.mock("@/infrastructure/browser/clipboard", () => ({
+  writeClipboardText,
 }));
 
 const preferences = {
@@ -78,6 +83,7 @@ describe("SettingsPage", () => {
     });
     vi.mocked(chooseDirectory).mockResolvedValue(null);
     vi.mocked(revealPath).mockResolvedValue(undefined);
+    vi.mocked(writeClipboardText).mockResolvedValue(undefined);
   });
 
   it("renders the v3 settings sections and effective destination panel", async () => {
@@ -203,6 +209,39 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: /^Reveal$/i }));
 
     expect(revealPath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven");
+  });
+
+  it("copies the effective destination through the shared clipboard helper", async () => {
+    render(
+      <>
+        <SettingsPage />
+        <ToastProbe />
+      </>,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByLabelText(/^API Key$/i, { selector: "input" });
+    await user.click(screen.getByRole("button", { name: /^Copy path$/i }));
+
+    expect(writeClipboardText).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven");
+    expect(await screen.findByRole("status")).toHaveTextContent("Effective path copied");
+  });
+
+  it("shows copy feedback when the clipboard helper is unavailable", async () => {
+    vi.mocked(writeClipboardText).mockRejectedValue(new Error("Clipboard blocked"));
+
+    render(
+      <>
+        <SettingsPage />
+        <ToastProbe />
+      </>,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByLabelText(/^API Key$/i, { selector: "input" });
+    await user.click(screen.getByRole("button", { name: /^Copy path$/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Copy path failed");
   });
 
   it("validates masked API key input through the Wallhaven diagnostic service", async () => {

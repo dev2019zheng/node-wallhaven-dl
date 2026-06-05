@@ -29,6 +29,7 @@ import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import { writeClipboardText } from "@/infrastructure/browser/clipboard";
 import { chooseDirectory, revealPath } from "@/infrastructure/tauri/native-shell";
 import { cn } from "@/lib/utils";
 
@@ -297,6 +298,26 @@ export function SettingsPage() {
       });
     } finally {
       setIsRevealingDirectory(false);
+    }
+  };
+
+  const handleCopyEffectiveDirectory = async () => {
+    if (!effectiveDestination) {
+      return;
+    }
+
+    try {
+      await writeClipboardText(effectiveDestination.effectiveDirectoryPath);
+      showSettingsInfo("Effective path copied");
+    } catch (error) {
+      const message = getErrorMessage(error, "Clipboard is unavailable.");
+      setSaveFeedback({ tone: "error", message });
+      enqueueToast({
+        id: `settings-copy-path-${Date.now()}`,
+        title: "Copy path failed",
+        description: message,
+        tone: "error",
+      });
     }
   };
 
@@ -761,8 +782,7 @@ export function SettingsPage() {
                 <Button
                   className="h-10 rounded-[14px]"
                   onClick={() => {
-                    void navigator.clipboard?.writeText(effectiveDestination.effectiveDirectoryPath);
-                    showSettingsInfo("Effective path copied");
+                    void handleCopyEffectiveDirectory();
                   }}
                   type="button"
                   variant="ghost"

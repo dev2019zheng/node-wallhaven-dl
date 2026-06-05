@@ -21,6 +21,7 @@ import { ErrorState } from "@/components/error-state"
 import { PageHeading } from "@/components/page-heading"
 import { Button } from "@/components/ui/button"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
+import { writeClipboardText } from "@/infrastructure/browser/clipboard"
 import {
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
@@ -339,7 +340,7 @@ export function DownloadsPage() {
         throw new Error("Task path is not available yet.")
       }
 
-      await navigator.clipboard.writeText(download.absolutePath)
+      await writeClipboardText(download.absolutePath)
       showToast("Path copied", download.absolutePath)
     } catch (error) {
       showToast("Copy failed", getErrorMessage(error, "Clipboard is unavailable."), "error")

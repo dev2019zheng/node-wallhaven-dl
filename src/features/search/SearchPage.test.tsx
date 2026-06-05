@@ -11,7 +11,11 @@ vi.mock("@/application/search/search-service", () => ({
   searchWallpapers: vi.fn(),
 }))
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+vi.mock("@/infrastructure/browser/clipboard", () => ({
+  writeClipboardText,
+}))
+
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { searchWallpapers } from "@/application/search/search-service"
@@ -150,12 +154,6 @@ const multiChunkResponse: SearchWallpapersResponse = {
 describe("SearchPage", () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: writeClipboardText,
-      },
-    })
     writeClipboardText.mockResolvedValue(undefined)
     clearSearchPageSessionSnapshot()
     useUiShellStore.setState({ selectedSearchIds: [] })
@@ -502,13 +500,7 @@ describe("SearchPage", () => {
         name: /Select wallpaper zz9xwy/i,
       }),
     )
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: writeClipboardText,
-      },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /Copy links/i }))
+    await user.click(screen.getByRole("button", { name: /Copy links/i }))
 
     await waitFor(() => {
       expect(writeClipboardText).toHaveBeenCalledWith(

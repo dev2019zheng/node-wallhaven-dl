@@ -110,9 +110,6 @@ export function GalleryCard({
 
       <span className="sr-only">{item.relativeFilePath}</span>
       <span className="sr-only">{item.createdAt}</span>
-      <a className="sr-only" href={item.sourceUrl} rel="noreferrer" target="_blank">
-        Open source
-      </a>
     </article>
   )
 }

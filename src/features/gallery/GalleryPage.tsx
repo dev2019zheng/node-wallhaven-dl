@@ -1,5 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core"
-import { Check, Copy, Download, FolderOpen, Grid3X3, Heart, List, Search, Tag, Trash2 } from "lucide-react"
+import { Check, Copy, Download, ExternalLink, FolderOpen, Grid3X3, Heart, List, Search, Tag, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { downloadWallpaper as downloadWallpaperInService } from "@/application/downloads/downloads-service"
@@ -20,6 +20,7 @@ import {
   type GalleryCollectionShortcut,
   useUiShellStore,
 } from "@/features/shell/ui-shell-store"
+import { writeClipboardText } from "@/infrastructure/browser/clipboard"
 import { revealPath } from "@/infrastructure/tauri/native-shell"
 
 import { GalleryGrid, type GalleryGridItem } from "./components/GalleryGrid"
@@ -116,6 +117,37 @@ function parseTagDraft(value: string): string[] {
     .filter(Boolean)
 
   return Array.from(new Set(tags))
+}
+
+function getFileExtension(fileName: string): string | null {
+  const separatorIndex = fileName.lastIndexOf(".")
+
+  if (separatorIndex < 0 || separatorIndex === fileName.length - 1) {
+    return null
+  }
+
+  const extension = fileName.slice(separatorIndex + 1).trim().toLowerCase()
+
+  return extension ? extension : null
+}
+
+function getGalleryDownloadImageUrl(item: GalleryGridItem): string {
+  try {
+    const sourceUrl = new URL(item.sourceUrl)
+    const normalizedPath = sourceUrl.pathname.replace(/\/$/, "")
+    const isWallhavenPageUrl =
+      (sourceUrl.hostname === "wallhaven.cc" || sourceUrl.hostname === "www.wallhaven.cc") &&
+      normalizedPath === `/w/${item.wallpaperId}`
+    const extension = getFileExtension(item.fileName)
+
+    if (isWallhavenPageUrl && item.wallpaperId.length >= 2 && extension) {
+      return `https://w.wallhaven.cc/full/${item.wallpaperId.slice(0, 2)}/wallhaven-${item.wallpaperId}.${extension}`
+    }
+  } catch {
+    // Keep the archived source URL when it is not parseable.
+  }
+
+  return item.sourceUrl
 }
 
 function matchesTermBucket(item: GalleryGridItem, terms: string[]): boolean {
@@ -438,7 +470,7 @@ export function GalleryPage() {
 
   const handleCopyPath = async (item: GalleryGridItem) => {
     try {
-      await navigator.clipboard.writeText(item.absolutePath)
+      await writeClipboardText(item.absolutePath)
       showToast("Path copied", item.absolutePath)
     } catch (error) {
       showToast("Copy failed", getErrorMessage(error, "Clipboard is unavailable."), "error")
@@ -451,7 +483,7 @@ export function GalleryPage() {
     try {
       await downloadWallpaperInService({
         wallpaperId: item.wallpaperId,
-        imageUrl: item.sourceUrl,
+        imageUrl: getGalleryDownloadImageUrl(item),
         fileName: item.fileName,
         purity: item.purity ?? undefined,
         category: item.category ?? undefined,
@@ -707,6 +739,15 @@ export function GalleryPage() {
                       <Download className="h-4 w-4" />
                       {pendingAction === `download:${selectedItem.wallpaperId}` ? "Queueing" : "Download"}
                     </Button>
+                    <a
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-2 text-[13px] font-semibold transition-colors hover:border-border-strong hover:bg-[var(--surface-hover)]"
+                      href={selectedItem.sourceUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open source
+                    </a>
                     <Button
                       className="h-12 w-full rounded-[14px]"
                       disabled={pendingAction === `favorite:${selectedItem.wallpaperId}`}

@@ -7,6 +7,7 @@ const {
   setGalleryFavorite,
   updateGalleryTags,
   convertFileSrc,
+  writeClipboardText,
 } = vi.hoisted(() => ({
   deleteGalleryItem: vi.fn(),
   downloadWallpaper: vi.fn(),
@@ -16,6 +17,7 @@ const {
   setGalleryFavorite: vi.fn(),
   updateGalleryTags: vi.fn(),
   convertFileSrc: vi.fn((path: string) => `asset://${path}`),
+  writeClipboardText: vi.fn(),
 }))
 
 vi.mock("@/application/downloads/downloads-service", () => ({
@@ -35,6 +37,10 @@ vi.mock("@/application/settings/settings-service", () => ({
 
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
   revealPath,
+}))
+
+vi.mock("@/infrastructure/browser/clipboard", () => ({
+  writeClipboardText,
 }))
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -60,8 +66,6 @@ import type { GalleryListResponse } from "@/application/gallery/gallery.types"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
 
 import { GalleryPage } from "./GalleryPage"
-
-const clipboardWriteText = vi.fn()
 
 function formatGalleryDate(date: Date): string {
   const datePart = [
@@ -130,12 +134,7 @@ describe("GalleryPage", () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.mocked(convertFileSrc).mockImplementation((path: string) => `asset://${path}`)
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: clipboardWriteText.mockResolvedValue(undefined),
-      },
-    })
+    vi.mocked(writeClipboardText).mockResolvedValue(undefined)
     vi.mocked(loadSettingsPreferences).mockResolvedValue({
       launchAtLogin: false,
       confirmBeforeDelete: false,
@@ -373,7 +372,7 @@ describe("GalleryPage", () => {
 
     expect(downloadWallpaper).toHaveBeenCalledWith({
       wallpaperId: "kxpkmm",
-      imageUrl: "https://wallhaven.cc/w/kxpkmm",
+      imageUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
       fileName: "wallhaven-kxpkmm.jpg",
       purity: "sfw",
       category: "general",
@@ -383,6 +382,17 @@ describe("GalleryPage", () => {
     })
   })
 
+  it("keeps the archived source link visible in the detail panel", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    expect(await screen.findByRole("link", { name: /Open source/i })).toHaveAttribute(
+      "href",
+      "https://wallhaven.cc/w/kxpkmm",
+    )
+  })
+
   it("copies the selected local file path", async () => {
     vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
 
@@ -390,7 +400,7 @@ describe("GalleryPage", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Copy path/i }))
 
-    expect(clipboardWriteText).toHaveBeenCalledWith(
+    expect(writeClipboardText).toHaveBeenCalledWith(
       "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/wallhaven-kxpkmm.jpg",
     )
     await waitFor(() => {

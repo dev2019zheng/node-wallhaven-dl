@@ -15,6 +15,7 @@ import { ErrorState } from "@/components/error-state";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import { writeClipboardText } from "@/infrastructure/browser/clipboard";
 import {
   VALID_TOPLIST_RANGES,
   type WallhavenPurityFilter,
@@ -340,7 +341,7 @@ export function SearchPage() {
     }
 
     try {
-      await navigator.clipboard.writeText(selectedWallpapers.map((wallpaper) => wallpaper.shortUrl).join("\n"));
+      await writeClipboardText(selectedWallpapers.map((wallpaper) => wallpaper.shortUrl).join("\n"));
       setDownloadFeedback({
         tone: "success",
         message: `Copied ${formatWallpaperCount(selectedWallpapers.length)} Wallhaven links to clipboard.`,
