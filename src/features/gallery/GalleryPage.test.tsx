@@ -307,9 +307,19 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole("button", { name: /List view/i }))
+    const gridButton = await screen.findByRole("button", { name: /^Grid$/i })
+    const listButton = screen.getByRole("button", { name: /List view/i })
+
+    expect(gridButton).toHaveAttribute("aria-pressed", "true")
+    expect(gridButton).toHaveClass("wh-selected-surface")
+    expect(listButton).toHaveAttribute("aria-pressed", "false")
+
+    await user.click(listButton)
 
     expect(useUiShellStore.getState().galleryView).toBe("list")
+    expect(gridButton).toHaveAttribute("aria-pressed", "false")
+    expect(listButton).toHaveAttribute("aria-pressed", "true")
+    expect(listButton).toHaveClass("wh-selected-surface")
   })
 
   it("opens a preview lightbox for the selected local wallpaper", async () => {
@@ -436,6 +446,22 @@ describe("GalleryPage", () => {
     await waitFor(() => {
       expect(useUiShellStore.getState().toasts[0]?.title).toBe("Tags saved")
     })
+  })
+
+  it("keeps unchanged gallery tags from presenting a save action", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const tagsInput = await screen.findByRole("textbox", { name: /Edit gallery tags/i })
+    const saveTagsButton = screen.getByRole("button", { name: /Save tags/i })
+
+    expect(saveTagsButton).toBeDisabled()
+
+    fireEvent.change(tagsInput, { target: { value: "Nature, OLED" } })
+
+    expect(saveTagsButton).not.toBeDisabled()
+    expect(updateGalleryTags).not.toHaveBeenCalled()
   })
 
   it("queues a gallery wallpaper download with preserved purity metadata", async () => {

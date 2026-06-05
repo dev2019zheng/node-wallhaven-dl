@@ -320,6 +320,17 @@ export function SearchPage() {
     () => result?.data.filter((wallpaper) => selectedWallpaperSet.has(wallpaper.id)) ?? [],
     [result, selectedWallpaperSet],
   );
+  const selectedWallpapersToDownload = useMemo(
+    () => filterOutDownloadingWallpapers(selectedWallpapers, downloadingWallpaperIdSet),
+    [downloadingWallpaperIdSet, selectedWallpapers],
+  );
+  const canDownloadSelected =
+    selectedWallpapersToDownload.length > 0 && !isSelectedDownloading && !isBulkDownloading;
+  const selectedDownloadButtonLabel = isSelectedDownloading
+    ? "下载选中中..."
+    : selectedWallpapers.length > 0 && selectedWallpapersToDownload.length === 0
+      ? "选中项正在下载"
+      : "下载选中";
 
   useEffect(() => {
     if (selectedSearchIds.length === 0) {
@@ -474,16 +485,7 @@ export function SearchPage() {
   };
 
   const onDownloadSelected = async () => {
-    if (selectedWallpapers.length === 0 || isSelectedDownloading || isBulkDownloading) {
-      return;
-    }
-
-    const selectedWallpapersToDownload = filterOutDownloadingWallpapers(
-      selectedWallpapers,
-      downloadingWallpaperIdSet,
-    );
-
-    if (selectedWallpapersToDownload.length === 0) {
+    if (!canDownloadSelected) {
       return;
     }
 
@@ -890,16 +892,16 @@ export function SearchPage() {
                 </p>
               </div>
               <Button
-                aria-label={isSelectedDownloading ? "下载选中中..." : "下载选中"}
+                aria-label={selectedDownloadButtonLabel}
                 className="h-12 w-full rounded-[14px]"
-                disabled={isSelectedDownloading || isBulkDownloading}
+                disabled={!canDownloadSelected}
                 onClick={() => {
                   void onDownloadSelected();
                 }}
                 type="button"
               >
                 {isSelectedDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Start download
+                {selectedDownloadButtonLabel}
               </Button>
               <Button
                 className="h-12 w-full rounded-[14px]"

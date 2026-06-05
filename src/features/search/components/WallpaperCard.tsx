@@ -24,7 +24,7 @@ export function WallpaperCard({
 }: WallpaperCardProps) {
   return (
     <article
-      className={`group relative h-[156px] overflow-hidden rounded-2xl border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary hover:shadow-[var(--card-hover-shadow)] ${
+      className={`group relative h-[156px] overflow-hidden rounded-2xl border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary hover:shadow-[var(--card-hover-shadow)] focus-within:-translate-y-0.5 focus-within:border-primary focus-within:shadow-[var(--card-hover-shadow)] ${
         isSelected ? "border-[3px] border-primary" : "border-border"
       }`}
     >
@@ -79,7 +79,7 @@ export function WallpaperCard({
               <span className="sr-only">Views</span>
             </div>
 
-          <div className="flex translate-y-8 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+          <div className="flex translate-y-8 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
             <button
               aria-label={`Preview wallpaper ${wallpaper.id}`}
               className="wh-image-button flex h-8 w-8 items-center justify-center rounded-full"

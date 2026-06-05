@@ -215,6 +215,8 @@ export function SettingsPage() {
   const values = watch();
   const trimmedDirectory = values.customDownloadDirectoryPath.trim();
   const trimmedProxyAddress = values.networkProxyAddress.trim();
+  const hasCustomDirectoryOverride = trimmedDirectory.length > 0;
+  const canResetCacheEstimate = values.cacheSizeBytes > 0;
   const directoryError = !isAbsolutePath(trimmedDirectory)
     ? "Folder does not exist or is not writable"
     : formState.errors.customDownloadDirectoryPath?.message;
@@ -229,6 +231,7 @@ export function SettingsPage() {
     formState.isSubmitting ||
     loadError !== null ||
     isStorageReadOnly ||
+    !formState.isDirty ||
     Boolean(directoryError) ||
     Boolean(proxyAddressError);
 
@@ -677,7 +680,7 @@ export function SettingsPage() {
             <div className="md:pl-[140px]">
               <Button
                 className="h-10 rounded-[14px]"
-                disabled={isEditingDisabled}
+                disabled={isEditingDisabled || !hasCustomDirectoryOverride}
                 onClick={() => {
                   setValue("customDownloadDirectoryPath", "", { shouldDirty: true, shouldTouch: true });
                   clearInlineFeedback();
@@ -758,7 +761,7 @@ export function SettingsPage() {
                 </h3>
                 <p className="text-[13px] leading-6 text-muted-foreground">Deletion prompts and the local cache estimate.</p>
               </div>
-              <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate || isEditingDisabled} onClick={resetCacheEstimate} type="button" variant="outline">
+              <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate || isEditingDisabled || !canResetCacheEstimate} onClick={resetCacheEstimate} type="button" variant="outline">
                 {isResettingCacheEstimate ? <Spinner /> : <RefreshCcw className="h-4 w-4" />}
                 Reset cache meter
               </Button>

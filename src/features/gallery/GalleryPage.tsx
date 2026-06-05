@@ -114,6 +114,10 @@ function parseTagDraft(value: string): string[] {
   return Array.from(new Set(tags))
 }
 
+function areTagsEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((tag, index) => tag === right[index])
+}
+
 function getFileExtension(fileName: string): string | null {
   const separatorIndex = fileName.lastIndexOf(".")
 
@@ -237,6 +241,7 @@ export function GalleryPage() {
   const [selectedWallpaperId, setSelectedWallpaperId] = useState<string | null>(null)
   const [focusedTagWallpaperId, setFocusedTagWallpaperId] = useState<string | null>(null)
   const [tagDraft, setTagDraft] = useState("")
+  const [tagDraftWallpaperId, setTagDraftWallpaperId] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(true)
   const tagInputRef = useRef<HTMLInputElement | null>(null)
@@ -389,6 +394,16 @@ export function GalleryPage() {
     () => formatDisplayPath(selectedItem?.absolutePath ?? galleryItems[0]?.absolutePath ?? null),
     [galleryItems, selectedItem],
   )
+  const parsedTagDraft = useMemo(() => parseTagDraft(tagDraft), [tagDraft])
+  const hasTagDraftChanges = useMemo(
+    () =>
+      Boolean(
+        selectedItem &&
+          tagDraftWallpaperId === selectedItem.wallpaperId &&
+          !areTagsEqual(parsedTagDraft, selectedItem.tags),
+      ),
+    [parsedTagDraft, selectedItem, tagDraftWallpaperId],
+  )
   const selectedTags = useMemo(() => getDetailTags(selectedItem), [selectedItem])
   const timelineGroups = useMemo(() => {
     return importGroupLabels.map((label) => ({
@@ -399,6 +414,7 @@ export function GalleryPage() {
 
   useEffect(() => {
     setTagDraft(selectedItem?.tags.join(", ") ?? "")
+    setTagDraftWallpaperId(selectedItem?.wallpaperId ?? null)
   }, [selectedItem?.wallpaperId, selectedItem?.tags])
 
   useEffect(() => {
@@ -472,12 +488,17 @@ export function GalleryPage() {
   }
 
   const handleSaveTags = async (item: GalleryGridItem) => {
+    const nextTags = parseTagDraft(tagDraft)
+    if (areTagsEqual(nextTags, item.tags)) {
+      return
+    }
+
     setPendingAction(`tags:${item.wallpaperId}`)
 
     try {
       const updatedItem = await updateGalleryTagsInService({
         wallpaperId: item.wallpaperId,
-        tags: parseTagDraft(tagDraft),
+        tags: nextTags,
       })
       updateGalleryItem(updatedItem)
       showToast("Tags saved", updatedItem.tags.length > 0 ? updatedItem.tags.join(", ") : "No custom tags")
@@ -620,19 +641,28 @@ export function GalleryPage() {
             </button>
           ))}
 
-          <div aria-label="Gallery view" className="wh-control grid h-[42px] grid-cols-[1fr_42px] items-center overflow-hidden" role="group">
+          <div aria-label="Gallery view" className="wh-control grid h-[42px] grid-cols-2 items-center overflow-hidden p-0" role="group">
             <button
               aria-pressed={galleryView === "grid"}
-              className="h-full px-4 text-left text-[13px] font-semibold"
+              className={
+                galleryView === "grid"
+                  ? "wh-selected-surface flex h-full items-center justify-center gap-2 px-3 text-[13px] font-semibold text-foreground"
+                  : "flex h-full items-center justify-center gap-2 px-3 text-[13px] font-semibold text-muted-foreground transition hover:text-foreground"
+              }
               onClick={() => setGalleryView("grid")}
               type="button"
             >
+              <Grid3X3 className="h-4 w-4" />
               Grid
             </button>
             <button
               aria-label="List view"
               aria-pressed={galleryView === "list"}
-              className="flex h-full items-center justify-center border-l border-border text-muted-foreground transition hover:text-foreground"
+              className={
+                galleryView === "list"
+                  ? "wh-selected-surface flex h-full items-center justify-center border-l border-border text-foreground"
+                  : "flex h-full items-center justify-center border-l border-border text-muted-foreground transition hover:text-foreground"
+              }
               onClick={() => setGalleryView("list")}
               type="button"
             >
@@ -649,7 +679,7 @@ export function GalleryPage() {
           <div className="wh-soft-success flex h-[54px] items-center justify-between rounded-[16px] px-6">
             <p className="text-[15px] font-semibold">{galleryCountLabel}</p>
             <button
-              className="max-w-[420px] truncate text-[12px] font-semibold text-muted-foreground transition hover:text-foreground"
+              className="max-w-[420px] truncate text-[12px] font-semibold text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-muted-foreground"
               disabled={!selectedItem || pendingAction === `reveal:${selectedItem.wallpaperId}` || !canUseNativeShell}
               onClick={() => {
                 if (selectedItem) {
@@ -682,6 +712,7 @@ export function GalleryPage() {
                 onTag={(item) => {
                   setSelectedWallpaperId(item.wallpaperId)
                   setTagDraft(item.tags.join(", "))
+                  setTagDraftWallpaperId(item.wallpaperId)
                   setFocusedTagWallpaperId(item.wallpaperId)
                 }}
                 onSelect={(item) => setSelectedWallpaperId(item.wallpaperId)}
@@ -825,14 +856,17 @@ export function GalleryPage() {
                       autoComplete="off"
                       className="wh-control mt-3 h-10 w-full px-4 text-[13px]"
                       id="gallery-tags"
-                      onChange={(event) => setTagDraft(event.currentTarget.value)}
+                      onChange={(event) => {
+                        setTagDraft(event.currentTarget.value)
+                        setTagDraftWallpaperId(selectedItem.wallpaperId)
+                      }}
                       placeholder="nature, ultrawide, OLED"
                       ref={tagInputRef}
                       value={tagDraft}
                     />
                     <Button
                       className="mt-3 h-10 w-full rounded-[14px]"
-                      disabled={pendingAction === `tags:${selectedItem.wallpaperId}`}
+                      disabled={pendingAction === `tags:${selectedItem.wallpaperId}` || !hasTagDraftChanges}
                       onClick={() => {
                         void handleSaveTags(selectedItem)
                       }}

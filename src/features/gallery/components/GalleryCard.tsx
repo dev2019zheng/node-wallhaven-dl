@@ -30,7 +30,7 @@ export function GalleryCard({
   return (
     <article
       className={cn(
-        "group relative h-[132px] overflow-hidden rounded-[16px] border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary",
+        "group relative h-[132px] overflow-hidden rounded-[16px] border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary focus-within:-translate-y-0.5 focus-within:border-primary",
         isSelected ? "border-[3px] border-primary" : "border-border",
         view === "list" ? "grid grid-cols-[220px_minmax(0,1fr)]" : "",
       )}
@@ -81,7 +81,7 @@ export function GalleryCard({
             <span className="mt-1 block truncate text-[11px] text-white/70">{item.wallpaperId} · {item.category ?? "general"}</span>
           </button>
 
-          <div className="pointer-events-auto flex translate-y-7 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+          <div className="pointer-events-auto flex translate-y-7 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
             <button
               aria-label={`Tag wallpaper ${item.wallpaperId}`}
               className="wh-icon-button h-8 w-8"

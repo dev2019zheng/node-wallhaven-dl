@@ -342,6 +342,39 @@ describe("SearchPage", () => {
     })
   })
 
+  it("disables selected download when every selected wallpaper is already downloading", async () => {
+    const pendingDownload = createDeferred<ReturnType<typeof createDownloadResult>>()
+
+    vi.mocked(searchWallpapers).mockResolvedValue(sampleResponse)
+    downloadWallpaper.mockReturnValue(pendingDownload.promise)
+
+    render(<SearchPage />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: "搜索" }))
+
+    await user.click(
+      await screen.findByRole("checkbox", {
+        name: /Select wallpaper kxpkmm/i,
+      }),
+    )
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Download wallpaper kxpkmm/i,
+      }),
+    )
+
+    expect(screen.getByRole("button", { name: /选中项正在下载/i })).toBeDisabled()
+    expect(downloadWallpaper).toHaveBeenCalledTimes(1)
+
+    pendingDownload.resolve(createDownloadResult(sampleResponse.data[0]))
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /下载选中/i })).not.toBeDisabled()
+    })
+  })
+
   it("downloads the current query across the requested page range with one click", async () => {
     vi.mocked(searchWallpapers)
       .mockResolvedValueOnce(sampleResponse)

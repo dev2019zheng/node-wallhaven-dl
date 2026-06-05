@@ -210,9 +210,9 @@ export function DownloadTaskCard({
   }, [previewSrc]);
 
   return (
-    <article className="group h-[94px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3 transition duration-200 hover:border-border-strong">
-      <div className="grid h-full grid-cols-[74px_minmax(0,1fr)_118px_34px] items-center gap-4">
-        <div className="h-[54px] w-[74px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)]">
+    <article className="group min-h-[94px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3 transition duration-200 hover:border-border-strong">
+      <div className="grid min-h-full grid-cols-[54px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[74px_minmax(0,1fr)_118px] sm:gap-4">
+        <div className="h-[54px] w-[54px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)] sm:w-[74px]">
           {previewSrc && !hasPreviewError ? (
             <img
               alt={`Downloaded wallpaper ${download.wallpaperId}`}
@@ -230,14 +230,14 @@ export function DownloadTaskCard({
         </div>
 
         <div className="min-w-0 space-y-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_70px] items-start gap-3">
+          <div className="grid grid-cols-1 items-start gap-1 sm:grid-cols-[minmax(0,1fr)_70px] sm:gap-3">
             <div className="min-w-0">
               <h4 className="truncate text-[14px] font-semibold leading-5 text-foreground">{download.fileName}</h4>
               <p className="mt-1 truncate text-[12px] leading-4 text-muted-foreground">
                 {download.status === "failed" && download.failureReason ? download.failureReason : progressLabel}
               </p>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <span className={`text-[13px] font-semibold ${statusTextClasses[download.status]}`}>{formatStatus(download.status)}</span>
               <p className="mt-1 text-[11px] text-muted-foreground">{getTaskDetailLabel(download)}</p>
             </div>
@@ -254,7 +254,7 @@ export function DownloadTaskCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 opacity-100 transition group-hover:opacity-100">
+        <div className="col-span-2 flex items-center justify-end gap-2 opacity-100 transition group-hover:opacity-100 sm:col-span-1">
           <button
             aria-label={primaryAction.label}
             className="wh-icon-button h-8 w-8"

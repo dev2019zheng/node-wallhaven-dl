@@ -154,6 +154,29 @@ describe("SettingsPage", () => {
     expect(screen.queryByRole("switch", { name: /Telemetry/i })).not.toBeInTheDocument();
   });
 
+  it("disables settings actions that would not change the current configuration", async () => {
+    vi.mocked(loadSettings).mockResolvedValue({
+      ...defaultSnapshot,
+      downloadDirectory: {
+        ...defaultSnapshot.downloadDirectory,
+        customDirectoryPath: "",
+        effectiveDirectoryPath: defaultSnapshot.downloadDirectory.defaultDirectoryPath,
+        isUsingDefaultDirectory: true,
+      },
+      preferences: {
+        ...preferences,
+        cacheSizeBytes: 0,
+      },
+    });
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByLabelText(/^API Key$/i, { selector: "input" })).toHaveValue("existing-key");
+    expect(screen.getByRole("button", { name: /Save settings/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Use app default directory/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Reset cache meter/i })).toBeDisabled();
+  });
+
   it("saves edited settings with store-backed preferences and success feedback", async () => {
     vi.mocked(saveSettings).mockResolvedValue({
       ...defaultSnapshot,
@@ -364,6 +387,7 @@ describe("SettingsPage", () => {
     await user.click(within(screen.getByRole("dialog", { name: /Reset cache estimate/i })).getByRole("button", { name: /^Reset estimate$/i }));
 
     expect(await screen.findByText(/0 MB · meter reset never removes downloaded wallpaper originals/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reset cache meter/i })).toBeDisabled();
   });
 
   it("shows the shared storage error state and disables saving when settings fail to load", async () => {
