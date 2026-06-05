@@ -287,11 +287,18 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole("button", { name: /Open group Today/i }))
+    const todayButton = await screen.findByRole("button", { name: /Open group Today/i })
+    await user.click(todayButton)
 
+    expect(todayButton).toHaveAttribute("aria-pressed", "true")
     expect(screen.getAllByText("space-4k-ultra.jpg").length).toBeGreaterThan(0)
     expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
     expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "SFW" }))
+
+    expect(todayButton).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
   })
 
   it("persists the selected gallery view in the shell store", async () => {

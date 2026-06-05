@@ -705,25 +705,34 @@ export function GalleryPage() {
                     ))}
                   </div>
                   <div className="space-y-3">
-                    {timelineGroups.map(({ label, count }) => (
-                      <Button
-                        aria-label={`Open group ${label}`}
-                        className="h-10 w-full justify-start rounded-[14px]"
-                        disabled={count === 0}
-                        key={label}
-                        onClick={() => {
-                          setActiveChip("All")
-                          setActiveCollectionShortcut(null)
-                          setActiveImportGroup(label)
-                          setLocalQuery("")
-                          setSelectedWallpaperId(null)
-                        }}
-                        type="button"
-                        variant="outline"
-                      >
-                        Open {label}
-                      </Button>
-                    ))}
+                    {timelineGroups.map(({ label, count }) => {
+                      const isActiveTimelineGroup = activeImportGroup === label
+
+                      return (
+                        <Button
+                          aria-label={`Open group ${label}`}
+                          aria-pressed={isActiveTimelineGroup}
+                          className={
+                            isActiveTimelineGroup
+                              ? "wh-selected-surface h-10 w-full justify-start rounded-[14px] text-foreground"
+                              : "h-10 w-full justify-start rounded-[14px]"
+                          }
+                          disabled={count === 0}
+                          key={label}
+                          onClick={() => {
+                            setActiveChip("All")
+                            setActiveCollectionShortcut(null)
+                            setActiveImportGroup(label)
+                            setLocalQuery("")
+                            setSelectedWallpaperId(null)
+                          }}
+                          type="button"
+                          variant="outline"
+                        >
+                          Open {label}
+                        </Button>
+                      )
+                    })}
                   </div>
                 </div>
               </section>
