@@ -242,6 +242,7 @@ export function GalleryPage() {
   const tagInputRef = useRef<HTMLInputElement | null>(null)
   const galleryView = useUiShellStore((state) => state.galleryView)
   const galleryCollectionRequest = useUiShellStore((state) => state.galleryCollectionRequest)
+  const setActiveGalleryCollectionShortcut = useUiShellStore((state) => state.setActiveGalleryCollectionShortcut)
   const setGalleryView = useUiShellStore((state) => state.setGalleryView)
   const enqueueToast = useUiShellStore((state) => state.enqueueToast)
   const setConfirm = useUiShellStore((state) => state.setConfirm)
@@ -303,6 +304,14 @@ export function GalleryPage() {
     setSelectedWallpaperId(null)
   }, [galleryCollectionRequest])
 
+  const activeSidebarCollectionShortcut = useMemo<GalleryCollectionShortcut | null>(() => {
+    if (activeChip === "Favorites" || activeChip === "Anime") {
+      return activeChip
+    }
+
+    return activeCollectionShortcut
+  }, [activeChip, activeCollectionShortcut])
+
   const galleryItems = useMemo(
     () =>
       gallery?.items.map((item) => ({
@@ -311,6 +320,10 @@ export function GalleryPage() {
       })) ?? [],
     [gallery],
   )
+
+  useEffect(() => {
+    setActiveGalleryCollectionShortcut(activeSidebarCollectionShortcut)
+  }, [activeSidebarCollectionShortcut, setActiveGalleryCollectionShortcut])
   const normalizedLocalQuery = useMemo(() => localQuery.trim().toLowerCase(), [localQuery])
   const filteredGalleryItems = useMemo(
     () =>

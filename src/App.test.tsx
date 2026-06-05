@@ -10,7 +10,10 @@ describe("App routing", () => {
   beforeEach(() => {
     window.history.replaceState({}, "", "/");
     window.location.hash = "";
-    useUiShellStore.setState({ activeShellPanel: null });
+    useUiShellStore.setState({
+      activeGalleryCollectionShortcut: null,
+      activeShellPanel: null,
+    });
   });
 
   it("boots into the search page through the new desktop shell", async () => {

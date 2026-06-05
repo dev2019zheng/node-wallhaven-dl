@@ -36,6 +36,7 @@ type UiShellState = {
   selectedSearchIds: string[];
   galleryView: GalleryView;
   galleryCollectionRequest: GalleryCollectionRequest | null;
+  activeGalleryCollectionShortcut: GalleryCollectionShortcut | null;
   downloadSummary: DownloadSummary;
   toasts: ShellToast[];
   confirm: ConfirmState | null;
@@ -44,6 +45,7 @@ type UiShellState = {
   clearSelectedSearchIds: () => void;
   setGalleryView: (view: GalleryView) => void;
   requestGalleryCollection: (label: GalleryCollectionShortcut) => void;
+  setActiveGalleryCollectionShortcut: (label: GalleryCollectionShortcut | null) => void;
   setDownloadSummary: (summary: DownloadSummary) => void;
   enqueueToast: (toast: ShellToast) => void;
   dismissToast: (id: string) => void;
@@ -61,6 +63,7 @@ export const useUiShellStore = create<UiShellState>((set) => ({
   selectedSearchIds: [],
   galleryView: "grid",
   galleryCollectionRequest: null,
+  activeGalleryCollectionShortcut: null,
   downloadSummary: { ...defaultDownloadSummary },
   toasts: [],
   confirm: null,
@@ -80,7 +83,11 @@ export const useUiShellStore = create<UiShellState>((set) => ({
         label,
         requestId: (state.galleryCollectionRequest?.requestId ?? 0) + 1,
       },
+      activeGalleryCollectionShortcut: label,
     }));
+  },
+  setActiveGalleryCollectionShortcut: (label) => {
+    set({ activeGalleryCollectionShortcut: label });
   },
   setDownloadSummary: (summary) => {
     set({ downloadSummary: { ...summary } });

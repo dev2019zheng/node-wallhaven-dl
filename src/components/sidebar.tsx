@@ -1,6 +1,6 @@
 import { Download, Heart, Images, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +31,8 @@ const collectionItems: Array<{ label: GalleryCollectionShortcut; icon: LucideIco
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeGalleryCollectionShortcut = useUiShellStore((state) => state.activeGalleryCollectionShortcut);
   const downloadSummary = useUiShellStore((state) => state.downloadSummary);
   const requestGalleryCollection = useUiShellStore((state) => state.requestGalleryCollection);
   const totalDownloads = downloadSummary.activeCount + downloadSummary.completedCount + downloadSummary.failedCount;
@@ -90,9 +92,19 @@ export function Sidebar() {
         <div className="space-y-1.5">
           {collectionItems.map((item) => {
             const Icon = item.icon;
+            const isCollectionActive =
+              location.pathname === "/gallery" &&
+              activeGalleryCollectionShortcut === item.label;
+
             return (
               <button
-                className="flex h-[32px] w-full items-center justify-between rounded-xl px-2 text-left text-[13px] font-medium text-muted-foreground transition hover:bg-[var(--surface-hover)]/65 hover:text-foreground"
+                aria-pressed={isCollectionActive}
+                className={cn(
+                  "flex h-[32px] w-full items-center justify-between rounded-xl border px-2 text-left text-[13px] font-medium transition",
+                  isCollectionActive
+                    ? "wh-selected-surface text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-[var(--surface-hover)]/65 hover:text-foreground",
+                )}
                 key={item.label}
                 onClick={() => {
                   requestGalleryCollection(item.label);

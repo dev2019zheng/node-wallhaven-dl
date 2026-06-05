@@ -165,6 +165,7 @@ describe("GalleryPage", () => {
     vi.mocked(isNativeShellAvailable).mockReturnValue(true)
     vi.mocked(revealPath).mockResolvedValue(undefined)
     useUiShellStore.setState({
+      activeGalleryCollectionShortcut: null,
       galleryCollectionRequest: null,
       galleryView: "grid",
       toasts: [],
@@ -256,6 +257,28 @@ describe("GalleryPage", () => {
     expect(await screen.findByText("space-4k-ultra.jpg")).toBeInTheDocument()
     expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
     expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
+    expect(useUiShellStore.getState().activeGalleryCollectionShortcut).toBe("Space")
+  })
+
+  it("clears the active sidebar collection when local gallery filters replace it", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await screen.findByRole("button", { name: "SFW", pressed: true })
+
+    useUiShellStore.getState().requestGalleryCollection("Space")
+
+    expect(await screen.findByText("space-4k-ultra.jpg")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useUiShellStore.getState().activeGalleryCollectionShortcut).toBe("Space")
+    })
+
+    await user.click(screen.getByRole("button", { name: "SFW" }))
+
+    expect(useUiShellStore.getState().activeGalleryCollectionShortcut).toBeNull()
+    expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
   })
 
   it("opens timeline groups as local gallery filters", async () => {
