@@ -26,7 +26,11 @@ import {
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
 } from "@/infrastructure/tauri/download-events"
-import { openNativePath } from "@/infrastructure/tauri/native-shell"
+import {
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE,
+  isNativeShellAvailable,
+  openNativePath,
+} from "@/infrastructure/tauri/native-shell"
 
 import { DownloadQueue } from "./components/DownloadQueue"
 import { QueueTabs } from "./components/QueueTabs"
@@ -134,6 +138,7 @@ export function DownloadsPage() {
   const setDownloadSummary = useUiShellStore((state) => state.setDownloadSummary)
   const enqueueToast = useUiShellStore((state) => state.enqueueToast)
   const setConfirm = useUiShellStore((state) => state.setConfirm)
+  const canUseNativeShell = isNativeShellAvailable()
 
   useEffect(() => {
     let isActive = true
@@ -300,6 +305,11 @@ export function DownloadsPage() {
   }
 
   const handleOpenFolder = async () => {
+    if (!canUseNativeShell) {
+      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      return
+    }
+
     setIsOpeningFolder(true)
 
     try {
@@ -331,6 +341,11 @@ export function DownloadsPage() {
   }
 
   const handlePrimaryAction = async (download: DownloadListItem) => {
+    if (download.status !== "failed" && !canUseNativeShell) {
+      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      return
+    }
+
     setPendingTaskAction(download.id, "primary")
 
     try {
@@ -487,7 +502,7 @@ export function DownloadsPage() {
 
           <Button
             className="h-12 w-full rounded-[14px]"
-            disabled={isOpeningFolder}
+            disabled={isOpeningFolder || !canUseNativeShell}
             onClick={() => {
               void handleOpenFolder()
             }}
@@ -496,6 +511,11 @@ export function DownloadsPage() {
             <FolderOpen className="h-4 w-4" />
             {isOpeningFolder ? "Opening..." : "Open folder"}
           </Button>
+          {!canUseNativeShell ? (
+            <p className="text-[12px] leading-5 text-muted-foreground">
+              Local folder and file opening is available in the desktop app.
+            </p>
+          ) : null}
         </aside>
 
         <section className="app-panel min-h-[520px] space-y-6 p-6 min-[1500px]:h-[698px]">
@@ -525,6 +545,7 @@ export function DownloadsPage() {
           <QueueTabs activeFilter={activeFilter} onChange={setActiveFilter} summary={summary} />
 
           <DownloadQueue
+            canUseNativeShell={canUseNativeShell}
             downloads={filteredDownloads}
             filter={activeFilter}
             isLoading={isLoading}

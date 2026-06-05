@@ -21,7 +21,11 @@ import {
   useUiShellStore,
 } from "@/features/shell/ui-shell-store"
 import { writeClipboardText } from "@/infrastructure/browser/clipboard"
-import { revealPath } from "@/infrastructure/tauri/native-shell"
+import {
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE,
+  isNativeShellAvailable,
+  revealPath,
+} from "@/infrastructure/tauri/native-shell"
 
 import { GalleryGrid, type GalleryGridItem } from "./components/GalleryGrid"
 
@@ -241,6 +245,7 @@ export function GalleryPage() {
   const setGalleryView = useUiShellStore((state) => state.setGalleryView)
   const enqueueToast = useUiShellStore((state) => state.enqueueToast)
   const setConfirm = useUiShellStore((state) => state.setConfirm)
+  const canUseNativeShell = isNativeShellAvailable()
 
   useEffect(() => {
     let isActive = true
@@ -499,6 +504,11 @@ export function GalleryPage() {
   }
 
   const handleRevealItem = async (item: GalleryGridItem) => {
+    if (!canUseNativeShell) {
+      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      return
+    }
+
     setPendingAction(`reveal:${item.wallpaperId}`)
 
     try {
@@ -627,7 +637,7 @@ export function GalleryPage() {
             <p className="text-[15px] font-semibold">{galleryCountLabel}</p>
             <button
               className="max-w-[420px] truncate text-[12px] font-semibold text-muted-foreground transition hover:text-foreground"
-              disabled={!selectedItem || pendingAction === `reveal:${selectedItem.wallpaperId}`}
+              disabled={!selectedItem || pendingAction === `reveal:${selectedItem.wallpaperId}` || !canUseNativeShell}
               onClick={() => {
                 if (selectedItem) {
                   void handleRevealItem(selectedItem)
@@ -710,24 +720,24 @@ export function GalleryPage() {
               {selectedItem ? (
                 <div className="space-y-6">
                   <h3 className="text-[20px] font-semibold leading-7 text-foreground">Wallpaper Detail</h3>
-	                  <div className="h-[210px] overflow-hidden rounded-[16px] border border-border bg-[var(--surface-deep)]">
-	                    <img
-	                      alt={`Selected wallpaper ${selectedItem.wallpaperId}`}
-	                      className="h-full w-full object-cover"
-	                      loading="lazy"
-	                      src={selectedItem.assetUrl}
-	                    />
-	                  </div>
+                  <div className="h-[210px] overflow-hidden rounded-[16px] border border-border bg-[var(--surface-deep)]">
+                    <img
+                      alt={`Selected wallpaper ${selectedItem.wallpaperId}`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      src={selectedItem.assetUrl}
+                    />
+                  </div>
 
-	                  <div className="space-y-2">
-	                    <h4 className="truncate text-[18px] font-semibold text-foreground">{selectedItem.fileName}</h4>
-	                    <p className="text-[13px] font-medium text-muted-foreground">
-	                      Local asset · {(selectedItem.purity ?? "sfw").toUpperCase()} · {selectedItem.category ?? "general"}
-	                    </p>
-	                    <p className="truncate text-[12px] text-muted-foreground">{selectedItem.relativeFilePath}</p>
-	                  </div>
+                  <div className="space-y-2">
+                    <h4 className="truncate text-[18px] font-semibold text-foreground">{selectedItem.fileName}</h4>
+                    <p className="text-[13px] font-medium text-muted-foreground">
+                      Local asset · {(selectedItem.purity ?? "sfw").toUpperCase()} · {selectedItem.category ?? "general"}
+                    </p>
+                    <p className="truncate text-[12px] text-muted-foreground">{selectedItem.relativeFilePath}</p>
+                  </div>
 
-	                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {selectedTags.map((tag) => (
                       <span className="rounded-full border border-border bg-[var(--surface-deep)] px-4 py-2 text-[12px] font-semibold text-muted-foreground" key={tag}>
                         {tag}
@@ -815,7 +825,7 @@ export function GalleryPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       className="h-10 rounded-[14px]"
-                      disabled={pendingAction === `reveal:${selectedItem.wallpaperId}`}
+                      disabled={pendingAction === `reveal:${selectedItem.wallpaperId}` || !canUseNativeShell}
                       onClick={() => {
                         void handleRevealItem(selectedItem)
                       }}
@@ -838,6 +848,11 @@ export function GalleryPage() {
                       {pendingAction === `delete:${selectedItem.wallpaperId}` ? "Deleting" : "Delete"}
                     </Button>
                   </div>
+                  {!canUseNativeShell ? (
+                    <p className="text-[12px] leading-5 text-muted-foreground">
+                      Revealing local files is available in the desktop app.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <EmptyState

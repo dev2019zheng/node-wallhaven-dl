@@ -4,6 +4,7 @@ const {
   listDownloads,
   loadDownloadDirectory,
   loadSettingsPreferences,
+  isNativeShellAvailable,
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
   openNativePath,
@@ -15,6 +16,7 @@ const {
   listDownloads: vi.fn(),
   loadDownloadDirectory: vi.fn(),
   loadSettingsPreferences: vi.fn(),
+  isNativeShellAvailable: vi.fn(),
   listenForDownloadProgressEvents: vi.fn(),
   listenForDownloadStatusEvents: vi.fn(),
   openNativePath: vi.fn(),
@@ -39,6 +41,9 @@ vi.mock("@/application/settings/settings-service", () => ({
 }))
 
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE:
+    "This action needs the Tauri desktop runtime and is unavailable in the web preview.",
+  isNativeShellAvailable,
   openNativePath,
 }))
 
@@ -116,6 +121,7 @@ describe("DownloadsPage", () => {
       telemetryEnabled: false,
       cacheSizeBytes: 38_400_000,
     })
+    vi.mocked(isNativeShellAvailable).mockReturnValue(true)
     vi.mocked(loadDownloadDirectory).mockResolvedValue({
       customDirectoryPath: "/Users/test/Pictures/Wallhaven",
       effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
@@ -503,10 +509,73 @@ describe("DownloadsPage", () => {
     expect(screen.getByText("Retry URL unavailable")).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: /Retry unavailable for task download-missing-source/i }),
-    ).toBeInTheDocument()
+    ).toBeDisabled()
     expect(
       screen.queryByRole("button", { name: /Retry task download-missing-source/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it("disables native file opening in web preview while keeping retry actions available", async () => {
+    vi.mocked(isNativeShellAvailable).mockReturnValue(false)
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-open-disabled",
+        wallpaperId: "open-disabled",
+        sourceUrl: "https://w.wallhaven.cc/full/open-disabled.jpg",
+        fileName: "wallhaven-open-disabled.jpg",
+        relativeFilePath: "wallpapers/wallhaven-open-disabled.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-open-disabled.jpg",
+        status: "succeeded",
+      },
+      {
+        id: "download-retry-enabled",
+        wallpaperId: "retry-enabled",
+        sourceUrl: "https://w.wallhaven.cc/full/retry-enabled.jpg",
+        fileName: "wallhaven-retry-enabled.jpg",
+        relativeFilePath: "wallpapers/wallhaven-retry-enabled.jpg",
+        status: "failed",
+        failureReason: "Connection reset",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    const user = userEvent.setup()
+    expect(await screen.findByRole("button", { name: /Open folder/i })).toBeDisabled()
+    expect(screen.getByText(/Local folder and file opening is available in the desktop app/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Open file for task download-open-disabled/i })).toBeDisabled()
+
+    const retryButton = screen.getByRole("button", { name: /Retry task download-retry-enabled/i })
+    expect(retryButton).not.toBeDisabled()
+    await user.click(retryButton)
+
+    expect(openNativePath).not.toHaveBeenCalled()
+    expect(downloadWallpaper).toHaveBeenCalledWith({
+      wallpaperId: "retry-enabled",
+      imageUrl: "https://w.wallhaven.cc/full/retry-enabled.jpg",
+      fileName: "wallhaven-retry-enabled.jpg",
+      purity: undefined,
+      category: undefined,
+    })
+  })
+
+  it("disables copy path controls for tasks without an absolute path", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-copy-unavailable",
+        wallpaperId: "copy-unavailable",
+        fileName: "wallhaven-copy-unavailable.jpg",
+        relativeFilePath: "wallpapers/wallhaven-copy-unavailable.jpg",
+        status: "queued",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-copy-unavailable.jpg")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Copy path unavailable for task download-copy-unavailable/i }),
+    ).toBeDisabled()
   })
 
   it("copies completed download paths to the clipboard", async () => {

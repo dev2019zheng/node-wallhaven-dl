@@ -9,6 +9,7 @@ import type {
 } from "@/application/downloads/downloads.types";
 
 type DownloadTaskCardProps = {
+  canUseNativeShell: boolean;
   download: DownloadListItem;
   onCopyPath: (download: DownloadListItem) => void;
   onDelete: (download: DownloadListItem) => void;
@@ -150,6 +151,20 @@ function getPrimaryActionMeta(download: DownloadListItem): {
   }
 }
 
+function isPrimaryActionDisabled(download: DownloadListItem, canUseNativeShell: boolean): boolean {
+  if (download.status === "failed") {
+    return !download.sourceUrl;
+  }
+
+  return !canUseNativeShell;
+}
+
+function getCopyActionLabel(download: DownloadListItem): string {
+  return download.absolutePath
+    ? `Copy path for task ${download.id}`
+    : `Copy path unavailable for task ${download.id}`;
+}
+
 function getPreviewSrc(download: DownloadListItem): string | null {
   if (
     !download.absolutePath ||
@@ -166,6 +181,7 @@ function getPreviewSrc(download: DownloadListItem): string | null {
 }
 
 export function DownloadTaskCard({
+  canUseNativeShell,
   download,
   onCopyPath,
   onDelete,
@@ -175,6 +191,9 @@ export function DownloadTaskCard({
   const progressLabel = getProgressLabel(download);
   const progressPercent = getProgressPercent(download) ?? 0;
   const primaryAction = getPrimaryActionMeta(download);
+  const primaryActionDisabled =
+    pendingAction === "primary" || isPrimaryActionDisabled(download, canUseNativeShell);
+  const copyActionDisabled = pendingAction === "copy" || !download.absolutePath;
   const previewSrc = useMemo(() => getPreviewSrc(download), [download]);
   const [hasPreviewError, setHasPreviewError] = useState(false);
   const isDeleteDisabled =
@@ -235,16 +254,16 @@ export function DownloadTaskCard({
           <button
             aria-label={primaryAction.label}
             className="wh-icon-button h-8 w-8"
-            disabled={pendingAction === "primary"}
+            disabled={primaryActionDisabled}
             onClick={() => onPrimaryAction(download)}
             type="button"
           >
             {primaryAction.icon}
           </button>
           <button
-            aria-label={`Copy path for task ${download.id}`}
+            aria-label={getCopyActionLabel(download)}
             className="wh-icon-button h-8 w-8"
-            disabled={pendingAction === "copy"}
+            disabled={copyActionDisabled}
             onClick={() => onCopyPath(download)}
             type="button"
           >

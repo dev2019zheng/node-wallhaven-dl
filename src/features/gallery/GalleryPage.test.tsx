@@ -3,6 +3,7 @@ const {
   downloadWallpaper,
   loadInitialGalleryItems,
   loadSettingsPreferences,
+  isNativeShellAvailable,
   revealPath,
   setGalleryFavorite,
   updateGalleryTags,
@@ -13,6 +14,7 @@ const {
   downloadWallpaper: vi.fn(),
   loadInitialGalleryItems: vi.fn(),
   loadSettingsPreferences: vi.fn(),
+  isNativeShellAvailable: vi.fn(),
   revealPath: vi.fn(),
   setGalleryFavorite: vi.fn(),
   updateGalleryTags: vi.fn(),
@@ -36,6 +38,9 @@ vi.mock("@/application/settings/settings-service", () => ({
 }))
 
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE:
+    "This action needs the Tauri desktop runtime and is unavailable in the web preview.",
+  isNativeShellAvailable,
   revealPath,
 }))
 
@@ -157,6 +162,7 @@ describe("GalleryPage", () => {
       telemetryEnabled: false,
       cacheSizeBytes: 38_400_000,
     })
+    vi.mocked(isNativeShellAvailable).mockReturnValue(true)
     vi.mocked(revealPath).mockResolvedValue(undefined)
     useUiShellStore.setState({
       galleryCollectionRequest: null,
@@ -466,6 +472,18 @@ describe("GalleryPage", () => {
     expect(revealPath).toHaveBeenCalledWith(
       "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/wallhaven-kxpkmm.jpg",
     )
+  })
+
+  it("disables local file reveal controls outside the desktop runtime", async () => {
+    vi.mocked(isNativeShellAvailable).mockReturnValue(false)
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    expect(await screen.findByRole("button", { name: /^Reveal$/i })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /Path: ~/i })).toBeDisabled()
+    expect(screen.getByText(/Revealing local files is available in the desktop app/i)).toBeInTheDocument()
+    expect(revealPath).not.toHaveBeenCalled()
   })
 
   it("deletes the selected local wallpaper and removes it from the grid", async () => {
