@@ -32,6 +32,8 @@ export type GalleryCollectionRequest = {
   requestId: number;
 };
 
+export const MAX_VISIBLE_TOASTS = 4;
+
 type UiShellState = {
   selectedSearchIds: string[];
   galleryView: GalleryView;
@@ -94,7 +96,9 @@ export const useUiShellStore = create<UiShellState>((set) => ({
   },
   enqueueToast: (toast) => {
     set((state) => ({
-      toasts: [...state.toasts, toast],
+      toasts: [...state.toasts.filter((currentToast) => currentToast.id !== toast.id), toast].slice(
+        -MAX_VISIBLE_TOASTS,
+      ),
     }));
   },
   dismissToast: (id) => {

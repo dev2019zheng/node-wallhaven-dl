@@ -55,14 +55,28 @@ describe("App routing", () => {
     );
 
     const user = userEvent.setup();
+    expect(await screen.findByRole("heading", { name: "Search" })).toBeInTheDocument();
+
     await user.click(await screen.findByRole("button", { name: "Quick navigation" }));
 
     const menu = screen.getByRole("menu", { name: "Quick navigation commands" });
-    expect(within(menu).getByRole("menuitem", { name: "Search" })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitem", { name: "Downloads" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Search" })).toHaveAttribute("aria-current", "page");
+    const downloadsCommand = within(menu).getByRole("menuitem", { name: "Downloads" });
+    expect(downloadsCommand).toBeInTheDocument();
     expect(within(menu).getByRole("menuitem", { name: "Gallery" })).toBeInTheDocument();
     expect(within(menu).getByRole("menuitem", { name: "Settings" })).toBeInTheDocument();
     expect(screen.queryByRole("menu", { name: /Help commands/i })).not.toBeInTheDocument();
+
+    await user.click(downloadsCommand);
+
+    expect(await screen.findByRole("heading", { name: "Downloads" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Quick navigation" }));
+
+    const downloadsMenu = screen.getByRole("menu", { name: "Quick navigation commands" });
+    expect(within(downloadsMenu).getByRole("menuitem", { name: "Downloads" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("closes the top chrome menu from escape and outside clicks", async () => {

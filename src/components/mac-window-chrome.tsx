@@ -1,10 +1,11 @@
 import { Download, Images, Keyboard, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import { cn } from "@/lib/utils";
 
 type ChromeCommand = {
   label: string;
@@ -20,6 +21,7 @@ const quickNavigationCommands: ChromeCommand[] = [
 ];
 
 export function MacWindowChrome() {
+  const location = useLocation();
   const navigate = useNavigate();
   const quickNavigationRef = useRef<HTMLDivElement | null>(null);
   const activeShellPanel = useUiShellStore((state) => state.activeShellPanel);
@@ -94,10 +96,15 @@ export function MacWindowChrome() {
           >
             {quickNavigationCommands.map((command) => {
               const Icon = command.icon;
+              const isActive = location.pathname === command.to;
 
               return (
                 <button
-                  className="flex h-11 w-full items-center gap-3 rounded-[14px] px-3 text-left text-[13px] font-semibold text-muted-foreground transition hover:bg-[var(--surface-hover)] hover:text-foreground"
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "flex h-11 w-full items-center gap-3 rounded-[14px] px-3 text-left text-[13px] font-semibold transition hover:bg-[var(--surface-hover)] hover:text-foreground",
+                    isActive ? "wh-selected-surface text-foreground" : "text-muted-foreground",
+                  )}
                   key={command.label}
                   onClick={() => runCommand(command.to)}
                   role="menuitem"
