@@ -1,5 +1,6 @@
 import { Download, Images, Keyboard, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -20,8 +21,45 @@ const quickNavigationCommands: ChromeCommand[] = [
 
 export function MacWindowChrome() {
   const navigate = useNavigate();
+  const quickNavigationRef = useRef<HTMLDivElement | null>(null);
   const activeShellPanel = useUiShellStore((state) => state.activeShellPanel);
   const setActiveShellPanel = useUiShellStore((state) => state.setActiveShellPanel);
+
+  useEffect(() => {
+    if (activeShellPanel !== "quick-navigation") {
+      return;
+    }
+
+    const closeQuickNavigation = () => {
+      setActiveShellPanel(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeQuickNavigation();
+      }
+    };
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target;
+
+      if (
+        target instanceof Node &&
+        quickNavigationRef.current &&
+        !quickNavigationRef.current.contains(target)
+      ) {
+        closeQuickNavigation();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [activeShellPanel, setActiveShellPanel]);
 
   const toggleQuickNavigation = () => {
     setActiveShellPanel(activeShellPanel === "quick-navigation" ? null : "quick-navigation");
@@ -36,7 +74,7 @@ export function MacWindowChrome() {
     <header aria-label="top bar" className="wh-window-chrome">
       <div aria-hidden="true" />
 
-      <div className="relative flex items-center gap-2">
+      <div className="relative flex items-center gap-2" ref={quickNavigationRef}>
         <button
           aria-expanded={activeShellPanel === "quick-navigation"}
           aria-label="Quick navigation"

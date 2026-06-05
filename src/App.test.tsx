@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 
 import { ThemeAccentProvider } from "./components/theme-accent-provider";
 import { ThemeProvider } from "./components/theme-provider";
+import { useUiShellStore } from "./features/shell/ui-shell-store";
 import App from "./App";
 
 describe("App routing", () => {
   beforeEach(() => {
     window.history.replaceState({}, "", "/");
     window.location.hash = "";
+    useUiShellStore.setState({ activeShellPanel: null });
   });
 
   it("boots into the search page through the new desktop shell", async () => {
@@ -58,6 +60,33 @@ describe("App routing", () => {
     expect(within(menu).getByRole("menuitem", { name: "Gallery" })).toBeInTheDocument();
     expect(within(menu).getByRole("menuitem", { name: "Settings" })).toBeInTheDocument();
     expect(screen.queryByRole("menu", { name: /Help commands/i })).not.toBeInTheDocument();
+  });
+
+  it("closes the top chrome menu from escape and outside clicks", async () => {
+    render(
+      <ThemeProvider>
+        <ThemeAccentProvider>
+          <App />
+        </ThemeAccentProvider>
+      </ThemeProvider>,
+    );
+
+    const user = userEvent.setup();
+    const quickNavigationButton = await screen.findByRole("button", { name: "Quick navigation" });
+    await user.click(quickNavigationButton);
+
+    expect(screen.getByRole("menu", { name: "Quick navigation commands" })).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu", { name: "Quick navigation commands" })).not.toBeInTheDocument();
+
+    await user.click(quickNavigationButton);
+    expect(screen.getByRole("menu", { name: "Quick navigation commands" })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("heading", { name: "Search" }));
+
+    expect(screen.queryByRole("menu", { name: "Quick navigation commands" })).not.toBeInTheDocument();
   });
 
   it("opens Downloads from the real queue summary in the sidebar", async () => {
