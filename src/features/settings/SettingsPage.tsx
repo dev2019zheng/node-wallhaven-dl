@@ -101,11 +101,13 @@ function formatBytes(bytes: number): string {
 
 function Toggle({
   checked,
+  disabled,
   label,
   description,
   onChange,
 }: {
   checked: boolean;
+  disabled?: boolean;
   label: string;
   description: string;
   onChange: (checked: boolean) => void;
@@ -120,9 +122,10 @@ function Toggle({
         aria-checked={checked}
         aria-label={label}
         className={cn(
-          "relative h-[22px] w-10 shrink-0 rounded-full transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+          "relative h-[22px] w-10 shrink-0 rounded-full transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60",
           checked ? "bg-[var(--switch-track-on)]" : "bg-[var(--switch-track-off)]",
         )}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
         role="switch"
         type="button"
@@ -219,6 +222,8 @@ export function SettingsPage() {
     ? "Proxy address must be host:port without a scheme"
     : formState.errors.networkProxyAddress?.message;
   const isStorageReadOnly = storageUnavailableReason !== null;
+  const isEditingDisabled =
+    isLoading || formState.isSubmitting || loadError !== null || isStorageReadOnly;
   const isSaveDisabled =
     isLoading ||
     formState.isSubmitting ||
@@ -594,6 +599,7 @@ export function SettingsPage() {
                   placeholder="Paste WALLHAVEN_KEY"
                   spellCheck={false}
                   type={showApiKey ? "text" : "password"}
+                  disabled={isEditingDisabled}
                   {...register("wallhavenKey", { onChange: clearInlineFeedback })}
                 />
                 <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
@@ -608,7 +614,7 @@ export function SettingsPage() {
                   <button
                     aria-label="Validate key"
                     className="wh-icon-button h-8 w-8"
-                    disabled={isValidatingKey || isStorageReadOnly}
+                    disabled={isValidatingKey || isEditingDisabled}
                     onClick={validateApiKey}
                     type="button"
                   >
@@ -649,11 +655,12 @@ export function SettingsPage() {
                 placeholder="/Users/you/Pictures/Wallhaven"
                 spellCheck={false}
                 type="text"
+                disabled={isEditingDisabled}
                 {...register("customDownloadDirectoryPath", { onChange: clearInlineFeedback })}
               />
               <Button
                 className="h-[42px] rounded-[14px]"
-                disabled={isLoading || isChoosingDirectory || isStorageReadOnly}
+                disabled={isEditingDisabled || isChoosingDirectory}
                 onClick={handleChooseDirectory}
                 type="button"
                 variant="outline"
@@ -670,7 +677,7 @@ export function SettingsPage() {
             <div className="md:pl-[140px]">
               <Button
                 className="h-10 rounded-[14px]"
-                disabled={isLoading}
+                disabled={isEditingDisabled}
                 onClick={() => {
                   setValue("customDownloadDirectoryPath", "", { shouldDirty: true, shouldTouch: true });
                   clearInlineFeedback();
@@ -701,10 +708,11 @@ export function SettingsPage() {
                   <button
                     aria-pressed={values.networkProxyScheme === option.value}
                     className={cn(
-                      "text-[13px] font-semibold transition",
+                      "text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
                       values.networkProxyScheme === option.value ? "wh-selected-surface text-foreground" : "text-muted-foreground hover:text-foreground",
                     )}
                     key={option.value}
+                    disabled={isEditingDisabled}
                     onClick={() => {
                       setValue("networkProxyScheme", option.value, { shouldDirty: true, shouldTouch: true });
                       clearInlineFeedback();
@@ -725,9 +733,10 @@ export function SettingsPage() {
                 placeholder="127.0.0.1:7897"
                 spellCheck={false}
                 type="text"
+                disabled={isEditingDisabled}
                 {...register("networkProxyAddress", { onChange: clearInlineFeedback })}
               />
-              <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy || isStorageReadOnly} onClick={testProxy} type="button" variant="outline">
+              <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy || isEditingDisabled} onClick={testProxy} type="button" variant="outline">
                 {isTestingProxy ? <Spinner /> : <TestTube2 className="h-4 w-4" />}
                 Test
               </Button>
@@ -749,7 +758,7 @@ export function SettingsPage() {
                 </h3>
                 <p className="text-[13px] leading-6 text-muted-foreground">Deletion prompts and the local cache estimate.</p>
               </div>
-              <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate} onClick={resetCacheEstimate} type="button" variant="outline">
+              <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate || isEditingDisabled} onClick={resetCacheEstimate} type="button" variant="outline">
                 {isResettingCacheEstimate ? <Spinner /> : <RefreshCcw className="h-4 w-4" />}
                 Reset cache meter
               </Button>
@@ -759,6 +768,7 @@ export function SettingsPage() {
               <Toggle
                 checked={preferences.confirmBeforeDelete}
                 description="Protect local files"
+                disabled={isEditingDisabled}
                 label="Ask before deleting"
                 onChange={(checked) => setValue("confirmBeforeDelete", checked, { shouldDirty: true, shouldTouch: true })}
               />

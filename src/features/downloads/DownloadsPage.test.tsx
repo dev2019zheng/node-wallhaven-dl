@@ -574,8 +574,36 @@ describe("DownloadsPage", () => {
 
     expect(await screen.findByText("wallhaven-copy-unavailable.jpg")).toBeInTheDocument()
     expect(
+      screen.getByRole("button", { name: /Open folder unavailable for task download-copy-unavailable/i }),
+    ).toBeDisabled()
+    expect(
       screen.getByRole("button", { name: /Copy path unavailable for task download-copy-unavailable/i }),
     ).toBeDisabled()
+    expect(openNativePath).not.toHaveBeenCalled()
+  })
+
+  it("does not present terminal downloads without absolute paths as openable", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-open-unavailable",
+        wallpaperId: "open-unavailable",
+        fileName: "wallhaven-open-unavailable.jpg",
+        relativeFilePath: "wallpapers/wallhaven-open-unavailable.jpg",
+        status: "succeeded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-open-unavailable.jpg")).toBeInTheDocument()
+    expect(screen.getByText("Path unavailable")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Open file unavailable for task download-open-unavailable/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole("button", { name: /Copy path unavailable for task download-open-unavailable/i }),
+    ).toBeDisabled()
+    expect(openNativePath).not.toHaveBeenCalled()
   })
 
   it("copies completed download paths to the clipboard", async () => {

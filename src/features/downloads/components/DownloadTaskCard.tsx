@@ -102,9 +102,9 @@ function getTaskDetailLabel(download: DownloadListItem): string {
     case "running":
       return download.downloadedBytes > 0 ? "Byte progress" : "Connecting";
     case "succeeded":
-      return "Ready to open";
+      return download.absolutePath ? "Ready to open" : "Path unavailable";
     case "skipped_existing":
-      return "Already saved";
+      return download.absolutePath ? "Already saved" : "Path unavailable";
     case "failed":
       return download.sourceUrl ? "Retry available" : "Retry URL unavailable";
   }
@@ -133,13 +133,17 @@ function getPrimaryActionMeta(download: DownloadListItem): {
     case "running":
       return {
         icon: <FolderOpen className="h-4 w-4" />,
-        label: `Open folder for task ${download.id}`,
+        label: download.absolutePath
+          ? `Open folder for task ${download.id}`
+          : `Open folder unavailable for task ${download.id}`,
       };
     case "succeeded":
     case "skipped_existing":
       return {
         icon: <ExternalLink className="h-4 w-4" />,
-        label: `Open file for task ${download.id}`,
+        label: download.absolutePath
+          ? `Open file for task ${download.id}`
+          : `Open file unavailable for task ${download.id}`,
       };
     case "failed":
       return {
@@ -156,7 +160,7 @@ function isPrimaryActionDisabled(download: DownloadListItem, canUseNativeShell: 
     return !download.sourceUrl;
   }
 
-  return !canUseNativeShell;
+  return !canUseNativeShell || !download.absolutePath;
 }
 
 function getCopyActionLabel(download: DownloadListItem): string {

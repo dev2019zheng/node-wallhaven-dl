@@ -328,6 +328,16 @@
     background: var(--control-hover);
   }
 
+  .wh-control:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .wh-control:disabled:hover {
+    border-color: var(--border);
+    background: var(--surface-deep);
+  }
+
   .wh-control:focus,
   .wh-control:focus-visible {
     border-color: var(--primary);
@@ -357,6 +367,19 @@
     background: var(--control-selected-bg);
     color: var(--foreground);
     outline: none;
+  }
+
+  .wh-icon-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .wh-icon-button:disabled:hover,
+  .wh-icon-button:disabled:focus-visible {
+    transform: none;
+    border-color: var(--border);
+    background: var(--surface-deep);
+    color: var(--muted-foreground);
   }
 
   .wh-selected-surface {

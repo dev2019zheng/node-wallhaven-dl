@@ -127,6 +127,16 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: /^Choose$/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /^Test$/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /^Reveal$/i })).toBeDisabled();
+    expect(screen.getByLabelText(/^API Key$/i, { selector: "input" })).toBeDisabled();
+    expect(screen.getByLabelText(/Download path/i)).toBeDisabled();
+    expect(screen.getByLabelText(/Proxy address/i)).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^HTTP$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^HTTPS$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /SOCKS5/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Use app default directory/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Reset cache meter/i })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: /Ask before deleting/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Copy path$/i })).not.toBeDisabled();
     expect(screen.getByText(/API key persistence is disabled until the app runs inside Tauri/i)).toBeInTheDocument();
   });
 
