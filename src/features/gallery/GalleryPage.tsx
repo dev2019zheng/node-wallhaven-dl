@@ -699,24 +699,24 @@ export function GalleryPage() {
               {selectedItem ? (
                 <div className="space-y-6">
                   <h3 className="text-[20px] font-semibold leading-7 text-foreground">Wallpaper Detail</h3>
-                  <div className="h-[210px] overflow-hidden rounded-[16px] border border-border bg-[var(--surface-deep)]">
-                    <img
-                      alt={`Selected wallpaper ${selectedItem.wallpaperId}`}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      src={selectedItem.assetUrl}
-                    />
-                  </div>
+	                  <div className="h-[210px] overflow-hidden rounded-[16px] border border-border bg-[var(--surface-deep)]">
+	                    <img
+	                      alt={`Selected wallpaper ${selectedItem.wallpaperId}`}
+	                      className="h-full w-full object-cover"
+	                      loading="lazy"
+	                      src={selectedItem.assetUrl}
+	                    />
+	                  </div>
 
-                  <div className="space-y-2">
-                    <h4 className="truncate text-[18px] font-semibold text-foreground">{selectedItem.fileName}</h4>
-                    <p className="text-[13px] font-medium text-muted-foreground">
-                      3840 × 2160 · local asset · {(selectedItem.purity ?? "sfw").toUpperCase()}
-                    </p>
-                    <p className="truncate text-[12px] text-muted-foreground">{selectedItem.relativeFilePath}</p>
-                  </div>
+	                  <div className="space-y-2">
+	                    <h4 className="truncate text-[18px] font-semibold text-foreground">{selectedItem.fileName}</h4>
+	                    <p className="text-[13px] font-medium text-muted-foreground">
+	                      Local asset · {(selectedItem.purity ?? "sfw").toUpperCase()} · {selectedItem.category ?? "general"}
+	                    </p>
+	                    <p className="truncate text-[12px] text-muted-foreground">{selectedItem.relativeFilePath}</p>
+	                  </div>
 
-                  <div className="flex flex-wrap gap-2">
+	                  <div className="flex flex-wrap gap-2">
                     {selectedTags.map((tag) => (
                       <span className="rounded-full border border-border bg-[var(--surface-deep)] px-4 py-2 text-[12px] font-semibold text-muted-foreground" key={tag}>
                         {tag}

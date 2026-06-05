@@ -33,7 +33,6 @@ export type GalleryCollectionRequest = {
 };
 
 type UiShellState = {
-  globalQuery: string;
   selectedSearchIds: string[];
   galleryView: GalleryView;
   galleryCollectionRequest: GalleryCollectionRequest | null;
@@ -41,7 +40,6 @@ type UiShellState = {
   toasts: ShellToast[];
   confirm: ConfirmState | null;
   activeShellPanel: ShellPanel | null;
-  setGlobalQuery: (value: string) => void;
   setSelectedSearchIds: (ids: string[]) => void;
   clearSelectedSearchIds: () => void;
   setGalleryView: (view: GalleryView) => void;
@@ -60,7 +58,6 @@ export const defaultDownloadSummary: DownloadSummary = {
 };
 
 export const useUiShellStore = create<UiShellState>((set) => ({
-  globalQuery: "",
   selectedSearchIds: [],
   galleryView: "grid",
   galleryCollectionRequest: null,
@@ -68,9 +65,6 @@ export const useUiShellStore = create<UiShellState>((set) => ({
   toasts: [],
   confirm: null,
   activeShellPanel: null,
-  setGlobalQuery: (value) => {
-    set({ globalQuery: value });
-  },
   setSelectedSearchIds: (ids) => {
     set({ selectedSearchIds: ids });
   },

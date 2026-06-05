@@ -207,6 +207,14 @@ function formatWallpaperCount(count: number): string {
   return `${count} 张壁纸`;
 }
 
+function formatSearchFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 function filterOutDownloadingWallpapers(
   wallpapers: SearchWallpaper[],
   downloadingWallpaperIds: ReadonlySet<string>,
@@ -249,7 +257,7 @@ function decrementDownloadActivity(
 export function SearchPage() {
   const initialSessionSnapshot = getSearchPageSessionSnapshot();
   const restoredSearchState = getRestoredSearchState(initialSessionSnapshot);
-  const { formState, handleSubmit, register, watch } = useForm<SearchPageFormValues>({
+  const { formState, handleSubmit, register, setValue, watch } = useForm<SearchPageFormValues>({
     resolver: zodResolver(searchSchema),
     defaultValues: initialSessionSnapshot?.formValues ?? {
       category: "all",
@@ -695,7 +703,7 @@ export function SearchPage() {
                     <option value="portrait">Portrait</option>
                   </select>
                 </label>
-                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-top-range">
+                <div className="wh-control flex h-[54px] flex-col justify-center px-4">
                   <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">More Filters</span>
                   <span className="flex items-center justify-between gap-3">
                     {formValues.sorting === "toplist" ? (
@@ -709,11 +717,19 @@ export function SearchPage() {
                         <option value="1y">Past year</option>
                       </select>
                     ) : (
-                      <span className="text-[13px] font-semibold text-muted-foreground">Use Toplist</span>
+                      <button
+                        className="min-w-0 text-left text-[13px] font-semibold text-muted-foreground transition hover:text-foreground"
+                        onClick={() => {
+                          setValue("sorting", "toplist", { shouldDirty: true, shouldTouch: true });
+                        }}
+                        type="button"
+                      >
+                        Use Toplist
+                      </button>
                     )}
                     <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
                   </span>
-                </label>
+                </div>
               </div>
             </form>
           </section>
@@ -920,8 +936,31 @@ export function SearchPage() {
                 <dd className="mt-2 text-foreground">{inspectorWallpaper.ratio}</dd>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Tags</dt>
-                <dd className="mt-2 text-foreground">space, city, nature</dd>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">File</dt>
+                <dd className="mt-2 text-foreground">
+                  {formatSearchFileSize(inspectorWallpaper.fileSize)} · {inspectorWallpaper.fileType}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Engagement</dt>
+                <dd className="mt-2 text-foreground">
+                  {inspectorWallpaper.views.toLocaleString()} views · {inspectorWallpaper.favorites.toLocaleString()} favorites
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Colors</dt>
+                <dd className="mt-2 flex flex-wrap gap-2">
+                  {inspectorWallpaper.colors.map((color) => (
+                    <span className="inline-flex items-center gap-2 text-foreground" key={color}>
+                      <span
+                        aria-hidden="true"
+                        className="h-4 w-4 rounded-full border border-border"
+                        style={{ backgroundColor: color }}
+                      />
+                      {color}
+                    </span>
+                  ))}
+                </dd>
               </div>
             </dl>
           ) : null}

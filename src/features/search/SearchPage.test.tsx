@@ -195,6 +195,29 @@ describe("SearchPage", () => {
     expect(await screen.findByText(/1966x3000/i)).toBeInTheDocument()
   })
 
+  it("turns the compact toplist affordance into an active toplist filter", async () => {
+    vi.mocked(searchWallpapers).mockResolvedValue(sampleResponse)
+
+    render(<SearchPage />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: /Use Toplist/i }))
+
+    expect(screen.getByLabelText(/排序/i)).toHaveValue("toplist")
+    expect(screen.getByLabelText(/热榜范围/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /搜索/i }))
+
+    await waitFor(() => {
+      expect(searchWallpapers).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sorting: "toplist",
+          topRange: "1M",
+        }),
+      )
+    })
+  })
+
   it("renders dedicated filters and results regions with wallpaper metadata after a successful search", async () => {
     vi.mocked(searchWallpapers).mockResolvedValue(sampleResponse)
 
@@ -508,6 +531,25 @@ describe("SearchPage", () => {
       )
     })
     expect(await screen.findByText(/Copied 2 张壁纸 Wallhaven links/i)).toBeInTheDocument()
+  })
+
+  it("shows only real wallpaper metadata in the inspector", async () => {
+    vi.mocked(searchWallpapers).mockResolvedValue(multiWallpaperResponse)
+
+    render(<SearchPage />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(
+      await screen.findByRole("checkbox", {
+        name: /Select wallpaper kxpkmm/i,
+      }),
+    )
+
+    expect(screen.getByText("2.9 MB · image/jpeg")).toBeInTheDocument()
+    expect(screen.getByText("2,572 views · 79 favorites")).toBeInTheDocument()
+    expect(screen.getByText("#cccccc")).toBeInTheDocument()
+    expect(screen.queryByText("space, city, nature")).not.toBeInTheDocument()
   })
 
   it("skips wallpapers that are already downloading when starting a selected download", async () => {

@@ -176,6 +176,8 @@ describe("GalleryPage", () => {
     )
     expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
     expect(screen.getAllByText("wallpapers/wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
+    expect(screen.getByText("Local asset · SFW · general")).toBeInTheDocument()
+    expect(screen.queryByText(/3840 × 2160/i)).not.toBeInTheDocument()
   })
 
   it("renders a local gallery toolbar with search and view toggles", async () => {
