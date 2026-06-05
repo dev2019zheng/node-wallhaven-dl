@@ -508,7 +508,7 @@ export function SettingsPage() {
     <section className="space-y-6">
       <PageHeading
         badge={formState.isDirty ? "Unsaved changes" : "Settings synced"}
-        description="API key, downloads, proxy, cache, and safety preferences."
+        description="API key, downloads, proxy, cache, and deletion safety."
         eyebrow="Application settings"
         title="Settings"
       />
@@ -690,7 +690,7 @@ export function SettingsPage() {
                 <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="advanced-heading">
                   Advanced
                 </h3>
-                <p className="text-[13px] leading-6 text-muted-foreground">Desktop startup, deletion prompts, telemetry, and the local cache estimate.</p>
+                <p className="text-[13px] leading-6 text-muted-foreground">Deletion prompts and the local cache estimate.</p>
               </div>
               <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate} onClick={resetCacheEstimate} type="button" variant="outline">
                 {isResettingCacheEstimate ? <Spinner /> : <RefreshCcw className="h-4 w-4" />}
@@ -698,24 +698,12 @@ export function SettingsPage() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <Toggle
-                checked={preferences.launchAtLogin}
-                description="Apply on next app launch"
-                label="Launch at login"
-                onChange={(checked) => setValue("launchAtLogin", checked, { shouldDirty: true, shouldTouch: true })}
-              />
+            <div className="grid max-w-[420px] grid-cols-1 gap-3">
               <Toggle
                 checked={preferences.confirmBeforeDelete}
                 description="Protect local files"
                 label="Ask before deleting"
                 onChange={(checked) => setValue("confirmBeforeDelete", checked, { shouldDirty: true, shouldTouch: true })}
-              />
-              <Toggle
-                checked={preferences.telemetryEnabled}
-                description="Usage diagnostics"
-                label="Telemetry"
-                onChange={(checked) => setValue("telemetryEnabled", checked, { shouldDirty: true, shouldTouch: true })}
               />
             </div>
           </section>

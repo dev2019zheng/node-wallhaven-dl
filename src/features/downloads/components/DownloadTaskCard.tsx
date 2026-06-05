@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { Copy, ExternalLink, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Copy, ExternalLink, FolderOpen, ImageIcon, RotateCcw, Trash2 } from "lucide-react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 import type {
   DownloadListItem,
@@ -145,6 +147,21 @@ function getPrimaryActionMeta(download: DownloadListItem): {
   }
 }
 
+function getPreviewSrc(download: DownloadListItem): string | null {
+  if (
+    !download.absolutePath ||
+    (download.status !== "succeeded" && download.status !== "skipped_existing")
+  ) {
+    return null;
+  }
+
+  try {
+    return convertFileSrc(download.absolutePath);
+  } catch {
+    return null;
+  }
+}
+
 export function DownloadTaskCard({
   download,
   onCopyPath,
@@ -155,16 +172,35 @@ export function DownloadTaskCard({
   const progressLabel = getProgressLabel(download);
   const progressPercent = getProgressPercent(download) ?? 0;
   const primaryAction = getPrimaryActionMeta(download);
+  const previewSrc = useMemo(() => getPreviewSrc(download), [download]);
+  const [hasPreviewError, setHasPreviewError] = useState(false);
   const isDeleteDisabled =
     pendingAction === "delete" ||
     download.status === "queued" ||
     download.status === "running";
 
+  useEffect(() => {
+    setHasPreviewError(false);
+  }, [previewSrc]);
+
   return (
     <article className="group h-[94px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3 transition duration-200 hover:border-border-strong">
       <div className="grid h-full grid-cols-[74px_minmax(0,1fr)_118px_34px] items-center gap-4">
         <div className="h-[54px] w-[74px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)]">
-          <div className="h-full w-full" style={{ background: "var(--thumbnail-gradient)" }} />
+          {previewSrc && !hasPreviewError ? (
+            <img
+              alt={`Downloaded wallpaper ${download.wallpaperId}`}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              onError={() => setHasPreviewError(true)}
+              src={previewSrc}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <ImageIcon className="h-4 w-4" />
+              <span className="sr-only">Preview unavailable for {download.fileName}</span>
+            </div>
+          )}
         </div>
 
         <div className="min-w-0 space-y-3">

@@ -8,6 +8,7 @@ const {
   listenForDownloadStatusEvents,
   openNativePath,
   writeClipboardText,
+  convertFileSrc,
 } = vi.hoisted(() => ({
   deleteDownloadTask: vi.fn(),
   downloadWallpaper: vi.fn(),
@@ -18,6 +19,7 @@ const {
   listenForDownloadStatusEvents: vi.fn(),
   openNativePath: vi.fn(),
   writeClipboardText: vi.fn(),
+  convertFileSrc: vi.fn(),
 }))
 
 vi.mock("@/infrastructure/tauri/download-repository", () => ({
@@ -42,6 +44,10 @@ vi.mock("@/infrastructure/tauri/native-shell", () => ({
 
 vi.mock("@/infrastructure/browser/clipboard", () => ({
   writeClipboardText,
+}))
+
+vi.mock("@tauri-apps/api/core", () => ({
+  convertFileSrc,
 }))
 
 import { act, render, screen, waitFor, within } from "@testing-library/react"
@@ -94,6 +100,7 @@ describe("DownloadsPage", () => {
     progressHandler = undefined
     vi.resetAllMocks()
     vi.mocked(writeClipboardText).mockResolvedValue(undefined)
+    vi.mocked(convertFileSrc).mockImplementation((path: string) => `asset://${path}`)
     useUiShellStore.setState({
       downloadSummary: {
         activeCount: 0,
@@ -436,6 +443,34 @@ describe("DownloadsPage", () => {
     await user.click(screen.getByRole("button", { name: /Open file for task download-open/i }))
 
     expect(openNativePath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-open123.jpg")
+  })
+
+  it("uses real local file previews for completed downloads only", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-preview",
+        wallpaperId: "preview123",
+        sourceUrl: "https://w.wallhaven.cc/full/preview123.jpg",
+        fileName: "wallhaven-preview123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-preview123.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg",
+        status: "succeeded",
+      },
+      {
+        id: "download-queued-preview",
+        wallpaperId: "queued123",
+        fileName: "wallhaven-queued123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-queued123.jpg",
+        status: "queued",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    const preview = await screen.findByRole("img", { name: /Downloaded wallpaper preview123/i })
+    expect(preview).toHaveAttribute("src", "asset:///Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg")
+    expect(convertFileSrc).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg")
+    expect(screen.getByText(/Preview unavailable for wallhaven-queued123.jpg/i)).toBeInTheDocument()
   })
 
   it("copies completed download paths to the clipboard", async () => {

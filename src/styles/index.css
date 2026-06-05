@@ -60,7 +60,6 @@
   --switch-track-on: color-mix(in srgb, var(--primary) 24%, #10263f);
   --switch-knob-off: var(--muted-foreground);
   --timeline-dot-muted: #2b4260;
-  --thumbnail-gradient: linear-gradient(150deg, #253956 0%, #1b2b43 46%, #0b1726 47%, #0b1726 100%);
   --card-hover-shadow: 0 12px 32px rgb(0 0 0 / 0.36);
   --sticky-shadow: 0 18px 38px rgb(2 6 23 / 0.22);
   --radius: 0.875rem;
@@ -122,7 +121,6 @@
   --switch-track-on: color-mix(in srgb, var(--primary) 22%, #edf4fc);
   --switch-knob-off: #7a8fa4;
   --timeline-dot-muted: #c4d3e4;
-  --thumbnail-gradient: linear-gradient(150deg, #eef4fb 0%, #dfe9f5 44%, #cddbea 45%, #f8fbff 100%);
   --card-hover-shadow: 0 14px 28px rgb(148 163 184 / 0.18);
   --sticky-shadow: 0 18px 38px rgb(148 163 184 / 0.18);
 }

@@ -96,7 +96,7 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("complementary", { name: /effective destination/i })).toBeInTheDocument();
   });
 
-  it("loads saved key, destination, proxy, and toggles into custom controls", async () => {
+  it("loads saved key, destination, proxy, and real safety controls", async () => {
     render(<SettingsPage />);
 
     expect(await screen.findByLabelText(/^API Key$/i, { selector: "input" })).toHaveValue("existing-key");
@@ -106,6 +106,8 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: /^HTTPS$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /SOCKS5/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("switch", { name: /Ask before deleting/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByRole("switch", { name: /Launch at login/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /Telemetry/i })).not.toBeInTheDocument();
   });
 
   it("saves edited settings with store-backed preferences and success feedback", async () => {
@@ -123,7 +125,7 @@ describe("SettingsPage", () => {
       },
       preferences: {
         ...preferences,
-        launchAtLogin: true,
+        confirmBeforeDelete: false,
       },
     });
 
@@ -146,7 +148,7 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: /^HTTP$/i }));
     await user.clear(proxyAddressInput);
     await user.type(proxyAddressInput, "127.0.0.1:8899");
-    await user.click(screen.getByRole("switch", { name: /Launch at login/i }));
+    await user.click(screen.getByRole("switch", { name: /Ask before deleting/i }));
     await user.click(screen.getByRole("button", { name: /Save settings/i }));
 
     await waitFor(() => {
@@ -157,7 +159,7 @@ describe("SettingsPage", () => {
         networkProxyAddress: "127.0.0.1:8899",
         preferences: {
           ...preferences,
-          launchAtLogin: true,
+          confirmBeforeDelete: false,
         },
       });
     });

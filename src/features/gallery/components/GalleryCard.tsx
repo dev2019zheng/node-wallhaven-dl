@@ -32,14 +32,14 @@ export function GalleryCard({
       className={cn(
         "group relative h-[132px] overflow-hidden rounded-[16px] border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary",
         isSelected ? "border-[3px] border-primary" : "border-border",
-        view === "list" || view === "compact" ? "grid grid-cols-[220px_minmax(0,1fr)]" : "",
+        view === "list" ? "grid grid-cols-[220px_minmax(0,1fr)]" : "",
       )}
       data-view={view}
     >
       <button
         className={cn(
           "block h-full w-full overflow-hidden bg-card/60",
-          view === "list" || view === "compact" ? "" : "absolute inset-0",
+          view === "list" ? "" : "absolute inset-0",
         )}
         onClick={() => {
           onSelect?.()
@@ -55,7 +55,7 @@ export function GalleryCard({
         />
       </button>
 
-      <div className={cn("pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/76 via-black/18 to-black/12", view === "list" || view === "compact" ? "left-[220px] bg-none" : "")}>
+      <div className={cn("pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/76 via-black/18 to-black/12", view === "list" ? "left-[220px] bg-none" : "")}>
         <div className="wh-image-pill absolute left-4 top-4 rounded-full px-3 py-1 text-[11px] font-semibold">
           {(item.purity ?? "sfw").toUpperCase()}
         </div>

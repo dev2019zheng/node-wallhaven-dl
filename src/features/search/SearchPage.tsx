@@ -495,8 +495,8 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection. 前往 Downloads 查看 review task history.`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection; ${failedDownloads} failed. 前往 Downloads 查看 review task history.`;
+            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection. 前往 Downloads 查看任务记录。`
+            : `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection; ${failedDownloads} failed. 前往 Downloads 查看任务记录。`;
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -585,8 +585,8 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)}. 前往 Downloads 查看 review task history.`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)}; ${failedDownloads} failed. 前往 Downloads 查看 review task history.`;
+            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)}. 前往 Downloads 查看任务记录。`
+            : `Finished downloading ${formatWallpaperCount(successfulDownloads)}; ${failedDownloads} failed. 前往 Downloads 查看任务记录。`;
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -761,7 +761,7 @@ export function SearchPage() {
                     <span className="sr-only">{bulkDownloadLabel}</span>
                   </Button>
                   <div className="inline-flex h-[42px] items-center rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground">
-                    24 per page
+                    {result.meta.perPage} per page
                   </div>
                   <button
                     aria-label="Clear selection"

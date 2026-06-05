@@ -92,22 +92,13 @@ function getDetailTags(item: GalleryGridItem | null): string[] {
     return []
   }
 
-  const name = item.fileName.toLowerCase()
-  const tags = [item.purity?.toUpperCase() ?? "SFW"]
-
-  if (name.includes("forest") || name.includes("nature")) {
-    tags.unshift("Nature")
-  }
-
-  if (name.includes("blue") || name.includes("sky")) {
-    tags.push("Blue", "Sky")
-  }
-
-  if (item.category) {
-    tags.push(item.category)
-  }
-
-  return Array.from(new Set([...tags, ...item.tags]))
+  return Array.from(
+    new Set([
+      item.purity?.toUpperCase() ?? "SFW",
+      ...(item.category ? [item.category] : []),
+      ...item.tags,
+    ]),
+  )
 }
 
 function parseTagDraft(value: string): string[] {
@@ -598,7 +589,7 @@ export function GalleryPage() {
             </button>
             <button
               aria-label="List view"
-              aria-pressed={galleryView === "list" || galleryView === "compact"}
+              aria-pressed={galleryView === "list"}
               className="flex h-full items-center justify-center border-l border-border text-muted-foreground transition hover:text-foreground"
               onClick={() => setGalleryView("list")}
               type="button"

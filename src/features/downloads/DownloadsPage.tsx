@@ -73,20 +73,53 @@ function getEventTimestamp(): string {
   }).format(new Date())
 }
 
-function formatTransferSpeed(summary: ReturnType<typeof summarizeDownloads>): string {
-  if (summary.runningCount === 0) {
-    return "0 MB/s"
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`
   }
 
-  return `${(summary.runningCount * 4.2 + summary.queuedCount * 0.1).toFixed(1)} MB/s`
+  const units = ["KB", "MB", "GB", "TB"]
+  let value = bytes / 1024
+  let unitIndex = 0
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+
+  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`
 }
 
-function formatEta(summary: ReturnType<typeof summarizeDownloads>): string {
-  if (summary.runningCount === 0) {
-    return "ETA idle"
-  }
+function summarizeTransferProgress(
+  downloads: DownloadListItem[],
+  summary: ReturnType<typeof summarizeDownloads>,
+): {
+  primary: string
+  secondary: string
+  progressPercent: number
+} {
+  const downloadedBytes = downloads.reduce((total, download) => total + download.downloadedBytes, 0)
+  const knownTotalBytes = downloads.reduce((total, download) => total + (download.totalBytes ?? 0), 0)
+  const progressPercent =
+    knownTotalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / knownTotalBytes) * 100)) : 0
+  const primary =
+    knownTotalBytes > 0
+      ? `${formatBytes(downloadedBytes)} / ${formatBytes(knownTotalBytes)}`
+      : downloadedBytes > 0
+        ? `${formatBytes(downloadedBytes)} received`
+        : `${summary.activeCount} active transfers`
+  const secondary =
+    summary.activeCount > 0
+      ? `${summary.runningCount} running · ${summary.queuedCount} queued`
+      : summary.totalCount > 0
+        ? `${summary.completedCount} complete · ${summary.failedCount} failed`
+        : "No transfer activity yet"
 
-  return `ETA ${String(Math.max(1, summary.queuedCount + summary.runningCount)).padStart(2, "0")}:18`
+  return {
+    primary,
+    secondary,
+    progressPercent,
+  }
 }
 
 export function DownloadsPage() {
@@ -221,8 +254,10 @@ export function DownloadsPage() {
   }, [])
 
   const summary = useMemo(() => summarizeDownloads(downloads), [downloads])
-  const speedLabel = useMemo(() => formatTransferSpeed(summary), [summary])
-  const etaLabel = useMemo(() => formatEta(summary), [summary])
+  const transferProgress = useMemo(
+    () => summarizeTransferProgress(downloads, summary),
+    [downloads, summary],
+  )
   const filteredDownloads = useMemo(
     () => filterDownloads(downloads, activeFilter),
     [activeFilter, downloads],
@@ -426,13 +461,19 @@ export function DownloadsPage() {
           </dl>
 
           <div className="space-y-3">
-            <p className="text-[14px] font-semibold text-foreground">Speed</p>
+            <p className="text-[14px] font-semibold text-foreground">Progress</p>
             <div className="h-[120px] rounded-[14px] border border-border bg-[var(--surface-deep)] p-4">
-              <div className="text-[22px] font-bold text-foreground">{speedLabel}</div>
-              <div className="mt-1 text-[13px] font-medium text-muted-foreground">{etaLabel}</div>
-              <svg aria-hidden="true" className="mt-3 h-10 w-full" viewBox="0 0 196 40">
-                <path d="M0 34 L16 18 L32 14 L48 24 L64 29 L80 35 L96 18 L112 28 L128 22 L144 25 L160 10 L176 16 L196 14" fill="none" stroke="var(--primary)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-              </svg>
+              <div className="truncate text-[22px] font-bold text-foreground">{transferProgress.primary}</div>
+              <div className="mt-1 text-[13px] font-medium text-muted-foreground">{transferProgress.secondary}</div>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-[var(--surface)]">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-150"
+                  style={{ width: `${transferProgress.progressPercent}%` }}
+                />
+              </div>
+              <p className="mt-3 text-[11px] font-medium text-muted-foreground">
+                {transferProgress.progressPercent > 0 ? `${transferProgress.progressPercent}% of known bytes` : "Waiting for byte progress"}
+              </p>
             </div>
           </div>
 
