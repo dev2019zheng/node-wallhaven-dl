@@ -32,6 +32,13 @@ export function GalleryGrid({
     setPreviewIndex(index)
     setPreviewOpen(true)
   }
+  const viewPreview = (index: number) => {
+    setPreviewIndex(index)
+    const item = items[index]
+    if (item) {
+      onSelect?.(item)
+    }
+  }
 
   return (
     <>
@@ -70,7 +77,7 @@ export function GalleryGrid({
         index={previewIndex}
         items={items}
         onClose={() => setPreviewOpen(false)}
-        onView={setPreviewIndex}
+        onView={viewPreview}
         open={previewOpen}
       />
     </>

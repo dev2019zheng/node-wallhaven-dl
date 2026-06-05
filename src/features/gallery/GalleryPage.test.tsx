@@ -51,12 +51,28 @@ vi.mock("yet-another-react-lightbox", () => ({
   default: ({
     open,
     index,
+    on,
     slides,
   }: {
     open: boolean
     index: number
+    on?: {
+      view?: (payload: { index: number }) => void
+    }
     slides: Array<{ src: string }>
-  }) => (open ? <div data-testid="lightbox">{slides[index]?.src}</div> : null),
+  }) => (
+    open ? (
+      <div data-testid="lightbox">
+        {slides[index]?.src}
+        <button
+          onClick={() => on?.view?.({ index: Math.min(index + 1, slides.length - 1) })}
+          type="button"
+        >
+          Mock next slide
+        </button>
+      </div>
+    ) : null
+  ),
 }))
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
@@ -289,6 +305,32 @@ describe("GalleryPage", () => {
     expect(screen.getByTestId("lightbox")).toHaveTextContent(
       "asset:///Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/space-4k-ultra.jpg",
     )
+  })
+
+  it("syncs the selected detail item when the local preview lightbox changes slides", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole("button", { name: /Preview wallpaper kxpkmm/i }),
+    )
+    await user.click(screen.getByRole("button", { name: /Mock next slide/i }))
+
+    expect(screen.getByRole("img", { name: /Selected wallpaper space4k/i })).toBeInTheDocument()
+  })
+
+  it("focuses the tag editor when a gallery card tag action is used", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole("button", { name: /Tag wallpaper space4k/i }))
+
+    expect(screen.getByRole("textbox", { name: /Edit gallery tags/i })).toHaveFocus()
+    expect(screen.getByRole("img", { name: /Selected wallpaper space4k/i })).toBeInTheDocument()
   })
 
   it("shows an error state when the gallery command fails", async () => {

@@ -94,18 +94,19 @@ function getProgressPercent(download: DownloadListItem): number | null {
   return null;
 }
 
-function getSpeedLabel(download: DownloadListItem): string {
-  if (download.status === "running" && download.totalBytes && download.downloadedBytes > 0) {
-    const remainingBytes = Math.max(download.totalBytes - download.downloadedBytes, 0);
-    const estimatedSpeed = remainingBytes === 0 ? download.totalBytes : remainingBytes / 3;
-    return `${formatBytes(estimatedSpeed)}/s`;
+function getTaskDetailLabel(download: DownloadListItem): string {
+  switch (download.status) {
+    case "queued":
+      return "Waiting";
+    case "running":
+      return download.downloadedBytes > 0 ? "Byte progress" : "Connecting";
+    case "succeeded":
+      return "Ready to open";
+    case "skipped_existing":
+      return "Already saved";
+    case "failed":
+      return download.sourceUrl ? "Retry available" : "Retry URL unavailable";
   }
-
-  if (download.status === "failed") {
-    return "Network error";
-  }
-
-  return download.status === "queued" ? "Waiting" : "Ready";
 }
 
 function getProgressBarClass(status: DownloadTaskStatus): string {
@@ -142,7 +143,9 @@ function getPrimaryActionMeta(download: DownloadListItem): {
     case "failed":
       return {
         icon: <RotateCcw className="h-4 w-4" />,
-        label: `Retry task ${download.id}`,
+        label: download.sourceUrl
+          ? `Retry task ${download.id}`
+          : `Retry unavailable for task ${download.id}`,
       };
   }
 }
@@ -213,7 +216,7 @@ export function DownloadTaskCard({
             </div>
             <div className="text-right">
               <span className={`text-[13px] font-semibold ${statusTextClasses[download.status]}`}>{formatStatus(download.status)}</span>
-              <p className="mt-1 text-[11px] text-muted-foreground">{getSpeedLabel(download)}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{getTaskDetailLabel(download)}</p>
             </div>
           </div>
 

@@ -81,5 +81,8 @@ describe("SearchResultGrid", () => {
     expect(screen.getByTestId("lightbox")).toHaveTextContent(
       "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
     );
+    expect(
+      screen.getByRole("link", { name: /Open Wallhaven page for wallpaper kxpkmm/i }),
+    ).toHaveAttribute("href", "https://wallhaven.cc/w/kxpkmm");
   });
 });

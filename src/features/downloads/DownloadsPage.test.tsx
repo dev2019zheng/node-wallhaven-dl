@@ -189,6 +189,8 @@ describe("DownloadsPage", () => {
     })
 
     expect(screen.getByText("1 KB / 2 KB")).toBeInTheDocument()
+    expect(screen.getByText("Byte progress")).toBeInTheDocument()
+    expect(screen.queryByText(/\/s$/)).not.toBeInTheDocument()
 
     act(() => {
       statusHandler?.({
@@ -481,6 +483,30 @@ describe("DownloadsPage", () => {
     expect(preview).toHaveAttribute("src", "asset:///Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg")
     expect(convertFileSrc).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg")
     expect(screen.getByText(/Preview unavailable for wallhaven-queued123.jpg/i)).toBeInTheDocument()
+  })
+
+  it("does not present failed tasks without source URLs as retryable", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-missing-source",
+        wallpaperId: "missing123",
+        fileName: "wallhaven-missing123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-missing123.jpg",
+        status: "failed",
+        failureReason: "Source URL was not recorded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-missing123.jpg")).toBeInTheDocument()
+    expect(screen.getByText("Retry URL unavailable")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Retry unavailable for task download-missing-source/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: /Retry task download-missing-source/i }),
+    ).not.toBeInTheDocument()
   })
 
   it("copies completed download paths to the clipboard", async () => {

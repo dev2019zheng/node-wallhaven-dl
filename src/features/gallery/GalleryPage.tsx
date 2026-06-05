@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core"
 import { Check, Copy, Download, ExternalLink, FolderOpen, Grid3X3, Heart, List, Search, Tag, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { downloadWallpaper as downloadWallpaperInService } from "@/application/downloads/downloads-service"
 import {
@@ -231,9 +231,11 @@ export function GalleryPage() {
   const [activeCollectionShortcut, setActiveCollectionShortcut] = useState<GalleryCollectionShortcut | null>(null)
   const [activeImportGroup, setActiveImportGroup] = useState<ImportGroupLabel | null>(null)
   const [selectedWallpaperId, setSelectedWallpaperId] = useState<string | null>(null)
+  const [focusedTagWallpaperId, setFocusedTagWallpaperId] = useState<string | null>(null)
   const [tagDraft, setTagDraft] = useState("")
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(true)
+  const tagInputRef = useRef<HTMLInputElement | null>(null)
   const galleryView = useUiShellStore((state) => state.galleryView)
   const galleryCollectionRequest = useUiShellStore((state) => state.galleryCollectionRequest)
   const setGalleryView = useUiShellStore((state) => state.setGalleryView)
@@ -380,6 +382,15 @@ export function GalleryPage() {
   useEffect(() => {
     setTagDraft(selectedItem?.tags.join(", ") ?? "")
   }, [selectedItem?.wallpaperId, selectedItem?.tags])
+
+  useEffect(() => {
+    if (!focusedTagWallpaperId || selectedItem?.wallpaperId !== focusedTagWallpaperId) {
+      return
+    }
+
+    tagInputRef.current?.focus()
+    setFocusedTagWallpaperId(null)
+  }, [focusedTagWallpaperId, selectedItem?.wallpaperId])
 
   const updateGalleryItem = (updatedItem: GalleryItem) => {
     setGallery((currentGallery) => {
@@ -648,6 +659,7 @@ export function GalleryPage() {
                 onTag={(item) => {
                   setSelectedWallpaperId(item.wallpaperId)
                   setTagDraft(item.tags.join(", "))
+                  setFocusedTagWallpaperId(item.wallpaperId)
                 }}
                 onSelect={(item) => setSelectedWallpaperId(item.wallpaperId)}
                 onToggleFavorite={(item) => {
@@ -783,6 +795,7 @@ export function GalleryPage() {
                       id="gallery-tags"
                       onChange={(event) => setTagDraft(event.currentTarget.value)}
                       placeholder="nature, ultrawide, OLED"
+                      ref={tagInputRef}
                       value={tagDraft}
                     />
                     <Button

@@ -156,6 +156,7 @@ export function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [downloadDirectory, setDownloadDirectory] = useState<DownloadDirectorySettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [storageUnavailableReason, setStorageUnavailableReason] = useState<string | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isValidatingKey, setIsValidatingKey] = useState(false);
@@ -186,6 +187,7 @@ export function SettingsPage() {
           ...snapshot.preferences,
         });
         setDownloadDirectory(snapshot.downloadDirectory);
+        setStorageUnavailableReason(snapshot.storageUnavailableReason ?? null);
         setLoadError(null);
       })
       .catch((error) => {
@@ -194,6 +196,7 @@ export function SettingsPage() {
         }
 
         setLoadError(getErrorMessage(error, "Failed to load settings."));
+        setStorageUnavailableReason(null);
       })
       .finally(() => {
         if (isActive) {
@@ -215,8 +218,14 @@ export function SettingsPage() {
   const proxyAddressError = trimmedProxyAddress.includes("://")
     ? "Proxy address must be host:port without a scheme"
     : formState.errors.networkProxyAddress?.message;
+  const isStorageReadOnly = storageUnavailableReason !== null;
   const isSaveDisabled =
-    isLoading || formState.isSubmitting || loadError !== null || Boolean(directoryError) || Boolean(proxyAddressError);
+    isLoading ||
+    formState.isSubmitting ||
+    loadError !== null ||
+    isStorageReadOnly ||
+    Boolean(directoryError) ||
+    Boolean(proxyAddressError);
 
   const effectiveDestination = useMemo<EffectiveDestinationSummary | null>(() => {
     if (!downloadDirectory) {
@@ -240,6 +249,12 @@ export function SettingsPage() {
     telemetryEnabled: values.telemetryEnabled,
     cacheSizeBytes: values.cacheSizeBytes,
   };
+  const settingsFooterMessage =
+    storageUnavailableReason ??
+    (isLoading ? "Loading saved configuration..." : "Settings affect future tasks immediately after save.");
+  const securitySummary = isStorageReadOnly
+    ? "Desktop settings storage is unavailable in this web preview; API key persistence is disabled until the app runs inside Tauri."
+    : "API key is masked in UI and persisted through the Tauri Store settings file.";
 
   const clearInlineFeedback = () => {
     setSaveFeedback(null);
@@ -248,6 +263,11 @@ export function SettingsPage() {
   };
 
   const handleChooseDirectory = async () => {
+    if (isStorageReadOnly) {
+      showSettingsInfo(storageUnavailableReason ?? "Desktop storage is unavailable.");
+      return;
+    }
+
     setIsChoosingDirectory(true);
 
     try {
@@ -279,7 +299,7 @@ export function SettingsPage() {
   };
 
   const handleRevealDirectory = async () => {
-    if (!effectiveDestination || effectiveDestination.hasWarning) {
+    if (!effectiveDestination || effectiveDestination.hasWarning || isStorageReadOnly) {
       return;
     }
 
@@ -331,6 +351,18 @@ export function SettingsPage() {
   };
 
   const validateApiKey = async () => {
+    if (isStorageReadOnly) {
+      const status = { tone: "info" as const, message: storageUnavailableReason };
+      setApiKeyStatus(status);
+      enqueueToast({
+        id: `settings-api-key-${Date.now()}`,
+        title: "Desktop storage unavailable",
+        description: storageUnavailableReason,
+        tone: "info",
+      });
+      return;
+    }
+
     const trimmedKey = values.wallhavenKey.trim();
 
     if (proxyAddressError) {
@@ -392,6 +424,18 @@ export function SettingsPage() {
   };
 
   const testProxy = async () => {
+    if (isStorageReadOnly) {
+      const status = { tone: "info" as const, message: storageUnavailableReason };
+      setProxyStatus(status);
+      enqueueToast({
+        id: `settings-proxy-${Date.now()}`,
+        title: "Desktop storage unavailable",
+        description: storageUnavailableReason,
+        tone: "info",
+      });
+      return;
+    }
+
     if (proxyAddressError) {
       const status = { tone: "error" as const, message: "Fix proxy settings before testing connectivity." };
       setProxyStatus(status);
@@ -458,7 +502,7 @@ export function SettingsPage() {
   };
 
   const onSubmit = handleSubmit(async (formValues) => {
-    if (loadError || directoryError || proxyAddressError) {
+    if (loadError || storageUnavailableReason || directoryError || proxyAddressError) {
       return;
     }
 
@@ -486,6 +530,7 @@ export function SettingsPage() {
         ...snapshot.preferences,
       });
       setDownloadDirectory(snapshot.downloadDirectory);
+      setStorageUnavailableReason(snapshot.storageUnavailableReason ?? null);
       setSaveFeedback({
         tone: "success",
         message: "Settings saved.",
@@ -507,6 +552,8 @@ export function SettingsPage() {
     ? { label: "Loading settings", tone: "info" as const }
     : loadError
       ? { label: "Settings unavailable", tone: "error" as const }
+      : isStorageReadOnly
+        ? { label: "Settings preview", tone: "warning" as const }
       : formState.isSubmitting
         ? { label: "Saving settings", tone: "info" as const }
         : formState.isDirty
@@ -561,7 +608,7 @@ export function SettingsPage() {
                   <button
                     aria-label="Validate key"
                     className="wh-icon-button h-8 w-8"
-                    disabled={isValidatingKey}
+                    disabled={isValidatingKey || isStorageReadOnly}
                     onClick={validateApiKey}
                     type="button"
                   >
@@ -606,7 +653,7 @@ export function SettingsPage() {
               />
               <Button
                 className="h-[42px] rounded-[14px]"
-                disabled={isLoading || isChoosingDirectory}
+                disabled={isLoading || isChoosingDirectory || isStorageReadOnly}
                 onClick={handleChooseDirectory}
                 type="button"
                 variant="outline"
@@ -680,7 +727,7 @@ export function SettingsPage() {
                 type="text"
                 {...register("networkProxyAddress", { onChange: clearInlineFeedback })}
               />
-              <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy} onClick={testProxy} type="button" variant="outline">
+              <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy || isStorageReadOnly} onClick={testProxy} type="button" variant="outline">
                 {isTestingProxy ? <Spinner /> : <TestTube2 className="h-4 w-4" />}
                 Test
               </Button>
@@ -718,6 +765,13 @@ export function SettingsPage() {
             </div>
           </section>
 
+          {storageUnavailableReason ? (
+            <div className="rounded-[16px] border border-border px-4 py-3 text-[13px] leading-6 wh-soft-warning" role="status">
+              <p className="font-semibold text-foreground">Desktop settings preview</p>
+              <p className="text-muted-foreground">{storageUnavailableReason}</p>
+            </div>
+          ) : null}
+
           {loadError ? <ErrorState message={loadError} /> : null}
 
           <div className="flex min-h-[64px] flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-[var(--surface-deep)] px-5 py-3">
@@ -728,7 +782,7 @@ export function SettingsPage() {
                 saveFeedback?.tone === "error" ? "text-destructive" : saveFeedback?.tone === "success" ? "text-emerald-300" : "text-muted-foreground",
               )}
             >
-              {saveFeedback?.message ?? (isLoading ? "Loading saved configuration..." : "Settings affect future tasks immediately after save.")}
+              {saveFeedback?.message ?? settingsFooterMessage}
             </p>
             <Button className="h-11 rounded-[14px]" disabled={isSaveDisabled} type="submit">
               {formState.isSubmitting ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
@@ -768,7 +822,7 @@ export function SettingsPage() {
                 ["Gallery compatibility", "Existing SQLite records keep their saved relative and absolute file paths."],
                 ["Proxy", effectiveDestination.proxyLabel],
                 ["Cache", `${formatBytes(values.cacheSizeBytes)} · meter reset never removes downloaded wallpaper originals.`],
-                ["Security", "API key is masked in UI. Prefer OS secure storage when the plugin is available; Tauri Store fallback is explicit."],
+                ["Security", securitySummary],
               ].map(([label, value]) => (
                 <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-4" key={label}>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -790,7 +844,7 @@ export function SettingsPage() {
                 </Button>
                 <Button
                   className="h-10 rounded-[14px]"
-                  disabled={!effectiveDestination || effectiveDestination.hasWarning || isRevealingDirectory}
+                  disabled={!effectiveDestination || effectiveDestination.hasWarning || isRevealingDirectory || isStorageReadOnly}
                   onClick={handleRevealDirectory}
                   type="button"
                   variant="ghost"

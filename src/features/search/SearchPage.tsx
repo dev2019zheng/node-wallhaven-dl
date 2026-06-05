@@ -323,9 +323,17 @@ export function SearchPage() {
 
     return `当前页已加载 ${formatWallpaperCount(result.data.length)}。`;
   }, [result]);
+  const isResultAlignedWithForm = useMemo(
+    () => Boolean(result && submittedFormValues && areFormValuesEqual(formValues, submittedFormValues)),
+    [formValues, result, submittedFormValues],
+  );
   const bulkDownloadLabel = useMemo(() => {
     if (isBulkDownloading) {
       return "下载当前查询中...";
+    }
+
+    if (result && !isResultAlignedWithForm) {
+      return "重新搜索后批量下载";
     }
 
     if (pagesToDownload > 1) {
@@ -333,7 +341,7 @@ export function SearchPage() {
     }
 
     return "下载当前查询";
-  }, [isBulkDownloading, pagesToDownload]);
+  }, [isBulkDownloading, isResultAlignedWithForm, pagesToDownload, result]);
   const resultSummaryLabel = useMemo(() => {
     if (!result) {
       return null;
@@ -521,7 +529,7 @@ export function SearchPage() {
   };
 
   const onBulkDownload = async () => {
-    if (!result || !activeFilters || isBulkDownloading) {
+    if (!result || !activeFilters || !isResultAlignedWithForm || isBulkDownloading) {
       return;
     }
 
@@ -759,7 +767,7 @@ export function SearchPage() {
                   <Button
                     aria-label={bulkDownloadLabel}
                     className="h-[42px] rounded-[14px] px-4"
-                    disabled={formState.isSubmitting || isBulkDownloading}
+                    disabled={formState.isSubmitting || isBulkDownloading || !isResultAlignedWithForm}
                     onClick={() => {
                       void onBulkDownload();
                     }}
@@ -897,9 +905,9 @@ export function SearchPage() {
                 Search, then click the selection badge on cards to enable batch actions here.
               </div>
               <Button
-                aria-label="Start bulk download from inspector"
+                aria-label={bulkDownloadLabel}
                 className="h-12 w-full rounded-[14px]"
-                disabled={!result || result.data.length === 0 || formState.isSubmitting || isBulkDownloading}
+                disabled={!result || result.data.length === 0 || formState.isSubmitting || isBulkDownloading || !isResultAlignedWithForm}
                 onClick={() => {
                   void onBulkDownload();
                 }}

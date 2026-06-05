@@ -151,6 +151,17 @@ const multiChunkResponse: SearchWallpapersResponse = {
   },
 }
 
+async function findFirstBulkButton(name: RegExp) {
+  const buttons = await screen.findAllByRole("button", { name })
+  return buttons[0]!
+}
+
+function expectAnyBulkButtonEnabled(name: RegExp) {
+  const buttons = screen.getAllByRole("button", { name })
+  expect(buttons.length).toBeGreaterThan(0)
+  expect(buttons.some((button) => !button.hasAttribute("disabled"))).toBe(true)
+}
+
 describe("SearchPage", () => {
   beforeEach(() => {
     vi.resetAllMocks()
@@ -178,7 +189,7 @@ describe("SearchPage", () => {
 
     expect(screen.getByLabelText(/热榜范围/i)).toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     await waitFor(() => {
       expect(searchWallpapers).toHaveBeenCalledWith({
@@ -206,7 +217,7 @@ describe("SearchPage", () => {
     expect(screen.getByLabelText(/排序/i)).toHaveValue("toplist")
     expect(screen.getByLabelText(/热榜范围/i)).toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     await waitFor(() => {
       expect(searchWallpapers).toHaveBeenCalledWith(
@@ -226,7 +237,7 @@ describe("SearchPage", () => {
     expect(screen.getByText("Ready to search")).toBeInTheDocument()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     expect(
       await screen.findByRole("region", { name: /search filters/i }),
@@ -253,7 +264,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     expect(await screen.findByText(/No wallpapers matched the current filters/i)).toBeInTheDocument()
   })
@@ -264,7 +275,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent("503 Service Unavailable")
     expect(screen.getByText("Search error")).toBeInTheDocument()
@@ -284,7 +295,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     const downloadButton = await screen.findByRole("button", {
       name: /Download wallpaper kxpkmm/i,
@@ -333,10 +344,8 @@ describe("SearchPage", () => {
     const pagesToDownloadInput = screen.getByLabelText(/批量页数/i)
     await user.clear(pagesToDownloadInput)
     await user.type(pagesToDownloadInput, "2")
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
-    await user.click(
-      await screen.findByRole("button", { name: /下载 2 页/i }),
-    )
+    await user.click(screen.getByRole("button", { name: "搜索" }))
+    await user.click(await findFirstBulkButton(/下载 2 页/i))
 
     await waitFor(() => {
       expect(searchWallpapers).toHaveBeenNthCalledWith(2, {
@@ -367,6 +376,33 @@ describe("SearchPage", () => {
     expect(await screen.findByText(/Finished downloading 2 张壁纸/i)).toBeInTheDocument()
   })
 
+  it("disables current-query bulk download when draft filters diverge from the submitted search", async () => {
+    vi.mocked(searchWallpapers).mockResolvedValue(sampleResponse)
+    downloadWallpaper.mockResolvedValue({
+      id: "download-000001",
+      wallpaperId: "kxpkmm",
+      fileName: "wallhaven-kxpkmm.jpg",
+      relativeFilePath: "wallpapers/wallhaven-kxpkmm.jpg",
+      status: "succeeded",
+    })
+
+    render(<SearchPage />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: "搜索" }))
+    await findFirstBulkButton(/下载当前查询/i)
+    expectAnyBulkButtonEnabled(/下载当前查询/i)
+
+    await user.type(screen.getByLabelText(/关键词/i), "forest")
+
+    const staleBulkButtons = screen.getAllByRole("button", { name: /重新搜索后批量下载/i })
+    expect(staleBulkButtons.length).toBeGreaterThan(0)
+    staleBulkButtons.forEach((button) => {
+      expect(button).toBeDisabled()
+    })
+    expect(downloadWallpaper).not.toHaveBeenCalled()
+  })
+
   it("keeps a single-download button disabled until that download finishes even after bulk download completes", async () => {
     const singleWallpaper = multiWallpaperResponse.data[0]
     const bulkWallpaper = multiWallpaperResponse.data[1]
@@ -394,7 +430,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     const singleDownloadButton = await screen.findByRole("button", {
       name: new RegExp(`Download wallpaper ${singleWallpaper.id}`, "i"),
@@ -403,9 +439,7 @@ describe("SearchPage", () => {
     await user.click(singleDownloadButton)
     expect(singleDownloadButton).toBeDisabled()
 
-    const bulkDownloadButton = await screen.findByRole("button", {
-      name: /下载当前查询/i,
-    })
+    const bulkDownloadButton = await findFirstBulkButton(/下载当前查询/i)
     await user.click(bulkDownloadButton)
 
     duplicatedBulkDownload.resolve(createDownloadResult(singleWallpaper))
@@ -444,7 +478,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     const selectWallpaperCheckbox = await screen.findByRole("checkbox", {
       name: /Select wallpaper kxpkmm/i,
@@ -458,7 +492,7 @@ describe("SearchPage", () => {
     const queryInput = screen.getByLabelText(/关键词/i)
     await user.clear(queryInput)
     await user.type(queryInput, "forest")
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     expect(await screen.findByText(/1966x3000/i)).toBeInTheDocument()
     expect(screen.queryByText(/已选择 1 项/i)).not.toBeInTheDocument()
@@ -475,7 +509,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     await user.click(
       await screen.findByRole("checkbox", {
@@ -515,7 +549,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     await user.click(
       await screen.findByRole("checkbox", {
@@ -543,7 +577,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
     await user.click(
       await screen.findByRole("checkbox", {
         name: /Select wallpaper kxpkmm/i,
@@ -585,7 +619,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
     await user.click(
       await screen.findByRole("checkbox", {
         name: new RegExp(`Select wallpaper ${singleWallpaper.id}`, "i"),
@@ -662,7 +696,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
     await user.click(
       await screen.findByRole("checkbox", {
         name: new RegExp(`Select wallpaper ${selectedWallpaper.id}`, "i"),
@@ -674,7 +708,7 @@ describe("SearchPage", () => {
       expect(downloadWallpaper).toHaveBeenCalledTimes(1)
     })
 
-    await user.click(screen.getByRole("button", { name: /下载当前查询/i }))
+    await user.click(await findFirstBulkButton(/下载当前查询/i))
 
     await waitFor(() => {
       expect(downloadWallpaper).toHaveBeenCalledTimes(2)
@@ -693,7 +727,7 @@ describe("SearchPage", () => {
     selectedDownload.resolve(createDownloadResult(selectedWallpaper))
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /下载当前查询/i })).not.toBeDisabled()
+      expectAnyBulkButtonEnabled(/下载当前查询/i)
     })
   })
 
@@ -713,7 +747,7 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     const selectedCheckbox = await screen.findByRole("checkbox", {
       name: new RegExp(`Select wallpaper ${selectedWallpaper.id}`, "i"),
@@ -759,8 +793,8 @@ describe("SearchPage", () => {
     render(<SearchPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
-    await user.click(await screen.findByRole("button", { name: /下载当前查询/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
+    await user.click(await findFirstBulkButton(/下载当前查询/i))
 
     const firstChunkWallpaperButton = screen.getByRole("button", {
       name: /Download wallpaper aa11aa/i,
@@ -791,7 +825,7 @@ describe("SearchPage", () => {
 
     const user = userEvent.setup()
     await user.type(screen.getByLabelText(/关键词/i), "x".repeat(201))
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Query is unexpectedly long.")
     expect(searchWallpapers).not.toHaveBeenCalled()
@@ -806,7 +840,7 @@ describe("SearchPage", () => {
     await user.type(screen.getByLabelText(/关键词/i), "aurora")
     await user.clear(screen.getByLabelText(/批量页数/i))
     await user.type(screen.getByLabelText(/批量页数/i), "3")
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     expect(await screen.findByText(/1966x3000/i)).toBeInTheDocument()
 
@@ -827,7 +861,7 @@ describe("SearchPage", () => {
     const user = userEvent.setup()
     await user.selectOptions(screen.getByLabelText(/分辨率/i), "3840x2160")
     await user.selectOptions(screen.getByLabelText(/宽高比/i), "21x9")
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     await waitFor(() => {
       expect(searchWallpapers).toHaveBeenCalledWith({
@@ -849,10 +883,10 @@ describe("SearchPage", () => {
     const firstRender = render(<SearchPage />)
 
     await user.type(screen.getByLabelText(/关键词/i), "aurora")
-    await user.click(screen.getByRole("button", { name: /搜索/i }))
+    await user.click(screen.getByRole("button", { name: "搜索" }))
 
     expect(await screen.findByText(/1966x3000/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /下载当前查询/i })).toBeInTheDocument()
+    expect(screen.getAllByRole("button", { name: /下载当前查询/i }).length).toBeGreaterThan(0)
 
     await user.clear(screen.getByLabelText(/关键词/i))
     await user.type(screen.getByLabelText(/关键词/i), "forest")
@@ -862,9 +896,10 @@ describe("SearchPage", () => {
 
     expect(screen.getByLabelText(/关键词/i)).toHaveValue("forest")
     expect(screen.queryByText(/1966x3000/i)).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole("button", { name: /下载当前查询/i }),
-    ).not.toBeInTheDocument()
+    const enabledCurrentQueryButtons = screen
+      .queryAllByRole("button", { name: /下载当前查询/i })
+      .filter((button) => !button.hasAttribute("disabled"))
+    expect(enabledCurrentQueryButtons).toHaveLength(0)
     expect(screen.getAllByText(/Start with a query/i).length).toBeGreaterThan(0)
     expect(searchWallpapers).toHaveBeenCalledTimes(1)
   })

@@ -95,6 +95,39 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("region", { name: /network proxy/i })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /advanced/i })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: /effective destination/i })).toBeInTheDocument();
+    expect(screen.getByText("API key is masked in UI and persisted through the Tauri Store settings file.")).toBeInTheDocument();
+    expect(screen.queryByText(/secure storage/i)).not.toBeInTheDocument();
+  });
+
+  it("shows read-only settings preview instead of the storage error panel when desktop storage is unavailable", async () => {
+    const storageUnavailableReason =
+      "Desktop settings storage is unavailable in this web preview. Run the app through Tauri to save settings, choose folders, and test Wallhaven connectivity.";
+    vi.mocked(loadSettings).mockResolvedValue({
+      wallhavenKey: "",
+      downloadDirectory: {
+        customDirectoryPath: "",
+        effectiveDirectoryPath: "Desktop app default directory",
+        defaultDirectoryPath: "Desktop app default directory",
+        isUsingDefaultDirectory: true,
+      },
+      networkProxy: null,
+      preferences,
+      storageUnavailableReason,
+    });
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByText("Settings preview")).toBeInTheDocument();
+    expect(screen.getByText("Desktop settings preview")).toBeInTheDocument();
+    expect(screen.getAllByText(storageUnavailableReason).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Storage unavailable")).not.toBeInTheDocument();
+    expect(screen.queryByText("Settings failed to load, so storage summary is unavailable.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Save settings/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Validate key/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Choose$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Test$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Reveal$/i })).toBeDisabled();
+    expect(screen.getByText(/API key persistence is disabled until the app runs inside Tauri/i)).toBeInTheDocument();
   });
 
   it("loads saved key, destination, proxy, and real safety controls", async () => {

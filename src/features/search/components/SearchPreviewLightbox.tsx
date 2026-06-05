@@ -67,6 +67,7 @@ export function SearchPreviewLightbox({
         </div>
         <div className="flex items-center gap-3">
           <a
+            aria-label={`Open Wallhaven page for wallpaper ${wallpaper.id}`}
             className="wh-icon-button h-10 w-10"
             href={wallpaper.url}
             rel="noreferrer"
