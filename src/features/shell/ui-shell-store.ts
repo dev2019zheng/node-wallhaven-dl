@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 export type GalleryView = "grid" | "timeline" | "list" | "compact";
 export type GalleryCollectionShortcut = "Favorites" | "4K Ultra" | "Nature" | "Anime" | "Space";
-export type ShellPanel = "quick-navigation" | "help";
+export type ShellPanel = "quick-navigation";
 
 export type DownloadSummary = {
   activeCount: number;

@@ -33,6 +33,13 @@ export function Sidebar() {
   const navigate = useNavigate();
   const downloadSummary = useUiShellStore((state) => state.downloadSummary);
   const requestGalleryCollection = useUiShellStore((state) => state.requestGalleryCollection);
+  const totalDownloads = downloadSummary.activeCount + downloadSummary.completedCount + downloadSummary.failedCount;
+  const queueStatusLabel =
+    downloadSummary.activeCount > 0
+      ? `${downloadSummary.activeCount} active`
+      : downloadSummary.failedCount > 0
+        ? `${downloadSummary.failedCount} failed`
+        : `${downloadSummary.completedCount} completed`;
 
   return (
     <aside
@@ -103,19 +110,25 @@ export function Sidebar() {
         </div>
       </div>
 
-      <section className="mt-auto rounded-[14px] border border-border bg-[var(--surface-deep)] p-3">
-        <div className="flex items-start justify-between gap-3">
+      <section className="mt-auto rounded-[14px] border border-border bg-[var(--surface-deep)] p-3" aria-label="Download queue summary">
+        <button
+          className="flex w-full items-start justify-between gap-3 text-left"
+          onClick={() => navigate("/downloads")}
+          type="button"
+        >
           <div className="flex min-w-0 items-center gap-3">
-            <span className="h-9 w-9 rounded-full bg-[linear-gradient(135deg,var(--primary)_0%,color-mix(in_srgb,var(--primary)_42%,#7042b9)_100%)]" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary">
+              <Download className="h-4 w-4" />
+            </span>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-foreground">zhengy</p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase text-primary">Pro</p>
+              <p className="truncate text-[13px] font-semibold text-foreground">Download queue</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase text-primary">{queueStatusLabel}</p>
             </div>
           </div>
           <span className="rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-[10px] font-semibold text-primary">
-            {downloadSummary.activeCount + downloadSummary.completedCount + downloadSummary.failedCount}
+            {totalDownloads}
           </span>
-        </div>
+        </button>
       </section>
     </aside>
   );

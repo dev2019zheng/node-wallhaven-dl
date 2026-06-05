@@ -1,4 +1,4 @@
-import { Download, HelpCircle, Images, Keyboard, Search, Settings } from "lucide-react";
+import { Download, Images, Keyboard, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -18,18 +18,13 @@ const quickNavigationCommands: ChromeCommand[] = [
   { label: "Settings", to: "/settings", icon: Settings },
 ];
 
-const helpCommands: ChromeCommand[] = [
-  { label: "Open Settings", to: "/settings", icon: Settings },
-  { label: "Download Queue", to: "/downloads", icon: Download },
-];
-
 export function MacWindowChrome() {
   const navigate = useNavigate();
   const activeShellPanel = useUiShellStore((state) => state.activeShellPanel);
   const setActiveShellPanel = useUiShellStore((state) => state.setActiveShellPanel);
 
-  const togglePanel = (panel: typeof activeShellPanel) => {
-    setActiveShellPanel(activeShellPanel === panel ? null : panel);
+  const toggleQuickNavigation = () => {
+    setActiveShellPanel(activeShellPanel === "quick-navigation" ? null : "quick-navigation");
   };
 
   const runCommand = (to: string) => {
@@ -46,29 +41,20 @@ export function MacWindowChrome() {
           aria-expanded={activeShellPanel === "quick-navigation"}
           aria-label="Quick navigation"
           className="wh-chrome-button"
-          onClick={() => togglePanel("quick-navigation")}
+          onClick={toggleQuickNavigation}
           type="button"
         >
           <Keyboard className="h-4 w-4" />
-        </button>
-        <button
-          aria-expanded={activeShellPanel === "help"}
-          aria-label="Help"
-          className="wh-chrome-button"
-          onClick={() => togglePanel("help")}
-          type="button"
-        >
-          <HelpCircle className="h-4 w-4" />
         </button>
         <ThemeToggle />
 
         {activeShellPanel ? (
           <div
-            aria-label={activeShellPanel === "quick-navigation" ? "Quick navigation commands" : "Help commands"}
+            aria-label="Quick navigation commands"
             className="absolute right-0 top-[calc(100%+10px)] z-40 w-[min(18rem,calc(100vw-1.5rem))] rounded-[18px] border border-border bg-[var(--panel)] p-2 shadow-[var(--panel-shadow)]"
             role="menu"
           >
-            {(activeShellPanel === "quick-navigation" ? quickNavigationCommands : helpCommands).map((command) => {
+            {quickNavigationCommands.map((command) => {
               const Icon = command.icon;
 
               return (
