@@ -149,8 +149,12 @@ export function DownloadsPage() {
       setIsLoading(true)
 
       try {
-        const [nextUnlistenStatus, nextUnlistenProgress] = await Promise.all([
-          listenForDownloadStatusEvents((event) => {
+        const listenerErrors: string[] = []
+        let nextUnlistenStatus: (() => void) | undefined
+        let nextUnlistenProgress: (() => void) | undefined
+
+        try {
+          nextUnlistenStatus = await listenForDownloadStatusEvents((event) => {
             if (!isActive) {
               return
             }
@@ -182,8 +186,13 @@ export function DownloadsPage() {
                 timestamp: getEventTimestamp(),
               }),
             )
-          }),
-          listenForDownloadProgressEvents((event) => {
+          })
+        } catch (error) {
+          listenerErrors.push(getErrorMessage(error, "Unable to subscribe to download status events."))
+        }
+
+        try {
+          nextUnlistenProgress = await listenForDownloadProgressEvents((event) => {
             if (!isActive) {
               return
             }
@@ -206,17 +215,33 @@ export function DownloadsPage() {
                 timestamp: getEventTimestamp(),
               }),
             )
-          }),
-        ])
+          })
+        } catch (error) {
+          listenerErrors.push(getErrorMessage(error, "Unable to subscribe to download progress events."))
+        }
 
         if (!isActive) {
-          nextUnlistenStatus()
-          nextUnlistenProgress()
+          nextUnlistenStatus?.()
+          nextUnlistenProgress?.()
           return
         }
 
         unlistenStatus = nextUnlistenStatus
         unlistenProgress = nextUnlistenProgress
+
+        if (listenerErrors.length > 0) {
+          setLiveEvents((currentEvents) =>
+            appendLiveEvent(currentEvents, {
+              id: `download-event-stream-unavailable-${Date.now()}`,
+              tone: "warn",
+              message:
+                listenerErrors.length > 1
+                  ? "Live event stream unavailable. Use Refresh to reload task snapshots."
+                  : "Live event stream partially unavailable. Use Refresh to reload task snapshots.",
+              timestamp: getEventTimestamp(),
+            }),
+          )
+        }
 
         const loadedDownloads = await listDownloadsInService()
         if (!isActive) {

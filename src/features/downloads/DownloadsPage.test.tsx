@@ -403,6 +403,30 @@ describe("DownloadsPage", () => {
     expect(screen.getByText("Queue unavailable")).toBeInTheDocument()
   })
 
+  it("loads existing downloads when live event subscriptions are unavailable", async () => {
+    vi.mocked(listenForDownloadStatusEvents).mockRejectedValue(new Error("status listener unavailable"))
+    vi.mocked(listenForDownloadProgressEvents).mockRejectedValue(new Error("progress listener unavailable"))
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-eventless",
+        wallpaperId: "eventless",
+        sourceUrl: "https://w.wallhaven.cc/full/eventless.jpg",
+        fileName: "wallhaven-eventless.jpg",
+        relativeFilePath: "wallpapers/wallhaven-eventless.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-eventless.jpg",
+        status: "succeeded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-eventless.jpg")).toBeInTheDocument()
+    expect(screen.getByText("Queue ready")).toBeInTheDocument()
+    expect(screen.getByText(/Live event stream unavailable\. Use Refresh to reload task snapshots\./i)).toBeInTheDocument()
+    expect(screen.queryByText("Queue unavailable")).not.toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
   it("refreshes the download queue from the tasks header", async () => {
     vi.mocked(listDownloads)
       .mockResolvedValueOnce([])
