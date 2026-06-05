@@ -70,14 +70,19 @@ export function WallpaperCard({
         />
 
         <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between bg-gradient-to-t from-black/78 via-black/30 to-transparent px-4 py-3 text-white">
-          <div className="min-w-0">
+          <button
+            aria-label={`Open card details for wallpaper ${wallpaper.id}`}
+            className="min-w-0 text-left"
+            onClick={onPreview}
+            type="button"
+          >
             <p className="truncate text-[13px] font-semibold tracking-tight">{wallpaper.id}</p>
-              <p className="mt-1 text-[11px] text-white/70">{wallpaper.ratio} · {wallpaper.category}</p>
-              <span className="sr-only">{wallpaper.favorites}</span>
-              <span className="sr-only">Favorites</span>
-              <span className="sr-only">{wallpaper.views}</span>
-              <span className="sr-only">Views</span>
-            </div>
+            <p className="mt-1 text-[11px] text-white/70">{wallpaper.ratio} · {wallpaper.category}</p>
+            <span className="sr-only">{wallpaper.favorites}</span>
+            <span className="sr-only">Favorites</span>
+            <span className="sr-only">{wallpaper.views}</span>
+            <span className="sr-only">Views</span>
+          </button>
 
           <div className="flex translate-y-8 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
             <button

@@ -86,6 +86,17 @@ describe("SearchResultGrid", () => {
     ).toHaveAttribute("href", "https://wallhaven.cc/w/kxpkmm");
   });
 
+  it("opens a preview from the card metadata area", async () => {
+    vi.mocked(loadRemoteImageObjectUrl).mockResolvedValue("blob://proxied-thumbnail");
+
+    render(<SearchResultGrid wallpapers={wallpapers} />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Open card details for wallpaper kxpkmm/i }));
+
+    expect(screen.getByRole("dialog", { name: /Preview wallpaper kxpkmm/i })).toBeInTheDocument();
+  });
+
   it("closes the preview from escape and image backdrop clicks", async () => {
     vi.mocked(loadRemoteImageObjectUrl).mockResolvedValue("blob://proxied-thumbnail");
 
