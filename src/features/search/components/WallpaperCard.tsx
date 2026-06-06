@@ -2,6 +2,7 @@ import { Download, Eye, Heart } from "lucide-react";
 
 import type { SearchWallpaper } from "@/application/search/search.types";
 import { ProxiedImage } from "@/components/proxied-image";
+import { cn } from "@/lib/utils";
 
 type WallpaperCardProps = {
   wallpaper: SearchWallpaper;
@@ -24,14 +25,15 @@ export function WallpaperCard({
 }: WallpaperCardProps) {
   return (
     <article
-      className={`group relative h-[156px] overflow-hidden rounded-2xl border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary hover:shadow-[var(--card-hover-shadow)] focus-within:-translate-y-0.5 focus-within:border-primary focus-within:shadow-[var(--card-hover-shadow)] ${
-        isSelected ? "border-[3px] border-primary" : "border-border"
-      }`}
+      className={cn(
+        "wh-kinetic-card group relative h-[156px] overflow-hidden rounded-[18px] border bg-[var(--surface-deep)] focus-within:border-primary",
+        isSelected ? "border-primary ring-2 ring-primary" : "border-border hover:border-primary",
+      )}
     >
       <div className="relative h-full overflow-hidden bg-background/70">
         <ProxiedImage
           alt={`Wallpaper ${wallpaper.id}`}
-          className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.035]"
+          className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.06]"
           loading="lazy"
           src={wallpaper.thumbs.large}
         />
@@ -84,7 +86,7 @@ export function WallpaperCard({
             <span className="sr-only">Views</span>
           </button>
 
-          <div className="flex translate-y-8 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+          <div className="flex translate-y-8 items-center gap-2 opacity-0 transition duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
             <button
               aria-label={`Preview wallpaper ${wallpaper.id}`}
               className="wh-image-button flex h-8 w-8 items-center justify-center rounded-full"
@@ -96,7 +98,7 @@ export function WallpaperCard({
             {onDownload ? (
               <button
                 aria-label={`Download wallpaper ${wallpaper.id}`}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-primary text-primary-foreground shadow-[0_12px_24px_rgb(var(--primary-rgb)_/_0.26)] transition-[background,transform] duration-300 ease-out hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                 disabled={isDownloading}
                 onClick={onDownload}
                 type="button"

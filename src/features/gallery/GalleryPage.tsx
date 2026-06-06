@@ -602,7 +602,7 @@ export function GalleryPage() {
       />
 
       <section aria-label="Gallery archive" className="space-y-6">
-        <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[minmax(240px,1fr)_repeat(2,minmax(88px,1fr))] xl:grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] xl:gap-4">
+        <div className="wh-dense-bento grid grid-cols-1 items-center gap-3 md:grid-cols-[minmax(240px,1fr)_repeat(2,minmax(88px,1fr))] xl:grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] xl:gap-4">
           <label className="relative block md:col-span-3 xl:col-span-1">
             <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -627,7 +627,7 @@ export function GalleryPage() {
               className={
                 activeChip === chip
                   ? "wh-selected-surface h-[42px] rounded-full border px-4 text-[13px] font-semibold text-foreground"
-                  : "h-[42px] rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground transition hover:border-border-strong hover:text-foreground"
+                  : "h-[42px] rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground transition-[border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:text-foreground"
               }
               key={chip}
               onClick={() => {
@@ -705,7 +705,7 @@ export function GalleryPage() {
         ) : null}
 
         {!loadError && filteredGalleryItems.length > 0 ? (
-          <div className="grid grid-cols-1 items-start gap-6 min-[1280px]:grid-cols-[minmax(0,1fr)_360px] min-[1500px]:grid-cols-[minmax(0,1fr)_428px]">
+          <div className="wh-dense-bento grid grid-cols-1 items-start gap-6 min-[1280px]:grid-cols-[minmax(0,1fr)_360px] min-[1500px]:grid-cols-[minmax(0,1fr)_428px]">
             <div className="space-y-9">
               <GalleryGrid
                 items={filteredGalleryItems}

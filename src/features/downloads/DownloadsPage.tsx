@@ -482,7 +482,7 @@ export function DownloadsPage() {
         title="Downloads"
       />
 
-      <section className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)] min-[1500px]:grid-cols-[260px_minmax(0,1fr)_260px]">
+      <section className="wh-dense-bento grid grid-cols-1 items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)] min-[1500px]:grid-cols-[260px_minmax(0,1fr)_260px]">
         <aside className="app-panel space-y-6 p-6 min-[1500px]:h-[698px]">
           <div className="space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-foreground">Command Center</h3>
@@ -490,19 +490,19 @@ export function DownloadsPage() {
           </div>
 
           <dl className="grid gap-[18px]">
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Queued</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-foreground">{summary.queuedCount}</dd>
             </div>
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Running</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-primary">{summary.runningCount}</dd>
             </div>
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Completed</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-emerald-400">{summary.completedCount}</dd>
             </div>
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Failed</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-destructive">{summary.failedCount}</dd>
             </div>
@@ -510,12 +510,12 @@ export function DownloadsPage() {
 
           <div className="space-y-3">
             <p className="text-[14px] font-semibold text-foreground">Progress</p>
-            <div className="h-[120px] rounded-[14px] border border-border bg-[var(--surface-deep)] p-4">
+            <div className="wh-kinetic-card h-[120px] rounded-[18px] border border-border bg-[var(--surface-deep)] p-4">
               <div className="truncate text-[22px] font-bold text-foreground">{transferProgress.primary}</div>
               <div className="mt-1 text-[13px] font-medium text-muted-foreground">{transferProgress.secondary}</div>
               <div className="mt-5 h-2 overflow-hidden rounded-full bg-[var(--surface)]">
                 <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-150"
+                  className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
                   style={{ width: `${transferProgress.progressPercent}%` }}
                 />
               </div>

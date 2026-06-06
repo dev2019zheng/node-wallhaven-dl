@@ -86,7 +86,9 @@ export function MacWindowChrome() {
         >
           <Keyboard className="h-4 w-4" />
         </button>
-        <ThemeToggle />
+        <div className="max-[640px]:hidden">
+          <ThemeToggle />
+        </div>
 
         {activeShellPanel ? (
           <div

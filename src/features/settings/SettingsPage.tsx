@@ -113,7 +113,7 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex min-h-[56px] items-center justify-between gap-4 rounded-[14px] border border-border bg-[var(--surface-deep)] px-4">
+    <div className="wh-kinetic-card flex min-h-[56px] items-center justify-between gap-4 rounded-[16px] border border-border bg-[var(--surface-deep)] px-4">
       <div className="min-w-0">
         <p className="truncate text-[13px] font-semibold text-foreground">{label}</p>
         <p className="truncate text-[12px] text-muted-foreground">{description}</p>
@@ -578,7 +578,7 @@ export function SettingsPage() {
         title="Settings"
       />
 
-      <div className="grid grid-cols-1 items-start gap-[22px] min-[1280px]:grid-cols-[minmax(0,1fr)_minmax(320px,452px)] min-[1440px]:gap-[30px]">
+      <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1280px]:grid-cols-[minmax(0,1fr)_minmax(320px,452px)] min-[1440px]:gap-[30px]">
         <form className="app-panel min-h-0 space-y-6 p-5 min-[900px]:p-[30px] min-[1280px]:min-h-[640px]" onSubmit={onSubmit}>
           <section aria-labelledby="wallhaven-access-heading" className="space-y-4">
             <div>

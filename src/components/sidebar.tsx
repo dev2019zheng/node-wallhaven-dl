@@ -50,7 +50,7 @@ export function Sidebar() {
     >
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_rgb(47_139_255_/_0.1)]">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/45 bg-primary/15 text-primary shadow-[0_0_0_1px_rgb(var(--primary-rgb)_/_0.18)]">
             <span className="text-lg font-bold">W</span>
           </div>
           <div>
@@ -69,7 +69,7 @@ export function Sidebar() {
               aria-label={item.label}
               className={({ isActive }) =>
                 cn(
-                  "group flex h-[42px] items-center gap-3 rounded-[14px] border px-3 text-[14px] font-semibold transition-colors",
+                  "group flex h-[42px] items-center gap-3 rounded-[14px] border px-3 text-[14px] font-semibold transition-[background,border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5",
                   isActive
                     ? "wh-selected-surface text-foreground"
                     : "border-transparent text-muted-foreground hover:bg-[var(--surface-hover)]/65 hover:text-foreground",
@@ -100,7 +100,7 @@ export function Sidebar() {
               <button
                 aria-pressed={isCollectionActive}
                 className={cn(
-                  "flex h-[32px] w-full items-center justify-between rounded-xl border px-2 text-left text-[13px] font-medium transition",
+                  "flex h-[32px] w-full items-center justify-between rounded-xl border px-2 text-left text-[13px] font-medium transition-[background,border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5",
                   isCollectionActive
                     ? "wh-selected-surface text-foreground"
                     : "border-transparent text-muted-foreground hover:bg-[var(--surface-hover)]/65 hover:text-foreground",
@@ -122,7 +122,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <section className="mt-auto rounded-[14px] border border-border bg-[var(--surface-deep)] p-3" aria-label="Download queue summary">
+      <section className="wh-kinetic-card mt-auto rounded-[16px] border border-border bg-[var(--surface-deep)] p-3" aria-label="Download queue summary">
         <button
           className="flex w-full items-start justify-between gap-3 text-left"
           onClick={() => navigate("/downloads")}

@@ -30,16 +30,21 @@ export function PageHeading({
   badgeTone = "success",
 }: PageHeadingProps) {
   return (
-    <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-2">
+    <div className="wh-page-heading">
       <p className="sr-only">{eyebrow}</p>
-      <h2 className="text-[28px] font-semibold leading-[34px] tracking-normal text-foreground">{title}</h2>
-      <p className="text-[14px] font-medium text-muted-foreground">{description}</p>
-      {badge ? (
-        <div className={cn("inline-flex h-8 min-w-[176px] items-center justify-center gap-2 rounded-full px-4 text-[12px] font-semibold sm:ml-auto", badgeToneClasses[badgeTone])}>
-          <span className={cn("h-2 w-2 rounded-full", badgeDotClasses[badgeTone])} />
-          {badge}
-        </div>
-      ) : null}
+      <div className="wh-page-heading-row flex flex-wrap items-start justify-between gap-4 max-[640px]:grid max-[640px]:grid-cols-1 max-[640px]:justify-items-start">
+        <h2 className="wh-page-heading-title font-semibold text-foreground">
+          {title}
+          <span aria-hidden="true" className="wh-inline-media" />
+        </h2>
+        {badge ? (
+          <div className={cn("wh-page-heading-badge inline-flex h-8 min-w-[176px] items-center justify-center gap-2 rounded-full px-4 text-[12px] font-semibold max-[640px]:min-w-0 max-[640px]:max-w-full max-[640px]:justify-self-start", badgeToneClasses[badgeTone])}>
+            <span className={cn("h-2 w-2 rounded-full", badgeDotClasses[badgeTone])} />
+            {badge}
+          </div>
+        ) : null}
+      </div>
+      <p className="max-w-3xl text-[14px] font-medium leading-6 text-muted-foreground">{description}</p>
     </div>
   );
 }

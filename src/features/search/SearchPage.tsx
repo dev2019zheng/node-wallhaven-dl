@@ -662,7 +662,7 @@ export function SearchPage() {
         title="Search"
       />
 
-      <div className="grid grid-cols-1 items-start gap-[22px] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1440px]:gap-[26px]">
+      <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1440px]:gap-[26px]">
         <div className="min-w-0 space-y-6">
           <section aria-label="Search filters">
             <form className="space-y-4" onSubmit={onSubmit}>

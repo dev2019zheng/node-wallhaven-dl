@@ -210,13 +210,13 @@ export function DownloadTaskCard({
   }, [previewSrc]);
 
   return (
-    <article className="group min-h-[94px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3 transition duration-200 hover:border-border-strong">
+    <article className="wh-kinetic-card group min-h-[94px] rounded-[18px] border border-border bg-[var(--surface-deep)] px-4 py-3 hover:border-border-strong">
       <div className="grid min-h-full grid-cols-[54px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[74px_minmax(0,1fr)_118px] sm:gap-4">
         <div className="h-[54px] w-[54px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)] sm:w-[74px]">
           {previewSrc && !hasPreviewError ? (
             <img
               alt={`Downloaded wallpaper ${download.wallpaperId}`}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.06]"
               loading="lazy"
               onError={() => setHasPreviewError(true)}
               src={previewSrc}
@@ -246,7 +246,7 @@ export function DownloadTaskCard({
           <div className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-3">
             <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface)]">
               <div
-                className={`h-full rounded-full transition-[width] duration-150 ${getProgressBarClass(download.status)}`}
+                className={`h-full rounded-full transition-[width] duration-500 ease-out ${getProgressBarClass(download.status)}`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
