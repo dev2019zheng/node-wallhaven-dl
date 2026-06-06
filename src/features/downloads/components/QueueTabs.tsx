@@ -43,7 +43,7 @@ type QueueTabsProps = {
 
 export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
   return (
-    <div aria-label="Download queue filters" className="grid grid-cols-5 gap-2" role="tablist">
+    <div aria-label="Download queue filters" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="tablist">
       {queueTabs.map((tab) => {
         const isActive = tab.filter === activeFilter;
 

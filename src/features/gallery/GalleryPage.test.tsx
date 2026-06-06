@@ -3,19 +3,23 @@ const {
   downloadWallpaper,
   loadInitialGalleryItems,
   loadSettingsPreferences,
+  isNativeShellAvailable,
   revealPath,
   setGalleryFavorite,
   updateGalleryTags,
   convertFileSrc,
+  writeClipboardText,
 } = vi.hoisted(() => ({
   deleteGalleryItem: vi.fn(),
   downloadWallpaper: vi.fn(),
   loadInitialGalleryItems: vi.fn(),
   loadSettingsPreferences: vi.fn(),
+  isNativeShellAvailable: vi.fn(),
   revealPath: vi.fn(),
   setGalleryFavorite: vi.fn(),
   updateGalleryTags: vi.fn(),
   convertFileSrc: vi.fn((path: string) => `asset://${path}`),
+  writeClipboardText: vi.fn(),
 }))
 
 vi.mock("@/application/downloads/downloads-service", () => ({
@@ -34,7 +38,14 @@ vi.mock("@/application/settings/settings-service", () => ({
 }))
 
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE:
+    "This action needs the Tauri desktop runtime and is unavailable in the web preview.",
+  isNativeShellAvailable,
   revealPath,
+}))
+
+vi.mock("@/infrastructure/browser/clipboard", () => ({
+  writeClipboardText,
 }))
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -45,12 +56,28 @@ vi.mock("yet-another-react-lightbox", () => ({
   default: ({
     open,
     index,
+    on,
     slides,
   }: {
     open: boolean
     index: number
+    on?: {
+      view?: (payload: { index: number }) => void
+    }
     slides: Array<{ src: string }>
-  }) => (open ? <div data-testid="lightbox">{slides[index]?.src}</div> : null),
+  }) => (
+    open ? (
+      <div data-testid="lightbox">
+        {slides[index]?.src}
+        <button
+          onClick={() => on?.view?.({ index: Math.min(index + 1, slides.length - 1) })}
+          type="button"
+        >
+          Mock next slide
+        </button>
+      </div>
+    ) : null
+  ),
 }))
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
@@ -60,8 +87,6 @@ import type { GalleryListResponse } from "@/application/gallery/gallery.types"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
 
 import { GalleryPage } from "./GalleryPage"
-
-const clipboardWriteText = vi.fn()
 
 function formatGalleryDate(date: Date): string {
   const datePart = [
@@ -130,20 +155,17 @@ describe("GalleryPage", () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.mocked(convertFileSrc).mockImplementation((path: string) => `asset://${path}`)
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: clipboardWriteText.mockResolvedValue(undefined),
-      },
-    })
+    vi.mocked(writeClipboardText).mockResolvedValue(undefined)
     vi.mocked(loadSettingsPreferences).mockResolvedValue({
       launchAtLogin: false,
       confirmBeforeDelete: false,
       telemetryEnabled: false,
       cacheSizeBytes: 38_400_000,
     })
+    vi.mocked(isNativeShellAvailable).mockReturnValue(true)
     vi.mocked(revealPath).mockResolvedValue(undefined)
     useUiShellStore.setState({
+      activeGalleryCollectionShortcut: null,
       galleryCollectionRequest: null,
       galleryView: "grid",
       toasts: [],
@@ -162,6 +184,7 @@ describe("GalleryPage", () => {
 
     expect(loadInitialGalleryItems).toHaveBeenCalledTimes(1)
     expect(await screen.findByText(/No archived wallpapers yet/i)).toBeInTheDocument()
+    expect(screen.getByText("Archive empty")).toBeInTheDocument()
   })
 
   it("renders archived wallpaper cards using local asset URLs", async () => {
@@ -177,6 +200,9 @@ describe("GalleryPage", () => {
     )
     expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
     expect(screen.getAllByText("wallpapers/wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
+    expect(screen.getByText("Archive loaded")).toBeInTheDocument()
+    expect(screen.getByText("Local asset · SFW · general")).toBeInTheDocument()
+    expect(screen.queryByText(/3840 × 2160/i)).not.toBeInTheDocument()
   })
 
   it("renders a local gallery toolbar with search and view toggles", async () => {
@@ -231,6 +257,28 @@ describe("GalleryPage", () => {
     expect(await screen.findByText("space-4k-ultra.jpg")).toBeInTheDocument()
     expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
     expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
+    expect(useUiShellStore.getState().activeGalleryCollectionShortcut).toBe("Space")
+  })
+
+  it("clears the active sidebar collection when local gallery filters replace it", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await screen.findByRole("button", { name: "SFW", pressed: true })
+
+    useUiShellStore.getState().requestGalleryCollection("Space")
+
+    expect(await screen.findByText("space-4k-ultra.jpg")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useUiShellStore.getState().activeGalleryCollectionShortcut).toBe("Space")
+    })
+
+    await user.click(screen.getByRole("button", { name: "SFW" }))
+
+    expect(useUiShellStore.getState().activeGalleryCollectionShortcut).toBeNull()
+    expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
   })
 
   it("opens timeline groups as local gallery filters", async () => {
@@ -239,11 +287,18 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole("button", { name: /Open group Today/i }))
+    const todayButton = await screen.findByRole("button", { name: /Open group Today/i })
+    await user.click(todayButton)
 
+    expect(todayButton).toHaveAttribute("aria-pressed", "true")
     expect(screen.getAllByText("space-4k-ultra.jpg").length).toBeGreaterThan(0)
     expect(screen.queryByText("wallhaven-kxpkmm.jpg")).not.toBeInTheDocument()
     expect(screen.queryByText("forest-scene.png")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "SFW" }))
+
+    expect(todayButton).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getAllByText("wallhaven-kxpkmm.jpg").length).toBeGreaterThan(0)
   })
 
   it("persists the selected gallery view in the shell store", async () => {
@@ -252,9 +307,19 @@ describe("GalleryPage", () => {
     render(<GalleryPage />)
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole("button", { name: /List view/i }))
+    const gridButton = await screen.findByRole("button", { name: /^Grid$/i })
+    const listButton = screen.getByRole("button", { name: /List view/i })
+
+    expect(gridButton).toHaveAttribute("aria-pressed", "true")
+    expect(gridButton).toHaveClass("wh-selected-surface")
+    expect(listButton).toHaveAttribute("aria-pressed", "false")
+
+    await user.click(listButton)
 
     expect(useUiShellStore.getState().galleryView).toBe("list")
+    expect(gridButton).toHaveAttribute("aria-pressed", "false")
+    expect(listButton).toHaveAttribute("aria-pressed", "true")
+    expect(listButton).toHaveClass("wh-selected-surface")
   })
 
   it("opens a preview lightbox for the selected local wallpaper", async () => {
@@ -272,12 +337,55 @@ describe("GalleryPage", () => {
     )
   })
 
+  it("selects a non-default gallery card before opening it from the preview action", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole("button", { name: /Preview wallpaper space4k/i }),
+    )
+
+    expect(screen.getByRole("img", { name: /Selected wallpaper space4k/i })).toBeInTheDocument()
+    expect(screen.getByTestId("lightbox")).toHaveTextContent(
+      "asset:///Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/space-4k-ultra.jpg",
+    )
+  })
+
+  it("syncs the selected detail item when the local preview lightbox changes slides", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole("button", { name: /Preview wallpaper kxpkmm/i }),
+    )
+    await user.click(screen.getByRole("button", { name: /Mock next slide/i }))
+
+    expect(screen.getByRole("img", { name: /Selected wallpaper space4k/i })).toBeInTheDocument()
+  })
+
+  it("focuses the tag editor when a gallery card tag action is used", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole("button", { name: /Tag wallpaper space4k/i }))
+
+    expect(screen.getByRole("textbox", { name: /Edit gallery tags/i })).toHaveFocus()
+    expect(screen.getByRole("img", { name: /Selected wallpaper space4k/i })).toBeInTheDocument()
+  })
+
   it("shows an error state when the gallery command fails", async () => {
     vi.mocked(loadInitialGalleryItems).mockRejectedValue(new Error("gallery unavailable"))
 
     render(<GalleryPage />)
 
     expect(await screen.findByRole("alert")).toHaveTextContent("gallery unavailable")
+    expect(screen.getByText("Archive unavailable")).toBeInTheDocument()
   })
 
   it("filters the local archive with v3 collection chips", async () => {
@@ -340,6 +448,22 @@ describe("GalleryPage", () => {
     })
   })
 
+  it("keeps unchanged gallery tags from presenting a save action", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    const tagsInput = await screen.findByRole("textbox", { name: /Edit gallery tags/i })
+    const saveTagsButton = screen.getByRole("button", { name: /Save tags/i })
+
+    expect(saveTagsButton).toBeDisabled()
+
+    fireEvent.change(tagsInput, { target: { value: "Nature, OLED" } })
+
+    expect(saveTagsButton).not.toBeDisabled()
+    expect(updateGalleryTags).not.toHaveBeenCalled()
+  })
+
   it("queues a gallery wallpaper download with preserved purity metadata", async () => {
     vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
     vi.mocked(downloadWallpaper).mockResolvedValue({
@@ -357,7 +481,7 @@ describe("GalleryPage", () => {
 
     expect(downloadWallpaper).toHaveBeenCalledWith({
       wallpaperId: "kxpkmm",
-      imageUrl: "https://wallhaven.cc/w/kxpkmm",
+      imageUrl: "https://w.wallhaven.cc/full/kx/wallhaven-kxpkmm.jpg",
       fileName: "wallhaven-kxpkmm.jpg",
       purity: "sfw",
       category: "general",
@@ -367,6 +491,17 @@ describe("GalleryPage", () => {
     })
   })
 
+  it("keeps the archived source link visible in the detail panel", async () => {
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    expect(await screen.findByRole("link", { name: /Open source/i })).toHaveAttribute(
+      "href",
+      "https://wallhaven.cc/w/kxpkmm",
+    )
+  })
+
   it("copies the selected local file path", async () => {
     vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
 
@@ -374,7 +509,7 @@ describe("GalleryPage", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Copy path/i }))
 
-    expect(clipboardWriteText).toHaveBeenCalledWith(
+    expect(writeClipboardText).toHaveBeenCalledWith(
       "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/wallhaven-kxpkmm.jpg",
     )
     await waitFor(() => {
@@ -393,6 +528,18 @@ describe("GalleryPage", () => {
     expect(revealPath).toHaveBeenCalledWith(
       "/Users/test/Library/Application Support/cc.zhengyh.wallhaven.desktop/wallpapers/wallhaven-kxpkmm.jpg",
     )
+  })
+
+  it("disables local file reveal controls outside the desktop runtime", async () => {
+    vi.mocked(isNativeShellAvailable).mockReturnValue(false)
+    vi.mocked(loadInitialGalleryItems).mockResolvedValue(sampleResponse)
+
+    render(<GalleryPage />)
+
+    expect(await screen.findByRole("button", { name: /^Reveal$/i })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /Path: ~/i })).toBeDisabled()
+    expect(screen.getByText(/Revealing local files is available in the desktop app/i)).toBeInTheDocument()
+    expect(revealPath).not.toHaveBeenCalled()
   })
 
   it("deletes the selected local wallpaper and removes it from the grid", async () => {

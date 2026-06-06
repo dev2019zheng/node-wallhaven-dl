@@ -1,13 +1,19 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { ThemeAccentProvider } from "./components/theme-accent-provider";
 import { ThemeProvider } from "./components/theme-provider";
+import { useUiShellStore } from "./features/shell/ui-shell-store";
 import App from "./App";
 
 describe("App routing", () => {
   beforeEach(() => {
     window.history.replaceState({}, "", "/");
     window.location.hash = "";
+    useUiShellStore.setState({
+      activeGalleryCollectionShortcut: null,
+      activeShellPanel: null,
+    });
   });
 
   it("boots into the search page through the new desktop shell", async () => {
@@ -32,6 +38,88 @@ describe("App routing", () => {
     expect(searchLink).toHaveAttribute("aria-current", "page");
     expect(await screen.findByRole("heading", { name: "Search" })).toBeInTheDocument();
     expect(screen.queryByText("Enterprise v3.0")).not.toBeInTheDocument();
+    expect(screen.queryByText("zhengy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pro")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Help" })).not.toBeInTheDocument();
+    expect(within(sidebar).getByRole("button", { name: /Download queue/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
+  });
+
+  it("keeps the top chrome menu scoped to real navigation commands", async () => {
+    render(
+      <ThemeProvider>
+        <ThemeAccentProvider>
+          <App />
+        </ThemeAccentProvider>
+      </ThemeProvider>,
+    );
+
+    const user = userEvent.setup();
+    expect(await screen.findByRole("heading", { name: "Search" })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Quick navigation" }));
+
+    const menu = screen.getByRole("menu", { name: "Quick navigation commands" });
+    expect(within(menu).getByRole("menuitem", { name: "Search" })).toHaveAttribute("aria-current", "page");
+    const downloadsCommand = within(menu).getByRole("menuitem", { name: "Downloads" });
+    expect(downloadsCommand).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Gallery" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("menu", { name: /Help commands/i })).not.toBeInTheDocument();
+
+    await user.click(downloadsCommand);
+
+    expect(await screen.findByRole("heading", { name: "Downloads" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Quick navigation" }));
+
+    const downloadsMenu = screen.getByRole("menu", { name: "Quick navigation commands" });
+    expect(within(downloadsMenu).getByRole("menuitem", { name: "Downloads" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("closes the top chrome menu from escape and outside clicks", async () => {
+    render(
+      <ThemeProvider>
+        <ThemeAccentProvider>
+          <App />
+        </ThemeAccentProvider>
+      </ThemeProvider>,
+    );
+
+    const user = userEvent.setup();
+    const quickNavigationButton = await screen.findByRole("button", { name: "Quick navigation" });
+    await user.click(quickNavigationButton);
+
+    expect(screen.getByRole("menu", { name: "Quick navigation commands" })).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu", { name: "Quick navigation commands" })).not.toBeInTheDocument();
+
+    await user.click(quickNavigationButton);
+    expect(screen.getByRole("menu", { name: "Quick navigation commands" })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("heading", { name: "Search" }));
+
+    expect(screen.queryByRole("menu", { name: "Quick navigation commands" })).not.toBeInTheDocument();
+  });
+
+  it("opens Downloads from the real queue summary in the sidebar", async () => {
+    render(
+      <ThemeProvider>
+        <ThemeAccentProvider>
+          <App />
+        </ThemeAccentProvider>
+      </ThemeProvider>,
+    );
+
+    const user = userEvent.setup();
+    const sidebar = await screen.findByRole("complementary", { name: "sidebar" });
+    await user.click(within(sidebar).getByRole("button", { name: /Download queue/i }));
+
+    expect(await screen.findByRole("heading", { name: "Downloads" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/downloads");
   });
 });

@@ -234,9 +234,12 @@ async fn load_download_directory_settings_from_repository(
     app_local_data_dir: &std::path::Path,
 ) -> Result<DownloadDirectorySettingsDto, SettingsCommandError> {
     let custom_directory_path = repository.load_custom_download_directory().await?;
-    let effective_directory_path =
-        resolve_effective_download_directory(app_local_data_dir, custom_directory_path.as_deref())?;
     let default_directory_path = resolve_effective_download_directory(app_local_data_dir, None)?;
+    let effective_directory_path = match custom_directory_path.as_deref() {
+        Some(path) => resolve_effective_download_directory(app_local_data_dir, Some(path))
+            .unwrap_or_else(|_| default_directory_path.clone()),
+        None => default_directory_path.clone(),
+    };
     let is_using_default_directory = custom_directory_path.is_none();
 
     Ok(DownloadDirectorySettingsDto {
@@ -380,11 +383,12 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        DiagnoseWallhavenAccessRequest, DownloadDirectorySettingsDto, NetworkProxySchemeDto,
-        NetworkProxySettingsDto, SaveDownloadDirectorySettingsRequest,
-        SaveNetworkProxySettingsRequest, SettingsCommandError, SettingsCommandErrorKind,
-        WallhavenAccessDiagnosticDto,
+        load_download_directory_settings_from_repository, DiagnoseWallhavenAccessRequest,
+        DownloadDirectorySettingsDto, NetworkProxySchemeDto, NetworkProxySettingsDto,
+        SaveDownloadDirectorySettingsRequest, SaveNetworkProxySettingsRequest,
+        SettingsCommandError, SettingsCommandErrorKind, WallhavenAccessDiagnosticDto,
     };
+    use crate::db::initialize_for_path;
     use crate::models::settings::NetworkProxySettingsError;
     use crate::services::path_service::{ResolveDownloadPathError, RootPathError};
 
@@ -423,6 +427,42 @@ mod tests {
                 custom_directory_path: Some("/Users/test/Pictures/Wallhaven".into())
             }
         );
+    }
+
+    #[test]
+    fn load_download_directory_settings_falls_back_when_saved_custom_path_is_invalid() {
+        tauri::async_runtime::block_on(async {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let database = initialize_for_path(&temp_dir.path().join("wallhaven.sqlite"))
+                .await
+                .unwrap();
+            let app_local_data_dir = temp_dir.path().join("app-data");
+            let default_directory_path = app_local_data_dir.join("wallpapers");
+
+            database
+                .settings_repository()
+                .save_custom_download_directory(Some("relative/path"))
+                .await
+                .unwrap();
+
+            let settings = load_download_directory_settings_from_repository(
+                &database.settings_repository(),
+                app_local_data_dir.as_path(),
+            )
+            .await
+            .unwrap();
+
+            assert_eq!(settings.custom_directory_path, "relative/path");
+            assert_eq!(
+                settings.effective_directory_path,
+                default_directory_path.to_string_lossy()
+            );
+            assert_eq!(
+                settings.default_directory_path,
+                default_directory_path.to_string_lossy()
+            );
+            assert!(!settings.is_using_default_directory);
+        });
     }
 
     #[test]

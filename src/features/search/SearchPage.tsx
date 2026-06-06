@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Download, Loader2, Save, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
+import { Copy, Download, Loader2, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,6 +15,7 @@ import { ErrorState } from "@/components/error-state";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import { writeClipboardText } from "@/infrastructure/browser/clipboard";
 import {
   VALID_TOPLIST_RANGES,
   type WallhavenPurityFilter,
@@ -128,6 +129,10 @@ function areFormValuesEqual(
   );
 }
 
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 function getRestoredSearchState(snapshot: ReturnType<typeof getSearchPageSessionSnapshot>) {
   if (!snapshot) {
     return {
@@ -206,6 +211,14 @@ function formatWallpaperCount(count: number): string {
   return `${count} 张壁纸`;
 }
 
+function formatSearchFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 function filterOutDownloadingWallpapers(
   wallpapers: SearchWallpaper[],
   downloadingWallpaperIds: ReadonlySet<string>,
@@ -248,7 +261,7 @@ function decrementDownloadActivity(
 export function SearchPage() {
   const initialSessionSnapshot = getSearchPageSessionSnapshot();
   const restoredSearchState = getRestoredSearchState(initialSessionSnapshot);
-  const { formState, handleSubmit, register, watch } = useForm<SearchPageFormValues>({
+  const { formState, handleSubmit, register, setValue, watch } = useForm<SearchPageFormValues>({
     resolver: zodResolver(searchSchema),
     defaultValues: initialSessionSnapshot?.formValues ?? {
       category: "all",
@@ -307,6 +320,38 @@ export function SearchPage() {
     () => result?.data.filter((wallpaper) => selectedWallpaperSet.has(wallpaper.id)) ?? [],
     [result, selectedWallpaperSet],
   );
+  const selectedWallpapersToDownload = useMemo(
+    () => filterOutDownloadingWallpapers(selectedWallpapers, downloadingWallpaperIdSet),
+    [downloadingWallpaperIdSet, selectedWallpapers],
+  );
+  const canDownloadSelected =
+    selectedWallpapersToDownload.length > 0 && !isSelectedDownloading && !isBulkDownloading;
+  const selectedDownloadButtonLabel = isSelectedDownloading
+    ? "下载选中中..."
+    : selectedWallpapers.length > 0 && selectedWallpapersToDownload.length === 0
+      ? "选中项正在下载"
+      : "下载选中";
+
+  useEffect(() => {
+    if (selectedSearchIds.length === 0) {
+      return;
+    }
+
+    if (!result) {
+      clearSelectedSearchIds();
+      return;
+    }
+
+    const resultWallpaperIds = new Set(result.data.map((wallpaper) => wallpaper.id));
+    const visibleSelectedIds = selectedSearchIds.filter((wallpaperId) =>
+      resultWallpaperIds.has(wallpaperId),
+    );
+
+    if (!areStringArraysEqual(selectedSearchIds, visibleSelectedIds)) {
+      setSelectedSearchIds(visibleSelectedIds);
+    }
+  }, [clearSelectedSearchIds, result, selectedSearchIds, setSelectedSearchIds]);
+
   const resultCountLabel = useMemo(() => {
     if (!result || result.data.length === 0) {
       return null;
@@ -314,9 +359,17 @@ export function SearchPage() {
 
     return `当前页已加载 ${formatWallpaperCount(result.data.length)}。`;
   }, [result]);
+  const isResultAlignedWithForm = useMemo(
+    () => Boolean(result && submittedFormValues && areFormValuesEqual(formValues, submittedFormValues)),
+    [formValues, result, submittedFormValues],
+  );
   const bulkDownloadLabel = useMemo(() => {
     if (isBulkDownloading) {
       return "下载当前查询中...";
+    }
+
+    if (result && !isResultAlignedWithForm) {
+      return "重新搜索后批量下载";
     }
 
     if (pagesToDownload > 1) {
@@ -324,7 +377,7 @@ export function SearchPage() {
     }
 
     return "下载当前查询";
-  }, [isBulkDownloading, pagesToDownload]);
+  }, [isBulkDownloading, isResultAlignedWithForm, pagesToDownload, result]);
   const resultSummaryLabel = useMemo(() => {
     if (!result) {
       return null;
@@ -334,15 +387,23 @@ export function SearchPage() {
   }, [result]);
   const inspectorWallpaper = selectedWallpapers[0] ?? null;
 
-  const saveSelectedToCollection = () => {
+  const copySelectedLinks = async () => {
     if (selectedWallpapers.length === 0) {
       return;
     }
 
-    setDownloadFeedback({
-      tone: "success",
-      message: `${formatWallpaperCount(selectedWallpapers.length)} 已保留为当前选择，可继续批量下载或清除选择。`,
-    });
+    try {
+      await writeClipboardText(selectedWallpapers.map((wallpaper) => wallpaper.shortUrl).join("\n"));
+      setDownloadFeedback({
+        tone: "success",
+        message: `Copied ${formatWallpaperCount(selectedWallpapers.length)} Wallhaven links to clipboard.`,
+      });
+    } catch (error) {
+      setDownloadFeedback({
+        tone: "error",
+        message: getErrorMessage(error, "Clipboard is unavailable."),
+      });
+    }
   };
 
   const onSubmit = handleSubmit(async (values) => {
@@ -424,16 +485,7 @@ export function SearchPage() {
   };
 
   const onDownloadSelected = async () => {
-    if (selectedWallpapers.length === 0 || isSelectedDownloading || isBulkDownloading) {
-      return;
-    }
-
-    const selectedWallpapersToDownload = filterOutDownloadingWallpapers(
-      selectedWallpapers,
-      downloadingWallpaperIdSet,
-    );
-
-    if (selectedWallpapersToDownload.length === 0) {
+    if (!canDownloadSelected) {
       return;
     }
 
@@ -478,8 +530,8 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection. 前往 Downloads 查看 review task history.`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection; ${failedDownloads} failed. 前往 Downloads 查看 review task history.`;
+            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection. 前往 Downloads 查看任务记录。`
+            : `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection; ${failedDownloads} failed. 前往 Downloads 查看任务记录。`;
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -504,7 +556,7 @@ export function SearchPage() {
   };
 
   const onBulkDownload = async () => {
-    if (!result || !activeFilters || isBulkDownloading) {
+    if (!result || !activeFilters || !isResultAlignedWithForm || isBulkDownloading) {
       return;
     }
 
@@ -568,8 +620,8 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)}. 前往 Downloads 查看 review task history.`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)}; ${failedDownloads} failed. 前往 Downloads 查看 review task history.`;
+            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)}. 前往 Downloads 查看任务记录。`
+            : `Finished downloading ${formatWallpaperCount(successfulDownloads)}; ${failedDownloads} failed. 前往 Downloads 查看任务记录。`;
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -592,17 +644,25 @@ export function SearchPage() {
       }
     }
   };
+  const headingBadge = formState.isSubmitting
+    ? { label: "Searching", tone: "info" as const }
+    : searchError
+      ? { label: "Search error", tone: "error" as const }
+      : result
+        ? { label: "Results loaded", tone: "success" as const }
+        : { label: "Ready to search", tone: "info" as const };
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="API synced"
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
         description="Search and discover wallpapers from Wallhaven."
         eyebrow="Wallpaper discovery"
         title="Search"
       />
 
-      <div className="grid grid-cols-1 items-start gap-[22px] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1440px]:gap-[26px]">
+      <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1440px]:gap-[26px]">
         <div className="min-w-0 space-y-6">
           <section aria-label="Search filters">
             <form className="space-y-4" onSubmit={onSubmit}>
@@ -686,12 +746,12 @@ export function SearchPage() {
                     <option value="portrait">Portrait</option>
                   </select>
                 </label>
-                <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-top-range">
+                <div className="wh-control flex h-[54px] flex-col justify-center px-4">
                   <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">More Filters</span>
                   <span className="flex items-center justify-between gap-3">
                     {formValues.sorting === "toplist" ? (
                       <select aria-label="热榜范围" className="min-w-0 bg-transparent text-[13px] font-semibold outline-none" id="search-top-range" {...register("topRange")}>
-                        <option value="1M">Advanced</option>
+                        <option value="1M">Past month</option>
                         <option value="1d">Past day</option>
                         <option value="3d">Past 3 days</option>
                         <option value="1w">Past week</option>
@@ -700,11 +760,19 @@ export function SearchPage() {
                         <option value="1y">Past year</option>
                       </select>
                     ) : (
-                      <span className="text-[13px] font-semibold">Advanced</span>
+                      <button
+                        className="min-w-0 text-left text-[13px] font-semibold text-muted-foreground transition hover:text-foreground"
+                        onClick={() => {
+                          setValue("sorting", "toplist", { shouldDirty: true, shouldTouch: true });
+                        }}
+                        type="button"
+                      >
+                        Use Toplist
+                      </button>
                     )}
                     <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
                   </span>
-                </label>
+                </div>
               </div>
             </form>
           </section>
@@ -726,7 +794,7 @@ export function SearchPage() {
                   <Button
                     aria-label={bulkDownloadLabel}
                     className="h-[42px] rounded-[14px] px-4"
-                    disabled={formState.isSubmitting || isBulkDownloading}
+                    disabled={formState.isSubmitting || isBulkDownloading || !isResultAlignedWithForm}
                     onClick={() => {
                       void onBulkDownload();
                     }}
@@ -735,9 +803,8 @@ export function SearchPage() {
                     {isBulkDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                     <span className="sr-only">{bulkDownloadLabel}</span>
                   </Button>
-                  <div className="wh-control flex h-[42px] w-[126px] items-center justify-between px-4 text-[13px] font-semibold">
-                    24 per page
-                    <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                  <div className="inline-flex h-[42px] items-center rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground">
+                    {result.meta.perPage} per page
                   </div>
                   <button
                     aria-label="Clear selection"
@@ -825,25 +892,27 @@ export function SearchPage() {
                 </p>
               </div>
               <Button
-                aria-label={isSelectedDownloading ? "下载选中中..." : "下载选中"}
+                aria-label={selectedDownloadButtonLabel}
                 className="h-12 w-full rounded-[14px]"
-                disabled={isSelectedDownloading || isBulkDownloading}
+                disabled={!canDownloadSelected}
                 onClick={() => {
                   void onDownloadSelected();
                 }}
                 type="button"
               >
                 {isSelectedDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Start download
+                {selectedDownloadButtonLabel}
               </Button>
               <Button
                 className="h-12 w-full rounded-[14px]"
-                onClick={saveSelectedToCollection}
+                onClick={() => {
+                  void copySelectedLinks();
+                }}
                 type="button"
                 variant="outline"
               >
-                <Save className="h-4 w-4" />
-                Keep selection
+                <Copy className="h-4 w-4" />
+                Copy links
               </Button>
               <Button
                 aria-label="清除选择"
@@ -863,9 +932,9 @@ export function SearchPage() {
                 Search, then click the selection badge on cards to enable batch actions here.
               </div>
               <Button
-                aria-label="Start bulk download from inspector"
+                aria-label={bulkDownloadLabel}
                 className="h-12 w-full rounded-[14px]"
-                disabled={!result || result.data.length === 0 || formState.isSubmitting || isBulkDownloading}
+                disabled={!result || result.data.length === 0 || formState.isSubmitting || isBulkDownloading || !isResultAlignedWithForm}
                 onClick={() => {
                   void onBulkDownload();
                 }}
@@ -910,8 +979,31 @@ export function SearchPage() {
                 <dd className="mt-2 text-foreground">{inspectorWallpaper.ratio}</dd>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Tags</dt>
-                <dd className="mt-2 text-foreground">space, city, nature</dd>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">File</dt>
+                <dd className="mt-2 text-foreground">
+                  {formatSearchFileSize(inspectorWallpaper.fileSize)} · {inspectorWallpaper.fileType}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Engagement</dt>
+                <dd className="mt-2 text-foreground">
+                  {inspectorWallpaper.views.toLocaleString()} views · {inspectorWallpaper.favorites.toLocaleString()} favorites
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Colors</dt>
+                <dd className="mt-2 flex flex-wrap gap-2">
+                  {inspectorWallpaper.colors.map((color) => (
+                    <span className="inline-flex items-center gap-2 text-foreground" key={color}>
+                      <span
+                        aria-hidden="true"
+                        className="h-4 w-4 rounded-full border border-border"
+                        style={{ backgroundColor: color }}
+                      />
+                      {color}
+                    </span>
+                  ))}
+                </dd>
               </div>
             </dl>
           ) : null}

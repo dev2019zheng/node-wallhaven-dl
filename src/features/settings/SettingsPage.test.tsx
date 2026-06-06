@@ -12,9 +12,10 @@ import { useUiShellStore } from "@/features/shell/ui-shell-store";
 
 import { SettingsPage } from "./SettingsPage";
 
-const { chooseDirectory, revealPath } = vi.hoisted(() => ({
+const { chooseDirectory, revealPath, writeClipboardText } = vi.hoisted(() => ({
   chooseDirectory: vi.fn(),
   revealPath: vi.fn(),
+  writeClipboardText: vi.fn(),
 }));
 
 vi.mock("@/application/settings/settings-service", () => ({
@@ -26,6 +27,10 @@ vi.mock("@/application/settings/settings-service", () => ({
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
   chooseDirectory,
   revealPath,
+}));
+
+vi.mock("@/infrastructure/browser/clipboard", () => ({
+  writeClipboardText,
 }));
 
 const preferences = {
@@ -78,19 +83,64 @@ describe("SettingsPage", () => {
     });
     vi.mocked(chooseDirectory).mockResolvedValue(null);
     vi.mocked(revealPath).mockResolvedValue(undefined);
+    vi.mocked(writeClipboardText).mockResolvedValue(undefined);
   });
 
   it("renders the v3 settings sections and effective destination panel", async () => {
     render(<SettingsPage />);
 
     expect(await screen.findByRole("region", { name: /wallhaven access/i })).toBeInTheDocument();
+    expect(screen.getByText("Settings loaded")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /download directory/i })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /network proxy/i })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /advanced/i })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: /effective destination/i })).toBeInTheDocument();
+    expect(screen.getByText("API key is masked in UI and persisted through the Tauri Store settings file.")).toBeInTheDocument();
+    expect(screen.queryByText(/secure storage/i)).not.toBeInTheDocument();
   });
 
-  it("loads saved key, destination, proxy, and toggles into custom controls", async () => {
+  it("shows read-only settings preview instead of the storage error panel when desktop storage is unavailable", async () => {
+    const storageUnavailableReason =
+      "Desktop settings storage is unavailable in this web preview. Run the app through Tauri to save settings, choose folders, and test Wallhaven connectivity.";
+    vi.mocked(loadSettings).mockResolvedValue({
+      wallhavenKey: "",
+      downloadDirectory: {
+        customDirectoryPath: "",
+        effectiveDirectoryPath: "Desktop app default directory",
+        defaultDirectoryPath: "Desktop app default directory",
+        isUsingDefaultDirectory: true,
+      },
+      networkProxy: null,
+      preferences,
+      storageUnavailableReason,
+    });
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByText("Settings preview")).toBeInTheDocument();
+    expect(screen.getByText("Desktop settings preview")).toBeInTheDocument();
+    expect(screen.getAllByText(storageUnavailableReason).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Storage unavailable")).not.toBeInTheDocument();
+    expect(screen.queryByText("Settings failed to load, so storage summary is unavailable.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Save settings/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Validate key/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Choose$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Test$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Reveal$/i })).toBeDisabled();
+    expect(screen.getByLabelText(/^API Key$/i, { selector: "input" })).toBeDisabled();
+    expect(screen.getByLabelText(/Download path/i)).toBeDisabled();
+    expect(screen.getByLabelText(/Proxy address/i)).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^HTTP$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^HTTPS$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /SOCKS5/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Use app default directory/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Reset cache meter/i })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: /Ask before deleting/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Copy path$/i })).not.toBeDisabled();
+    expect(screen.getByText(/API key persistence is disabled until the app runs inside Tauri/i)).toBeInTheDocument();
+  });
+
+  it("loads saved key, destination, proxy, and real safety controls", async () => {
     render(<SettingsPage />);
 
     expect(await screen.findByLabelText(/^API Key$/i, { selector: "input" })).toHaveValue("existing-key");
@@ -100,6 +150,31 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("button", { name: /^HTTPS$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /SOCKS5/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("switch", { name: /Ask before deleting/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByRole("switch", { name: /Launch at login/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /Telemetry/i })).not.toBeInTheDocument();
+  });
+
+  it("disables settings actions that would not change the current configuration", async () => {
+    vi.mocked(loadSettings).mockResolvedValue({
+      ...defaultSnapshot,
+      downloadDirectory: {
+        ...defaultSnapshot.downloadDirectory,
+        customDirectoryPath: "",
+        effectiveDirectoryPath: defaultSnapshot.downloadDirectory.defaultDirectoryPath,
+        isUsingDefaultDirectory: true,
+      },
+      preferences: {
+        ...preferences,
+        cacheSizeBytes: 0,
+      },
+    });
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByLabelText(/^API Key$/i, { selector: "input" })).toHaveValue("existing-key");
+    expect(screen.getByRole("button", { name: /Save settings/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Use app default directory/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Reset cache meter/i })).toBeDisabled();
   });
 
   it("saves edited settings with store-backed preferences and success feedback", async () => {
@@ -117,7 +192,7 @@ describe("SettingsPage", () => {
       },
       preferences: {
         ...preferences,
-        launchAtLogin: true,
+        confirmBeforeDelete: false,
       },
     });
 
@@ -140,7 +215,7 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: /^HTTP$/i }));
     await user.clear(proxyAddressInput);
     await user.type(proxyAddressInput, "127.0.0.1:8899");
-    await user.click(screen.getByRole("switch", { name: /Launch at login/i }));
+    await user.click(screen.getByRole("switch", { name: /Ask before deleting/i }));
     await user.click(screen.getByRole("button", { name: /Save settings/i }));
 
     await waitFor(() => {
@@ -151,7 +226,7 @@ describe("SettingsPage", () => {
         networkProxyAddress: "127.0.0.1:8899",
         preferences: {
           ...preferences,
-          launchAtLogin: true,
+          confirmBeforeDelete: false,
         },
       });
     });
@@ -203,6 +278,39 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: /^Reveal$/i }));
 
     expect(revealPath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven");
+  });
+
+  it("copies the effective destination through the shared clipboard helper", async () => {
+    render(
+      <>
+        <SettingsPage />
+        <ToastProbe />
+      </>,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByLabelText(/^API Key$/i, { selector: "input" });
+    await user.click(screen.getByRole("button", { name: /^Copy path$/i }));
+
+    expect(writeClipboardText).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven");
+    expect(await screen.findByRole("status")).toHaveTextContent("Effective path copied");
+  });
+
+  it("shows copy feedback when the clipboard helper is unavailable", async () => {
+    vi.mocked(writeClipboardText).mockRejectedValue(new Error("Clipboard blocked"));
+
+    render(
+      <>
+        <SettingsPage />
+        <ToastProbe />
+      </>,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByLabelText(/^API Key$/i, { selector: "input" });
+    await user.click(screen.getByRole("button", { name: /^Copy path$/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Copy path failed");
   });
 
   it("validates masked API key input through the Wallhaven diagnostic service", async () => {
@@ -279,6 +387,7 @@ describe("SettingsPage", () => {
     await user.click(within(screen.getByRole("dialog", { name: /Reset cache estimate/i })).getByRole("button", { name: /^Reset estimate$/i }));
 
     expect(await screen.findByText(/0 MB · meter reset never removes downloaded wallpaper originals/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reset cache meter/i })).toBeDisabled();
   });
 
   it("shows the shared storage error state and disables saving when settings fail to load", async () => {
@@ -290,6 +399,7 @@ describe("SettingsPage", () => {
       await screen.findByText(/Cannot read properties of undefined \(reading 'invoke'\)/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Storage unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Settings unavailable")).toBeInTheDocument();
     expect(screen.getByText("Settings failed to load, so storage summary is unavailable.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Save settings/i })).toBeDisabled();
   });

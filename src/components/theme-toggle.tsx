@@ -34,12 +34,12 @@ export function ThemeToggle() {
         variant="outline"
       >
         {isDarkTheme ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        <span>{isDarkTheme ? "Light" : "Dark"}</span>
+        <span className="theme-mode-label">{isDarkTheme ? "Light" : "Dark"}</span>
       </Button>
 
-      <div className="h-5 w-px bg-border" />
+      <div className="theme-accent-divider h-5 w-px bg-border max-[640px]:hidden" />
 
-      <div aria-label="Accent theme" className="flex items-center gap-1" role="radiogroup">
+      <div aria-label="Accent theme" className="theme-accent-group flex items-center gap-1 max-[640px]:hidden" role="radiogroup">
         {themeAccentOptions.map((option) => {
           const isActive = option.value === accent;
 

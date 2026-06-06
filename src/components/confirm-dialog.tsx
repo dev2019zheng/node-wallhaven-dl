@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
 
@@ -5,26 +7,51 @@ export function ConfirmDialog() {
   const confirm = useUiShellStore((state) => state.confirm);
   const setConfirm = useUiShellStore((state) => state.setConfirm);
 
-  if (!confirm) {
-    return null;
-  }
-
   const closeDialog = () => {
     setConfirm(null);
   };
 
   const handleCancel = () => {
-    confirm.onCancel?.();
+    confirm?.onCancel?.();
     closeDialog();
   };
 
   const handleConfirm = () => {
-    confirm.onConfirm?.();
+    confirm?.onConfirm?.();
     closeDialog();
   };
 
+  useEffect(() => {
+    if (!confirm) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        confirm.onCancel?.();
+        setConfirm(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [confirm, setConfirm]);
+
+  if (!confirm) {
+    return null;
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm"
+      data-testid="confirm-dialog-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          handleCancel();
+        }
+      }}
+    >
       <section
         aria-labelledby="confirm-dialog-title"
         aria-modal="true"

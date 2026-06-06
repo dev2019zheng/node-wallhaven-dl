@@ -11,7 +11,7 @@ export function AppShell() {
       <div className="wh-workspace">
         <Sidebar />
 
-        <main className="app-shell-main min-w-0">
+        <main className="app-shell-main min-w-0 w-full max-w-full overflow-x-hidden">
           <Outlet />
         </main>
       </div>

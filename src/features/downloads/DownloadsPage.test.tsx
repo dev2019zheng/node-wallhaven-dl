@@ -4,18 +4,24 @@ const {
   listDownloads,
   loadDownloadDirectory,
   loadSettingsPreferences,
+  isNativeShellAvailable,
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
   openNativePath,
+  writeClipboardText,
+  convertFileSrc,
 } = vi.hoisted(() => ({
   deleteDownloadTask: vi.fn(),
   downloadWallpaper: vi.fn(),
   listDownloads: vi.fn(),
   loadDownloadDirectory: vi.fn(),
   loadSettingsPreferences: vi.fn(),
+  isNativeShellAvailable: vi.fn(),
   listenForDownloadProgressEvents: vi.fn(),
   listenForDownloadStatusEvents: vi.fn(),
   openNativePath: vi.fn(),
+  writeClipboardText: vi.fn(),
+  convertFileSrc: vi.fn(),
 }))
 
 vi.mock("@/infrastructure/tauri/download-repository", () => ({
@@ -35,7 +41,18 @@ vi.mock("@/application/settings/settings-service", () => ({
 }))
 
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE:
+    "This action needs the Tauri desktop runtime and is unavailable in the web preview.",
+  isNativeShellAvailable,
   openNativePath,
+}))
+
+vi.mock("@/infrastructure/browser/clipboard", () => ({
+  writeClipboardText,
+}))
+
+vi.mock("@tauri-apps/api/core", () => ({
+  convertFileSrc,
 }))
 
 import { act, render, screen, waitFor, within } from "@testing-library/react"
@@ -45,8 +62,6 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
 
 import { DownloadsPage } from "./DownloadsPage"
-
-const clipboardWriteText = vi.fn()
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -89,12 +104,8 @@ describe("DownloadsPage", () => {
     statusHandler = undefined
     progressHandler = undefined
     vi.resetAllMocks()
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: clipboardWriteText.mockResolvedValue(undefined),
-      },
-    })
+    vi.mocked(writeClipboardText).mockResolvedValue(undefined)
+    vi.mocked(convertFileSrc).mockImplementation((path: string) => `asset://${path}`)
     useUiShellStore.setState({
       downloadSummary: {
         activeCount: 0,
@@ -110,6 +121,7 @@ describe("DownloadsPage", () => {
       telemetryEnabled: false,
       cacheSizeBytes: 38_400_000,
     })
+    vi.mocked(isNativeShellAvailable).mockReturnValue(true)
     vi.mocked(loadDownloadDirectory).mockResolvedValue({
       customDirectoryPath: "/Users/test/Pictures/Wallhaven",
       effectiveDirectoryPath: "/Users/test/Pictures/Wallhaven",
@@ -183,6 +195,8 @@ describe("DownloadsPage", () => {
     })
 
     expect(screen.getByText("1 KB / 2 KB")).toBeInTheDocument()
+    expect(screen.getByText("Byte progress")).toBeInTheDocument()
+    expect(screen.queryByText(/\/s$/)).not.toBeInTheDocument()
 
     act(() => {
       statusHandler?.({
@@ -377,6 +391,40 @@ describe("DownloadsPage", () => {
     render(<DownloadsPage />)
 
     expect(await screen.findByText(/No downloads yet/i)).toBeInTheDocument()
+    expect(screen.getByText("Queue ready")).toBeInTheDocument()
+  })
+
+  it("marks the queue unavailable when the initial download load fails", async () => {
+    vi.mocked(listDownloads).mockRejectedValue(new Error("download store unavailable"))
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("download store unavailable")
+    expect(screen.getByText("Queue unavailable")).toBeInTheDocument()
+  })
+
+  it("loads existing downloads when live event subscriptions are unavailable", async () => {
+    vi.mocked(listenForDownloadStatusEvents).mockRejectedValue(new Error("status listener unavailable"))
+    vi.mocked(listenForDownloadProgressEvents).mockRejectedValue(new Error("progress listener unavailable"))
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-eventless",
+        wallpaperId: "eventless",
+        sourceUrl: "https://w.wallhaven.cc/full/eventless.jpg",
+        fileName: "wallhaven-eventless.jpg",
+        relativeFilePath: "wallpapers/wallhaven-eventless.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-eventless.jpg",
+        status: "succeeded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-eventless.jpg")).toBeInTheDocument()
+    expect(screen.getByText("Queue ready")).toBeInTheDocument()
+    expect(screen.getByText(/Live event stream unavailable\. Use Refresh to reload task snapshots\./i)).toBeInTheDocument()
+    expect(screen.queryByText("Queue unavailable")).not.toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
   it("refreshes the download queue from the tasks header", async () => {
@@ -439,6 +487,149 @@ describe("DownloadsPage", () => {
     expect(openNativePath).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-open123.jpg")
   })
 
+  it("uses real local file previews for completed downloads only", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-preview",
+        wallpaperId: "preview123",
+        sourceUrl: "https://w.wallhaven.cc/full/preview123.jpg",
+        fileName: "wallhaven-preview123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-preview123.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg",
+        status: "succeeded",
+      },
+      {
+        id: "download-queued-preview",
+        wallpaperId: "queued123",
+        fileName: "wallhaven-queued123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-queued123.jpg",
+        status: "queued",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    const preview = await screen.findByRole("img", { name: /Downloaded wallpaper preview123/i })
+    expect(preview).toHaveAttribute("src", "asset:///Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg")
+    expect(convertFileSrc).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-preview123.jpg")
+    expect(screen.getByText(/Preview unavailable for wallhaven-queued123.jpg/i)).toBeInTheDocument()
+  })
+
+  it("does not present failed tasks without source URLs as retryable", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-missing-source",
+        wallpaperId: "missing123",
+        fileName: "wallhaven-missing123.jpg",
+        relativeFilePath: "wallpapers/wallhaven-missing123.jpg",
+        status: "failed",
+        failureReason: "Source URL was not recorded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-missing123.jpg")).toBeInTheDocument()
+    expect(screen.getByText("Retry URL unavailable")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Retry unavailable for task download-missing-source/i }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole("button", { name: /Retry task download-missing-source/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it("disables native file opening in web preview while keeping retry actions available", async () => {
+    vi.mocked(isNativeShellAvailable).mockReturnValue(false)
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-open-disabled",
+        wallpaperId: "open-disabled",
+        sourceUrl: "https://w.wallhaven.cc/full/open-disabled.jpg",
+        fileName: "wallhaven-open-disabled.jpg",
+        relativeFilePath: "wallpapers/wallhaven-open-disabled.jpg",
+        absolutePath: "/Users/test/Pictures/Wallhaven/wallhaven-open-disabled.jpg",
+        status: "succeeded",
+      },
+      {
+        id: "download-retry-enabled",
+        wallpaperId: "retry-enabled",
+        sourceUrl: "https://w.wallhaven.cc/full/retry-enabled.jpg",
+        fileName: "wallhaven-retry-enabled.jpg",
+        relativeFilePath: "wallpapers/wallhaven-retry-enabled.jpg",
+        status: "failed",
+        failureReason: "Connection reset",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    const user = userEvent.setup()
+    expect(await screen.findByRole("button", { name: /Open folder/i })).toBeDisabled()
+    expect(screen.getByText(/Local folder and file opening is available in the desktop app/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Open file for task download-open-disabled/i })).toBeDisabled()
+
+    const retryButton = screen.getByRole("button", { name: /Retry task download-retry-enabled/i })
+    expect(retryButton).not.toBeDisabled()
+    await user.click(retryButton)
+
+    expect(openNativePath).not.toHaveBeenCalled()
+    expect(downloadWallpaper).toHaveBeenCalledWith({
+      wallpaperId: "retry-enabled",
+      imageUrl: "https://w.wallhaven.cc/full/retry-enabled.jpg",
+      fileName: "wallhaven-retry-enabled.jpg",
+      purity: undefined,
+      category: undefined,
+    })
+  })
+
+  it("disables copy path controls for tasks without an absolute path", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-copy-unavailable",
+        wallpaperId: "copy-unavailable",
+        fileName: "wallhaven-copy-unavailable.jpg",
+        relativeFilePath: "wallpapers/wallhaven-copy-unavailable.jpg",
+        status: "queued",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-copy-unavailable.jpg")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Open folder unavailable for task download-copy-unavailable/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole("button", { name: /Copy path unavailable for task download-copy-unavailable/i }),
+    ).toBeDisabled()
+    expect(openNativePath).not.toHaveBeenCalled()
+  })
+
+  it("does not present terminal downloads without absolute paths as openable", async () => {
+    vi.mocked(listDownloads).mockResolvedValue([
+      {
+        id: "download-open-unavailable",
+        wallpaperId: "open-unavailable",
+        fileName: "wallhaven-open-unavailable.jpg",
+        relativeFilePath: "wallpapers/wallhaven-open-unavailable.jpg",
+        status: "succeeded",
+      },
+    ])
+
+    render(<DownloadsPage />)
+
+    expect(await screen.findByText("wallhaven-open-unavailable.jpg")).toBeInTheDocument()
+    expect(screen.getByText("Path unavailable")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Open file unavailable for task download-open-unavailable/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole("button", { name: /Copy path unavailable for task download-open-unavailable/i }),
+    ).toBeDisabled()
+    expect(openNativePath).not.toHaveBeenCalled()
+  })
+
   it("copies completed download paths to the clipboard", async () => {
     vi.mocked(listDownloads).mockResolvedValue([
       {
@@ -458,6 +649,7 @@ describe("DownloadsPage", () => {
     await screen.findByText("wallhaven-copy123.jpg")
     await user.click(screen.getByRole("button", { name: /Copy path for task download-copy/i }))
 
+    expect(writeClipboardText).toHaveBeenCalledWith("/Users/test/Pictures/Wallhaven/wallhaven-copy123.jpg")
     await waitFor(() => {
       expect(useUiShellStore.getState().toasts[0]?.title).toBe("Path copied")
     })

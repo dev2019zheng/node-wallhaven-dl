@@ -29,6 +29,7 @@ import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
+import { writeClipboardText } from "@/infrastructure/browser/clipboard";
 import { chooseDirectory, revealPath } from "@/infrastructure/tauri/native-shell";
 import { cn } from "@/lib/utils";
 
@@ -100,17 +101,19 @@ function formatBytes(bytes: number): string {
 
 function Toggle({
   checked,
+  disabled,
   label,
   description,
   onChange,
 }: {
   checked: boolean;
+  disabled?: boolean;
   label: string;
   description: string;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex min-h-[56px] items-center justify-between gap-4 rounded-[14px] border border-border bg-[var(--surface-deep)] px-4">
+    <div className="wh-kinetic-card flex min-h-[56px] items-center justify-between gap-4 rounded-[16px] border border-border bg-[var(--surface-deep)] px-4">
       <div className="min-w-0">
         <p className="truncate text-[13px] font-semibold text-foreground">{label}</p>
         <p className="truncate text-[12px] text-muted-foreground">{description}</p>
@@ -119,9 +122,10 @@ function Toggle({
         aria-checked={checked}
         aria-label={label}
         className={cn(
-          "relative h-[22px] w-10 shrink-0 rounded-full transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+          "relative h-[22px] w-10 shrink-0 rounded-full transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60",
           checked ? "bg-[var(--switch-track-on)]" : "bg-[var(--switch-track-off)]",
         )}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
         role="switch"
         type="button"
@@ -155,6 +159,7 @@ export function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [downloadDirectory, setDownloadDirectory] = useState<DownloadDirectorySettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [storageUnavailableReason, setStorageUnavailableReason] = useState<string | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isValidatingKey, setIsValidatingKey] = useState(false);
@@ -185,6 +190,7 @@ export function SettingsPage() {
           ...snapshot.preferences,
         });
         setDownloadDirectory(snapshot.downloadDirectory);
+        setStorageUnavailableReason(snapshot.storageUnavailableReason ?? null);
         setLoadError(null);
       })
       .catch((error) => {
@@ -193,6 +199,7 @@ export function SettingsPage() {
         }
 
         setLoadError(getErrorMessage(error, "Failed to load settings."));
+        setStorageUnavailableReason(null);
       })
       .finally(() => {
         if (isActive) {
@@ -208,14 +215,25 @@ export function SettingsPage() {
   const values = watch();
   const trimmedDirectory = values.customDownloadDirectoryPath.trim();
   const trimmedProxyAddress = values.networkProxyAddress.trim();
+  const hasCustomDirectoryOverride = trimmedDirectory.length > 0;
+  const canResetCacheEstimate = values.cacheSizeBytes > 0;
   const directoryError = !isAbsolutePath(trimmedDirectory)
     ? "Folder does not exist or is not writable"
     : formState.errors.customDownloadDirectoryPath?.message;
   const proxyAddressError = trimmedProxyAddress.includes("://")
     ? "Proxy address must be host:port without a scheme"
     : formState.errors.networkProxyAddress?.message;
+  const isStorageReadOnly = storageUnavailableReason !== null;
+  const isEditingDisabled =
+    isLoading || formState.isSubmitting || loadError !== null || isStorageReadOnly;
   const isSaveDisabled =
-    isLoading || formState.isSubmitting || loadError !== null || Boolean(directoryError) || Boolean(proxyAddressError);
+    isLoading ||
+    formState.isSubmitting ||
+    loadError !== null ||
+    isStorageReadOnly ||
+    !formState.isDirty ||
+    Boolean(directoryError) ||
+    Boolean(proxyAddressError);
 
   const effectiveDestination = useMemo<EffectiveDestinationSummary | null>(() => {
     if (!downloadDirectory) {
@@ -239,6 +257,12 @@ export function SettingsPage() {
     telemetryEnabled: values.telemetryEnabled,
     cacheSizeBytes: values.cacheSizeBytes,
   };
+  const settingsFooterMessage =
+    storageUnavailableReason ??
+    (isLoading ? "Loading saved configuration..." : "Settings affect future tasks immediately after save.");
+  const securitySummary = isStorageReadOnly
+    ? "Desktop settings storage is unavailable in this web preview; API key persistence is disabled until the app runs inside Tauri."
+    : "API key is masked in UI and persisted through the Tauri Store settings file.";
 
   const clearInlineFeedback = () => {
     setSaveFeedback(null);
@@ -247,6 +271,11 @@ export function SettingsPage() {
   };
 
   const handleChooseDirectory = async () => {
+    if (isStorageReadOnly) {
+      showSettingsInfo(storageUnavailableReason ?? "Desktop storage is unavailable.");
+      return;
+    }
+
     setIsChoosingDirectory(true);
 
     try {
@@ -278,7 +307,7 @@ export function SettingsPage() {
   };
 
   const handleRevealDirectory = async () => {
-    if (!effectiveDestination || effectiveDestination.hasWarning) {
+    if (!effectiveDestination || effectiveDestination.hasWarning || isStorageReadOnly) {
       return;
     }
 
@@ -300,6 +329,26 @@ export function SettingsPage() {
     }
   };
 
+  const handleCopyEffectiveDirectory = async () => {
+    if (!effectiveDestination) {
+      return;
+    }
+
+    try {
+      await writeClipboardText(effectiveDestination.effectiveDirectoryPath);
+      showSettingsInfo("Effective path copied");
+    } catch (error) {
+      const message = getErrorMessage(error, "Clipboard is unavailable.");
+      setSaveFeedback({ tone: "error", message });
+      enqueueToast({
+        id: `settings-copy-path-${Date.now()}`,
+        title: "Copy path failed",
+        description: message,
+        tone: "error",
+      });
+    }
+  };
+
   const showSettingsInfo = (message: string) => {
     setSaveFeedback({ tone: "info", message });
     enqueueToast({
@@ -310,6 +359,18 @@ export function SettingsPage() {
   };
 
   const validateApiKey = async () => {
+    if (isStorageReadOnly) {
+      const status = { tone: "info" as const, message: storageUnavailableReason };
+      setApiKeyStatus(status);
+      enqueueToast({
+        id: `settings-api-key-${Date.now()}`,
+        title: "Desktop storage unavailable",
+        description: storageUnavailableReason,
+        tone: "info",
+      });
+      return;
+    }
+
     const trimmedKey = values.wallhavenKey.trim();
 
     if (proxyAddressError) {
@@ -371,6 +432,18 @@ export function SettingsPage() {
   };
 
   const testProxy = async () => {
+    if (isStorageReadOnly) {
+      const status = { tone: "info" as const, message: storageUnavailableReason };
+      setProxyStatus(status);
+      enqueueToast({
+        id: `settings-proxy-${Date.now()}`,
+        title: "Desktop storage unavailable",
+        description: storageUnavailableReason,
+        tone: "info",
+      });
+      return;
+    }
+
     if (proxyAddressError) {
       const status = { tone: "error" as const, message: "Fix proxy settings before testing connectivity." };
       setProxyStatus(status);
@@ -437,7 +510,7 @@ export function SettingsPage() {
   };
 
   const onSubmit = handleSubmit(async (formValues) => {
-    if (loadError || directoryError || proxyAddressError) {
+    if (loadError || storageUnavailableReason || directoryError || proxyAddressError) {
       return;
     }
 
@@ -465,6 +538,7 @@ export function SettingsPage() {
         ...snapshot.preferences,
       });
       setDownloadDirectory(snapshot.downloadDirectory);
+      setStorageUnavailableReason(snapshot.storageUnavailableReason ?? null);
       setSaveFeedback({
         tone: "success",
         message: "Settings saved.",
@@ -482,17 +556,29 @@ export function SettingsPage() {
       });
     }
   });
+  const headingBadge = isLoading
+    ? { label: "Loading settings", tone: "info" as const }
+    : loadError
+      ? { label: "Settings unavailable", tone: "error" as const }
+      : isStorageReadOnly
+        ? { label: "Settings preview", tone: "warning" as const }
+      : formState.isSubmitting
+        ? { label: "Saving settings", tone: "info" as const }
+        : formState.isDirty
+          ? { label: "Unsaved changes", tone: "warning" as const }
+          : { label: "Settings loaded", tone: "success" as const };
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge={formState.isDirty ? "Unsaved changes" : "Settings synced"}
-        description="API key, downloads, proxy, cache, and safety preferences."
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
+        description="API key, downloads, proxy, cache, and deletion safety."
         eyebrow="Application settings"
         title="Settings"
       />
 
-      <div className="grid grid-cols-1 items-start gap-[22px] min-[1280px]:grid-cols-[minmax(0,1fr)_minmax(320px,452px)] min-[1440px]:gap-[30px]">
+      <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1280px]:grid-cols-[minmax(0,1fr)_minmax(320px,452px)] min-[1440px]:gap-[30px]">
         <form className="app-panel min-h-0 space-y-6 p-5 min-[900px]:p-[30px] min-[1280px]:min-h-[640px]" onSubmit={onSubmit}>
           <section aria-labelledby="wallhaven-access-heading" className="space-y-4">
             <div>
@@ -516,6 +602,7 @@ export function SettingsPage() {
                   placeholder="Paste WALLHAVEN_KEY"
                   spellCheck={false}
                   type={showApiKey ? "text" : "password"}
+                  disabled={isEditingDisabled}
                   {...register("wallhavenKey", { onChange: clearInlineFeedback })}
                 />
                 <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
@@ -530,7 +617,7 @@ export function SettingsPage() {
                   <button
                     aria-label="Validate key"
                     className="wh-icon-button h-8 w-8"
-                    disabled={isValidatingKey}
+                    disabled={isValidatingKey || isEditingDisabled}
                     onClick={validateApiKey}
                     type="button"
                   >
@@ -571,11 +658,12 @@ export function SettingsPage() {
                 placeholder="/Users/you/Pictures/Wallhaven"
                 spellCheck={false}
                 type="text"
+                disabled={isEditingDisabled}
                 {...register("customDownloadDirectoryPath", { onChange: clearInlineFeedback })}
               />
               <Button
                 className="h-[42px] rounded-[14px]"
-                disabled={isLoading || isChoosingDirectory}
+                disabled={isEditingDisabled || isChoosingDirectory}
                 onClick={handleChooseDirectory}
                 type="button"
                 variant="outline"
@@ -592,7 +680,7 @@ export function SettingsPage() {
             <div className="md:pl-[140px]">
               <Button
                 className="h-10 rounded-[14px]"
-                disabled={isLoading}
+                disabled={isEditingDisabled || !hasCustomDirectoryOverride}
                 onClick={() => {
                   setValue("customDownloadDirectoryPath", "", { shouldDirty: true, shouldTouch: true });
                   clearInlineFeedback();
@@ -623,10 +711,11 @@ export function SettingsPage() {
                   <button
                     aria-pressed={values.networkProxyScheme === option.value}
                     className={cn(
-                      "text-[13px] font-semibold transition",
+                      "text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
                       values.networkProxyScheme === option.value ? "wh-selected-surface text-foreground" : "text-muted-foreground hover:text-foreground",
                     )}
                     key={option.value}
+                    disabled={isEditingDisabled}
                     onClick={() => {
                       setValue("networkProxyScheme", option.value, { shouldDirty: true, shouldTouch: true });
                       clearInlineFeedback();
@@ -647,9 +736,10 @@ export function SettingsPage() {
                 placeholder="127.0.0.1:7897"
                 spellCheck={false}
                 type="text"
+                disabled={isEditingDisabled}
                 {...register("networkProxyAddress", { onChange: clearInlineFeedback })}
               />
-              <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy} onClick={testProxy} type="button" variant="outline">
+              <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy || isEditingDisabled} onClick={testProxy} type="button" variant="outline">
                 {isTestingProxy ? <Spinner /> : <TestTube2 className="h-4 w-4" />}
                 Test
               </Button>
@@ -669,35 +759,31 @@ export function SettingsPage() {
                 <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="advanced-heading">
                   Advanced
                 </h3>
-                <p className="text-[13px] leading-6 text-muted-foreground">Desktop startup, deletion prompts, telemetry, and the local cache estimate.</p>
+                <p className="text-[13px] leading-6 text-muted-foreground">Deletion prompts and the local cache estimate.</p>
               </div>
-              <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate} onClick={resetCacheEstimate} type="button" variant="outline">
+              <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate || isEditingDisabled || !canResetCacheEstimate} onClick={resetCacheEstimate} type="button" variant="outline">
                 {isResettingCacheEstimate ? <Spinner /> : <RefreshCcw className="h-4 w-4" />}
                 Reset cache meter
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <Toggle
-                checked={preferences.launchAtLogin}
-                description="Apply on next app launch"
-                label="Launch at login"
-                onChange={(checked) => setValue("launchAtLogin", checked, { shouldDirty: true, shouldTouch: true })}
-              />
+            <div className="grid max-w-[420px] grid-cols-1 gap-3">
               <Toggle
                 checked={preferences.confirmBeforeDelete}
                 description="Protect local files"
+                disabled={isEditingDisabled}
                 label="Ask before deleting"
                 onChange={(checked) => setValue("confirmBeforeDelete", checked, { shouldDirty: true, shouldTouch: true })}
               />
-              <Toggle
-                checked={preferences.telemetryEnabled}
-                description="Usage diagnostics"
-                label="Telemetry"
-                onChange={(checked) => setValue("telemetryEnabled", checked, { shouldDirty: true, shouldTouch: true })}
-              />
             </div>
           </section>
+
+          {storageUnavailableReason ? (
+            <div className="rounded-[16px] border border-border px-4 py-3 text-[13px] leading-6 wh-soft-warning" role="status">
+              <p className="font-semibold text-foreground">Desktop settings preview</p>
+              <p className="text-muted-foreground">{storageUnavailableReason}</p>
+            </div>
+          ) : null}
 
           {loadError ? <ErrorState message={loadError} /> : null}
 
@@ -709,7 +795,7 @@ export function SettingsPage() {
                 saveFeedback?.tone === "error" ? "text-destructive" : saveFeedback?.tone === "success" ? "text-emerald-300" : "text-muted-foreground",
               )}
             >
-              {saveFeedback?.message ?? (isLoading ? "Loading saved configuration..." : "Settings affect future tasks immediately after save.")}
+              {saveFeedback?.message ?? settingsFooterMessage}
             </p>
             <Button className="h-11 rounded-[14px]" disabled={isSaveDisabled} type="submit">
               {formState.isSubmitting ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
@@ -749,7 +835,7 @@ export function SettingsPage() {
                 ["Gallery compatibility", "Existing SQLite records keep their saved relative and absolute file paths."],
                 ["Proxy", effectiveDestination.proxyLabel],
                 ["Cache", `${formatBytes(values.cacheSizeBytes)} · meter reset never removes downloaded wallpaper originals.`],
-                ["Security", "API key is masked in UI. Prefer OS secure storage when the plugin is available; Tauri Store fallback is explicit."],
+                ["Security", securitySummary],
               ].map(([label, value]) => (
                 <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-4" key={label}>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -761,8 +847,7 @@ export function SettingsPage() {
                 <Button
                   className="h-10 rounded-[14px]"
                   onClick={() => {
-                    void navigator.clipboard?.writeText(effectiveDestination.effectiveDirectoryPath);
-                    showSettingsInfo("Effective path copied");
+                    void handleCopyEffectiveDirectory();
                   }}
                   type="button"
                   variant="ghost"
@@ -772,7 +857,7 @@ export function SettingsPage() {
                 </Button>
                 <Button
                   className="h-10 rounded-[14px]"
-                  disabled={!effectiveDestination || effectiveDestination.hasWarning || isRevealingDirectory}
+                  disabled={!effectiveDestination || effectiveDestination.hasWarning || isRevealingDirectory || isStorageReadOnly}
                   onClick={handleRevealDirectory}
                   type="button"
                   variant="ghost"
