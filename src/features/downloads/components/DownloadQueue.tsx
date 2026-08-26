@@ -6,6 +6,7 @@ import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { DownloadTaskCard } from "./DownloadTaskCard"
 
 type DownloadQueueProps = {
+  canUseNativeShell: boolean
   downloads: DownloadListItem[]
   filter: DownloadQueueFilter
   isLoading: boolean
@@ -31,6 +32,7 @@ function getEmptyStateCopy(filter: DownloadQueueFilter): string {
 }
 
 export function DownloadQueue({
+  canUseNativeShell,
   downloads,
   filter,
   isLoading,
@@ -51,6 +53,7 @@ export function DownloadQueue({
     <div className="max-h-[548px] space-y-[18px] overflow-y-auto pr-1">
       {downloads.map((download) => (
         <DownloadTaskCard
+          canUseNativeShell={canUseNativeShell}
           download={download}
           key={download.id}
           onCopyPath={onCopyPath}

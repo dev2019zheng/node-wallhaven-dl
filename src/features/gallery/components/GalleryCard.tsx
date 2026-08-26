@@ -30,16 +30,16 @@ export function GalleryCard({
   return (
     <article
       className={cn(
-        "group relative h-[132px] overflow-hidden rounded-[16px] border bg-[var(--surface-deep)] transition duration-150 hover:-translate-y-0.5 hover:border-primary",
-        isSelected ? "border-[3px] border-primary" : "border-border",
-        view === "list" || view === "compact" ? "grid grid-cols-[220px_minmax(0,1fr)]" : "",
+        "wh-kinetic-card group relative h-[132px] overflow-hidden rounded-[18px] border bg-[var(--surface-deep)] focus-within:border-primary",
+        isSelected ? "border-primary ring-2 ring-primary" : "border-border hover:border-primary",
+        view === "list" ? "grid grid-cols-[220px_minmax(0,1fr)]" : "",
       )}
       data-view={view}
     >
       <button
         className={cn(
           "block h-full w-full overflow-hidden bg-card/60",
-          view === "list" || view === "compact" ? "" : "absolute inset-0",
+          view === "list" ? "" : "absolute inset-0",
         )}
         onClick={() => {
           onSelect?.()
@@ -49,13 +49,13 @@ export function GalleryCard({
       >
         <img
           alt={`Wallpaper ${item.wallpaperId}`}
-          className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.03]"
+          className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.06]"
           loading="lazy"
           src={item.assetUrl}
         />
       </button>
 
-      <div className={cn("pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/76 via-black/18 to-black/12", view === "list" || view === "compact" ? "left-[220px] bg-none" : "")}>
+      <div className={cn("pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/76 via-black/18 to-black/12", view === "list" ? "left-[220px] bg-none" : "")}>
         <div className="wh-image-pill absolute left-4 top-4 rounded-full px-3 py-1 text-[11px] font-semibold">
           {(item.purity ?? "sfw").toUpperCase()}
         </div>
@@ -81,7 +81,7 @@ export function GalleryCard({
             <span className="mt-1 block truncate text-[11px] text-white/70">{item.wallpaperId} · {item.category ?? "general"}</span>
           </button>
 
-          <div className="pointer-events-auto flex translate-y-7 items-center gap-2 opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+          <div className="pointer-events-auto flex translate-y-7 items-center gap-2 opacity-0 transition duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
             <button
               aria-label={`Tag wallpaper ${item.wallpaperId}`}
               className="wh-icon-button h-8 w-8"
@@ -93,7 +93,15 @@ export function GalleryCard({
             >
               <Tag className="h-4 w-4" />
             </button>
-            <button aria-label={`Preview wallpaper ${item.wallpaperId}`} className="wh-icon-button h-8 w-8" onClick={onPreview} type="button">
+            <button
+              aria-label={`Preview wallpaper ${item.wallpaperId}`}
+              className="wh-icon-button h-8 w-8"
+              onClick={() => {
+                onSelect?.()
+                onPreview()
+              }}
+              type="button"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </div>
@@ -102,9 +110,6 @@ export function GalleryCard({
 
       <span className="sr-only">{item.relativeFilePath}</span>
       <span className="sr-only">{item.createdAt}</span>
-      <a className="sr-only" href={item.sourceUrl} rel="noreferrer" target="_blank">
-        Open source
-      </a>
     </article>
   )
 }

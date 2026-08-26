@@ -21,11 +21,16 @@ import { ErrorState } from "@/components/error-state"
 import { PageHeading } from "@/components/page-heading"
 import { Button } from "@/components/ui/button"
 import { useUiShellStore } from "@/features/shell/ui-shell-store"
+import { writeClipboardText } from "@/infrastructure/browser/clipboard"
 import {
   listenForDownloadProgressEvents,
   listenForDownloadStatusEvents,
 } from "@/infrastructure/tauri/download-events"
-import { openNativePath } from "@/infrastructure/tauri/native-shell"
+import {
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE,
+  isNativeShellAvailable,
+  openNativePath,
+} from "@/infrastructure/tauri/native-shell"
 
 import { DownloadQueue } from "./components/DownloadQueue"
 import { QueueTabs } from "./components/QueueTabs"
@@ -72,20 +77,53 @@ function getEventTimestamp(): string {
   }).format(new Date())
 }
 
-function formatTransferSpeed(summary: ReturnType<typeof summarizeDownloads>): string {
-  if (summary.runningCount === 0) {
-    return "0 MB/s"
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`
   }
 
-  return `${(summary.runningCount * 4.2 + summary.queuedCount * 0.1).toFixed(1)} MB/s`
+  const units = ["KB", "MB", "GB", "TB"]
+  let value = bytes / 1024
+  let unitIndex = 0
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+
+  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`
 }
 
-function formatEta(summary: ReturnType<typeof summarizeDownloads>): string {
-  if (summary.runningCount === 0) {
-    return "ETA idle"
-  }
+function summarizeTransferProgress(
+  downloads: DownloadListItem[],
+  summary: ReturnType<typeof summarizeDownloads>,
+): {
+  primary: string
+  secondary: string
+  progressPercent: number
+} {
+  const downloadedBytes = downloads.reduce((total, download) => total + download.downloadedBytes, 0)
+  const knownTotalBytes = downloads.reduce((total, download) => total + (download.totalBytes ?? 0), 0)
+  const progressPercent =
+    knownTotalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / knownTotalBytes) * 100)) : 0
+  const primary =
+    knownTotalBytes > 0
+      ? `${formatBytes(downloadedBytes)} / ${formatBytes(knownTotalBytes)}`
+      : downloadedBytes > 0
+        ? `${formatBytes(downloadedBytes)} received`
+        : `${summary.activeCount} active transfers`
+  const secondary =
+    summary.activeCount > 0
+      ? `${summary.runningCount} running · ${summary.queuedCount} queued`
+      : summary.totalCount > 0
+        ? `${summary.completedCount} complete · ${summary.failedCount} failed`
+        : "No transfer activity yet"
 
-  return `ETA ${String(Math.max(1, summary.queuedCount + summary.runningCount)).padStart(2, "0")}:18`
+  return {
+    primary,
+    secondary,
+    progressPercent,
+  }
 }
 
 export function DownloadsPage() {
@@ -100,6 +138,7 @@ export function DownloadsPage() {
   const setDownloadSummary = useUiShellStore((state) => state.setDownloadSummary)
   const enqueueToast = useUiShellStore((state) => state.enqueueToast)
   const setConfirm = useUiShellStore((state) => state.setConfirm)
+  const canUseNativeShell = isNativeShellAvailable()
 
   useEffect(() => {
     let isActive = true
@@ -110,8 +149,12 @@ export function DownloadsPage() {
       setIsLoading(true)
 
       try {
-        const [nextUnlistenStatus, nextUnlistenProgress] = await Promise.all([
-          listenForDownloadStatusEvents((event) => {
+        const listenerErrors: string[] = []
+        let nextUnlistenStatus: (() => void) | undefined
+        let nextUnlistenProgress: (() => void) | undefined
+
+        try {
+          nextUnlistenStatus = await listenForDownloadStatusEvents((event) => {
             if (!isActive) {
               return
             }
@@ -143,8 +186,13 @@ export function DownloadsPage() {
                 timestamp: getEventTimestamp(),
               }),
             )
-          }),
-          listenForDownloadProgressEvents((event) => {
+          })
+        } catch (error) {
+          listenerErrors.push(getErrorMessage(error, "Unable to subscribe to download status events."))
+        }
+
+        try {
+          nextUnlistenProgress = await listenForDownloadProgressEvents((event) => {
             if (!isActive) {
               return
             }
@@ -167,17 +215,33 @@ export function DownloadsPage() {
                 timestamp: getEventTimestamp(),
               }),
             )
-          }),
-        ])
+          })
+        } catch (error) {
+          listenerErrors.push(getErrorMessage(error, "Unable to subscribe to download progress events."))
+        }
 
         if (!isActive) {
-          nextUnlistenStatus()
-          nextUnlistenProgress()
+          nextUnlistenStatus?.()
+          nextUnlistenProgress?.()
           return
         }
 
         unlistenStatus = nextUnlistenStatus
         unlistenProgress = nextUnlistenProgress
+
+        if (listenerErrors.length > 0) {
+          setLiveEvents((currentEvents) =>
+            appendLiveEvent(currentEvents, {
+              id: `download-event-stream-unavailable-${Date.now()}`,
+              tone: "warn",
+              message:
+                listenerErrors.length > 1
+                  ? "Live event stream unavailable. Use Refresh to reload task snapshots."
+                  : "Live event stream partially unavailable. Use Refresh to reload task snapshots.",
+              timestamp: getEventTimestamp(),
+            }),
+          )
+        }
 
         const loadedDownloads = await listDownloadsInService()
         if (!isActive) {
@@ -220,8 +284,10 @@ export function DownloadsPage() {
   }, [])
 
   const summary = useMemo(() => summarizeDownloads(downloads), [downloads])
-  const speedLabel = useMemo(() => formatTransferSpeed(summary), [summary])
-  const etaLabel = useMemo(() => formatEta(summary), [summary])
+  const transferProgress = useMemo(
+    () => summarizeTransferProgress(downloads, summary),
+    [downloads, summary],
+  )
   const filteredDownloads = useMemo(
     () => filterDownloads(downloads, activeFilter),
     [activeFilter, downloads],
@@ -264,6 +330,11 @@ export function DownloadsPage() {
   }
 
   const handleOpenFolder = async () => {
+    if (!canUseNativeShell) {
+      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      return
+    }
+
     setIsOpeningFolder(true)
 
     try {
@@ -295,6 +366,11 @@ export function DownloadsPage() {
   }
 
   const handlePrimaryAction = async (download: DownloadListItem) => {
+    if (download.status !== "failed" && !canUseNativeShell) {
+      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      return
+    }
+
     setPendingTaskAction(download.id, "primary")
 
     try {
@@ -339,7 +415,7 @@ export function DownloadsPage() {
         throw new Error("Task path is not available yet.")
       }
 
-      await navigator.clipboard.writeText(download.absolutePath)
+      await writeClipboardText(download.absolutePath)
       showToast("Path copied", download.absolutePath)
     } catch (error) {
       showToast("Copy failed", getErrorMessage(error, "Clipboard is unavailable."), "error")
@@ -388,56 +464,70 @@ export function DownloadsPage() {
       },
     })
   }
+  const headingBadge = isLoading
+    ? { label: "Loading queue", tone: "info" as const }
+    : loadError
+      ? { label: "Queue unavailable", tone: "error" as const }
+      : summary.activeCount > 0
+        ? { label: "Transfers active", tone: "success" as const }
+        : { label: "Queue ready", tone: "info" as const }
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="Event stream live"
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
         description="Track queued, running, completed and failed transfers."
         eyebrow="Wallpaper transfer queue"
         title="Downloads"
       />
 
-      <section className="grid grid-cols-[260px_minmax(656px,1fr)_260px] items-start gap-6">
-        <aside className="app-panel h-[698px] space-y-6 p-6">
+      <section className="wh-dense-bento grid grid-cols-1 items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)] min-[1500px]:grid-cols-[260px_minmax(0,1fr)_260px]">
+        <aside className="app-panel space-y-6 p-6 min-[1500px]:h-[698px]">
           <div className="space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-foreground">Command Center</h3>
             <p className="text-[13px] font-medium text-muted-foreground">Queue health</p>
           </div>
 
           <dl className="grid gap-[18px]">
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Queued</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-foreground">{summary.queuedCount}</dd>
             </div>
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Running</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-primary">{summary.runningCount}</dd>
             </div>
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Completed</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-emerald-400">{summary.completedCount}</dd>
             </div>
-            <div className="h-[62px] rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-3">
+            <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
               <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Failed</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-destructive">{summary.failedCount}</dd>
             </div>
           </dl>
 
           <div className="space-y-3">
-            <p className="text-[14px] font-semibold text-foreground">Speed</p>
-            <div className="h-[120px] rounded-[14px] border border-border bg-[var(--surface-deep)] p-4">
-              <div className="text-[22px] font-bold text-foreground">{speedLabel}</div>
-              <div className="mt-1 text-[13px] font-medium text-muted-foreground">{etaLabel}</div>
-              <svg aria-hidden="true" className="mt-3 h-10 w-full" viewBox="0 0 196 40">
-                <path d="M0 34 L16 18 L32 14 L48 24 L64 29 L80 35 L96 18 L112 28 L128 22 L144 25 L160 10 L176 16 L196 14" fill="none" stroke="var(--primary)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-              </svg>
+            <p className="text-[14px] font-semibold text-foreground">Progress</p>
+            <div className="wh-kinetic-card h-[120px] rounded-[18px] border border-border bg-[var(--surface-deep)] p-4">
+              <div className="truncate text-[22px] font-bold text-foreground">{transferProgress.primary}</div>
+              <div className="mt-1 text-[13px] font-medium text-muted-foreground">{transferProgress.secondary}</div>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-[var(--surface)]">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
+                  style={{ width: `${transferProgress.progressPercent}%` }}
+                />
+              </div>
+              <p className="mt-3 text-[11px] font-medium text-muted-foreground">
+                {transferProgress.progressPercent > 0 ? `${transferProgress.progressPercent}% of known bytes` : "Waiting for byte progress"}
+              </p>
             </div>
           </div>
 
           <Button
             className="h-12 w-full rounded-[14px]"
-            disabled={isOpeningFolder}
+            disabled={isOpeningFolder || !canUseNativeShell}
             onClick={() => {
               void handleOpenFolder()
             }}
@@ -446,9 +536,14 @@ export function DownloadsPage() {
             <FolderOpen className="h-4 w-4" />
             {isOpeningFolder ? "Opening..." : "Open folder"}
           </Button>
+          {!canUseNativeShell ? (
+            <p className="text-[12px] leading-5 text-muted-foreground">
+              Local folder and file opening is available in the desktop app.
+            </p>
+          ) : null}
         </aside>
 
-        <section className="app-panel h-[698px] space-y-6 p-6">
+        <section className="app-panel min-h-[520px] space-y-6 p-6 min-[1500px]:h-[698px]">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <h3 className="text-[20px] font-semibold leading-7 text-foreground">Tasks</h3>
@@ -475,6 +570,7 @@ export function DownloadsPage() {
           <QueueTabs activeFilter={activeFilter} onChange={setActiveFilter} summary={summary} />
 
           <DownloadQueue
+            canUseNativeShell={canUseNativeShell}
             downloads={filteredDownloads}
             filter={activeFilter}
             isLoading={isLoading}
@@ -489,7 +585,7 @@ export function DownloadsPage() {
           />
         </section>
 
-        <aside className="app-panel h-[698px] space-y-6 p-6">
+        <aside className="app-panel space-y-6 p-6 xl:col-span-2 min-[1500px]:col-span-1 min-[1500px]:h-[698px]">
           <div className="space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-foreground">Live Events</h3>
             <p className="sr-only">最新状态事件会插入顶部，帮助确认队列是否仍在流动。</p>

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { Copy, ExternalLink, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Copy, ExternalLink, FolderOpen, ImageIcon, RotateCcw, Trash2 } from "lucide-react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 import type {
   DownloadListItem,
@@ -7,6 +9,7 @@ import type {
 } from "@/application/downloads/downloads.types";
 
 type DownloadTaskCardProps = {
+  canUseNativeShell: boolean;
   download: DownloadListItem;
   onCopyPath: (download: DownloadListItem) => void;
   onDelete: (download: DownloadListItem) => void;
@@ -92,18 +95,19 @@ function getProgressPercent(download: DownloadListItem): number | null {
   return null;
 }
 
-function getSpeedLabel(download: DownloadListItem): string {
-  if (download.status === "running" && download.totalBytes && download.downloadedBytes > 0) {
-    const remainingBytes = Math.max(download.totalBytes - download.downloadedBytes, 0);
-    const estimatedSpeed = remainingBytes === 0 ? download.totalBytes : remainingBytes / 3;
-    return `${formatBytes(estimatedSpeed)}/s`;
+function getTaskDetailLabel(download: DownloadListItem): string {
+  switch (download.status) {
+    case "queued":
+      return "Waiting";
+    case "running":
+      return download.downloadedBytes > 0 ? "Byte progress" : "Connecting";
+    case "succeeded":
+      return download.absolutePath ? "Ready to open" : "Path unavailable";
+    case "skipped_existing":
+      return download.absolutePath ? "Already saved" : "Path unavailable";
+    case "failed":
+      return download.sourceUrl ? "Retry available" : "Retry URL unavailable";
   }
-
-  if (download.status === "failed") {
-    return "Network error";
-  }
-
-  return download.status === "queued" ? "Waiting" : "Ready";
 }
 
 function getProgressBarClass(status: DownloadTaskStatus): string {
@@ -129,23 +133,59 @@ function getPrimaryActionMeta(download: DownloadListItem): {
     case "running":
       return {
         icon: <FolderOpen className="h-4 w-4" />,
-        label: `Open folder for task ${download.id}`,
+        label: download.absolutePath
+          ? `Open folder for task ${download.id}`
+          : `Open folder unavailable for task ${download.id}`,
       };
     case "succeeded":
     case "skipped_existing":
       return {
         icon: <ExternalLink className="h-4 w-4" />,
-        label: `Open file for task ${download.id}`,
+        label: download.absolutePath
+          ? `Open file for task ${download.id}`
+          : `Open file unavailable for task ${download.id}`,
       };
     case "failed":
       return {
         icon: <RotateCcw className="h-4 w-4" />,
-        label: `Retry task ${download.id}`,
+        label: download.sourceUrl
+          ? `Retry task ${download.id}`
+          : `Retry unavailable for task ${download.id}`,
       };
   }
 }
 
+function isPrimaryActionDisabled(download: DownloadListItem, canUseNativeShell: boolean): boolean {
+  if (download.status === "failed") {
+    return !download.sourceUrl;
+  }
+
+  return !canUseNativeShell || !download.absolutePath;
+}
+
+function getCopyActionLabel(download: DownloadListItem): string {
+  return download.absolutePath
+    ? `Copy path for task ${download.id}`
+    : `Copy path unavailable for task ${download.id}`;
+}
+
+function getPreviewSrc(download: DownloadListItem): string | null {
+  if (
+    !download.absolutePath ||
+    (download.status !== "succeeded" && download.status !== "skipped_existing")
+  ) {
+    return null;
+  }
+
+  try {
+    return convertFileSrc(download.absolutePath);
+  } catch {
+    return null;
+  }
+}
+
 export function DownloadTaskCard({
+  canUseNativeShell,
   download,
   onCopyPath,
   onDelete,
@@ -155,36 +195,58 @@ export function DownloadTaskCard({
   const progressLabel = getProgressLabel(download);
   const progressPercent = getProgressPercent(download) ?? 0;
   const primaryAction = getPrimaryActionMeta(download);
+  const primaryActionDisabled =
+    pendingAction === "primary" || isPrimaryActionDisabled(download, canUseNativeShell);
+  const copyActionDisabled = pendingAction === "copy" || !download.absolutePath;
+  const previewSrc = useMemo(() => getPreviewSrc(download), [download]);
+  const [hasPreviewError, setHasPreviewError] = useState(false);
   const isDeleteDisabled =
     pendingAction === "delete" ||
     download.status === "queued" ||
     download.status === "running";
 
+  useEffect(() => {
+    setHasPreviewError(false);
+  }, [previewSrc]);
+
   return (
-    <article className="group h-[94px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3 transition duration-200 hover:border-border-strong">
-      <div className="grid h-full grid-cols-[74px_minmax(0,1fr)_118px_34px] items-center gap-4">
-        <div className="h-[54px] w-[74px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)]">
-          <div className="h-full w-full" style={{ background: "var(--thumbnail-gradient)" }} />
+    <article className="wh-kinetic-card group min-h-[94px] rounded-[18px] border border-border bg-[var(--surface-deep)] px-4 py-3 hover:border-border-strong">
+      <div className="grid min-h-full grid-cols-[54px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[74px_minmax(0,1fr)_118px] sm:gap-4">
+        <div className="h-[54px] w-[54px] shrink-0 overflow-hidden rounded-[10px] border border-border bg-[var(--surface)] sm:w-[74px]">
+          {previewSrc && !hasPreviewError ? (
+            <img
+              alt={`Downloaded wallpaper ${download.wallpaperId}`}
+              className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.06]"
+              loading="lazy"
+              onError={() => setHasPreviewError(true)}
+              src={previewSrc}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <ImageIcon className="h-4 w-4" />
+              <span className="sr-only">Preview unavailable for {download.fileName}</span>
+            </div>
+          )}
         </div>
 
         <div className="min-w-0 space-y-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_70px] items-start gap-3">
+          <div className="grid grid-cols-1 items-start gap-1 sm:grid-cols-[minmax(0,1fr)_70px] sm:gap-3">
             <div className="min-w-0">
               <h4 className="truncate text-[14px] font-semibold leading-5 text-foreground">{download.fileName}</h4>
               <p className="mt-1 truncate text-[12px] leading-4 text-muted-foreground">
                 {download.status === "failed" && download.failureReason ? download.failureReason : progressLabel}
               </p>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <span className={`text-[13px] font-semibold ${statusTextClasses[download.status]}`}>{formatStatus(download.status)}</span>
-              <p className="mt-1 text-[11px] text-muted-foreground">{getSpeedLabel(download)}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{getTaskDetailLabel(download)}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-3">
             <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface)]">
               <div
-                className={`h-full rounded-full transition-[width] duration-150 ${getProgressBarClass(download.status)}`}
+                className={`h-full rounded-full transition-[width] duration-500 ease-out ${getProgressBarClass(download.status)}`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -192,20 +254,20 @@ export function DownloadTaskCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 opacity-100 transition group-hover:opacity-100">
+        <div className="col-span-2 flex items-center justify-end gap-2 opacity-100 transition group-hover:opacity-100 sm:col-span-1">
           <button
             aria-label={primaryAction.label}
             className="wh-icon-button h-8 w-8"
-            disabled={pendingAction === "primary"}
+            disabled={primaryActionDisabled}
             onClick={() => onPrimaryAction(download)}
             type="button"
           >
             {primaryAction.icon}
           </button>
           <button
-            aria-label={`Copy path for task ${download.id}`}
+            aria-label={getCopyActionLabel(download)}
             className="wh-icon-button h-8 w-8"
-            disabled={pendingAction === "copy"}
+            disabled={copyActionDisabled}
             onClick={() => onCopyPath(download)}
             type="button"
           >

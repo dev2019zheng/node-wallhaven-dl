@@ -117,6 +117,29 @@ describe("settings-service", () => {
     });
   });
 
+  it("loads a read-only preview snapshot when the Tauri settings bridge is unavailable", async () => {
+    vi.mocked(loadStoredWallhavenKey).mockRejectedValue(new Error("store unavailable"));
+    vi.mocked(loadDownloadDirectorySettings).mockRejectedValue(
+      new Error("Cannot read properties of undefined (reading 'invoke')"),
+    );
+    vi.mocked(loadNetworkProxySettings).mockRejectedValue(new Error("invoke unavailable"));
+    vi.mocked(loadUserPreferences).mockRejectedValue(new Error("store unavailable"));
+
+    await expect(loadSettings()).resolves.toEqual({
+      wallhavenKey: "",
+      downloadDirectory: {
+        customDirectoryPath: "",
+        effectiveDirectoryPath: "Desktop app default directory",
+        defaultDirectoryPath: "Desktop app default directory",
+        isUsingDefaultDirectory: true,
+      },
+      networkProxy: null,
+      preferences,
+      storageUnavailableReason:
+        "Desktop settings storage is unavailable in this web preview. Run the app through Tauri to save settings, choose folders, and test Wallhaven connectivity.",
+    });
+  });
+
   it("persists the stored key, custom download directory, and network proxy through saveSettings", async () => {
     vi.mocked(saveStoredWallhavenKey).mockResolvedValue(undefined);
     vi.mocked(saveDownloadDirectorySettings).mockResolvedValue({

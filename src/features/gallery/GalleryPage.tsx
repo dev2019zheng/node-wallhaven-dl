@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core"
-import { Check, Copy, Download, FolderOpen, Grid3X3, Heart, List, Search, Tag, Trash2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { Check, Copy, Download, ExternalLink, FolderOpen, Grid3X3, Heart, List, Search, Tag, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { downloadWallpaper as downloadWallpaperInService } from "@/application/downloads/downloads-service"
 import {
@@ -20,7 +20,12 @@ import {
   type GalleryCollectionShortcut,
   useUiShellStore,
 } from "@/features/shell/ui-shell-store"
-import { revealPath } from "@/infrastructure/tauri/native-shell"
+import { writeClipboardText } from "@/infrastructure/browser/clipboard"
+import {
+  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE,
+  isNativeShellAvailable,
+  revealPath,
+} from "@/infrastructure/tauri/native-shell"
 
 import { GalleryGrid, type GalleryGridItem } from "./components/GalleryGrid"
 
@@ -91,22 +96,13 @@ function getDetailTags(item: GalleryGridItem | null): string[] {
     return []
   }
 
-  const name = item.fileName.toLowerCase()
-  const tags = [item.purity?.toUpperCase() ?? "SFW"]
-
-  if (name.includes("forest") || name.includes("nature")) {
-    tags.unshift("Nature")
-  }
-
-  if (name.includes("blue") || name.includes("sky")) {
-    tags.push("Blue", "Sky")
-  }
-
-  if (item.category) {
-    tags.push(item.category)
-  }
-
-  return Array.from(new Set([...tags, ...item.tags]))
+  return Array.from(
+    new Set([
+      item.purity?.toUpperCase() ?? "SFW",
+      ...(item.category ? [item.category] : []),
+      ...item.tags,
+    ]),
+  )
 }
 
 function parseTagDraft(value: string): string[] {
@@ -116,6 +112,41 @@ function parseTagDraft(value: string): string[] {
     .filter(Boolean)
 
   return Array.from(new Set(tags))
+}
+
+function areTagsEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((tag, index) => tag === right[index])
+}
+
+function getFileExtension(fileName: string): string | null {
+  const separatorIndex = fileName.lastIndexOf(".")
+
+  if (separatorIndex < 0 || separatorIndex === fileName.length - 1) {
+    return null
+  }
+
+  const extension = fileName.slice(separatorIndex + 1).trim().toLowerCase()
+
+  return extension ? extension : null
+}
+
+function getGalleryDownloadImageUrl(item: GalleryGridItem): string {
+  try {
+    const sourceUrl = new URL(item.sourceUrl)
+    const normalizedPath = sourceUrl.pathname.replace(/\/$/, "")
+    const isWallhavenPageUrl =
+      (sourceUrl.hostname === "wallhaven.cc" || sourceUrl.hostname === "www.wallhaven.cc") &&
+      normalizedPath === `/w/${item.wallpaperId}`
+    const extension = getFileExtension(item.fileName)
+
+    if (isWallhavenPageUrl && item.wallpaperId.length >= 2 && extension) {
+      return `https://w.wallhaven.cc/full/${item.wallpaperId.slice(0, 2)}/wallhaven-${item.wallpaperId}.${extension}`
+    }
+  } catch {
+    // Keep the archived source URL when it is not parseable.
+  }
+
+  return item.sourceUrl
 }
 
 function matchesTermBucket(item: GalleryGridItem, terms: string[]): boolean {
@@ -208,14 +239,19 @@ export function GalleryPage() {
   const [activeCollectionShortcut, setActiveCollectionShortcut] = useState<GalleryCollectionShortcut | null>(null)
   const [activeImportGroup, setActiveImportGroup] = useState<ImportGroupLabel | null>(null)
   const [selectedWallpaperId, setSelectedWallpaperId] = useState<string | null>(null)
+  const [focusedTagWallpaperId, setFocusedTagWallpaperId] = useState<string | null>(null)
   const [tagDraft, setTagDraft] = useState("")
+  const [tagDraftWallpaperId, setTagDraftWallpaperId] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(true)
+  const tagInputRef = useRef<HTMLInputElement | null>(null)
   const galleryView = useUiShellStore((state) => state.galleryView)
   const galleryCollectionRequest = useUiShellStore((state) => state.galleryCollectionRequest)
+  const setActiveGalleryCollectionShortcut = useUiShellStore((state) => state.setActiveGalleryCollectionShortcut)
   const setGalleryView = useUiShellStore((state) => state.setGalleryView)
   const enqueueToast = useUiShellStore((state) => state.enqueueToast)
   const setConfirm = useUiShellStore((state) => state.setConfirm)
+  const canUseNativeShell = isNativeShellAvailable()
 
   useEffect(() => {
     let isActive = true
@@ -273,6 +309,14 @@ export function GalleryPage() {
     setSelectedWallpaperId(null)
   }, [galleryCollectionRequest])
 
+  const activeSidebarCollectionShortcut = useMemo<GalleryCollectionShortcut | null>(() => {
+    if (activeChip === "Favorites" || activeChip === "Anime") {
+      return activeChip
+    }
+
+    return activeCollectionShortcut
+  }, [activeChip, activeCollectionShortcut])
+
   const galleryItems = useMemo(
     () =>
       gallery?.items.map((item) => ({
@@ -281,6 +325,10 @@ export function GalleryPage() {
       })) ?? [],
     [gallery],
   )
+
+  useEffect(() => {
+    setActiveGalleryCollectionShortcut(activeSidebarCollectionShortcut)
+  }, [activeSidebarCollectionShortcut, setActiveGalleryCollectionShortcut])
   const normalizedLocalQuery = useMemo(() => localQuery.trim().toLowerCase(), [localQuery])
   const filteredGalleryItems = useMemo(
     () =>
@@ -346,6 +394,16 @@ export function GalleryPage() {
     () => formatDisplayPath(selectedItem?.absolutePath ?? galleryItems[0]?.absolutePath ?? null),
     [galleryItems, selectedItem],
   )
+  const parsedTagDraft = useMemo(() => parseTagDraft(tagDraft), [tagDraft])
+  const hasTagDraftChanges = useMemo(
+    () =>
+      Boolean(
+        selectedItem &&
+          tagDraftWallpaperId === selectedItem.wallpaperId &&
+          !areTagsEqual(parsedTagDraft, selectedItem.tags),
+      ),
+    [parsedTagDraft, selectedItem, tagDraftWallpaperId],
+  )
   const selectedTags = useMemo(() => getDetailTags(selectedItem), [selectedItem])
   const timelineGroups = useMemo(() => {
     return importGroupLabels.map((label) => ({
@@ -356,7 +414,17 @@ export function GalleryPage() {
 
   useEffect(() => {
     setTagDraft(selectedItem?.tags.join(", ") ?? "")
+    setTagDraftWallpaperId(selectedItem?.wallpaperId ?? null)
   }, [selectedItem?.wallpaperId, selectedItem?.tags])
+
+  useEffect(() => {
+    if (!focusedTagWallpaperId || selectedItem?.wallpaperId !== focusedTagWallpaperId) {
+      return
+    }
+
+    tagInputRef.current?.focus()
+    setFocusedTagWallpaperId(null)
+  }, [focusedTagWallpaperId, selectedItem?.wallpaperId])
 
   const updateGalleryItem = (updatedItem: GalleryItem) => {
     setGallery((currentGallery) => {
@@ -420,12 +488,17 @@ export function GalleryPage() {
   }
 
   const handleSaveTags = async (item: GalleryGridItem) => {
+    const nextTags = parseTagDraft(tagDraft)
+    if (areTagsEqual(nextTags, item.tags)) {
+      return
+    }
+
     setPendingAction(`tags:${item.wallpaperId}`)
 
     try {
       const updatedItem = await updateGalleryTagsInService({
         wallpaperId: item.wallpaperId,
-        tags: parseTagDraft(tagDraft),
+        tags: nextTags,
       })
       updateGalleryItem(updatedItem)
       showToast("Tags saved", updatedItem.tags.length > 0 ? updatedItem.tags.join(", ") : "No custom tags")
@@ -438,7 +511,7 @@ export function GalleryPage() {
 
   const handleCopyPath = async (item: GalleryGridItem) => {
     try {
-      await navigator.clipboard.writeText(item.absolutePath)
+      await writeClipboardText(item.absolutePath)
       showToast("Path copied", item.absolutePath)
     } catch (error) {
       showToast("Copy failed", getErrorMessage(error, "Clipboard is unavailable."), "error")
@@ -451,7 +524,7 @@ export function GalleryPage() {
     try {
       await downloadWallpaperInService({
         wallpaperId: item.wallpaperId,
-        imageUrl: item.sourceUrl,
+        imageUrl: getGalleryDownloadImageUrl(item),
         fileName: item.fileName,
         purity: item.purity ?? undefined,
         category: item.category ?? undefined,
@@ -465,6 +538,11 @@ export function GalleryPage() {
   }
 
   const handleRevealItem = async (item: GalleryGridItem) => {
+    if (!canUseNativeShell) {
+      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      return
+    }
+
     setPendingAction(`reveal:${item.wallpaperId}`)
 
     try {
@@ -505,19 +583,27 @@ export function GalleryPage() {
       },
     })
   }
+  const headingBadge = isLoading && !gallery
+    ? { label: "Loading archive", tone: "info" as const }
+    : loadError
+      ? { label: "Archive unavailable", tone: "error" as const }
+      : galleryItems.length > 0
+        ? { label: "Archive loaded", tone: "success" as const }
+        : { label: "Archive empty", tone: "info" as const }
 
   return (
     <section className="space-y-6">
       <PageHeading
-        badge="SQLite archive ready"
+        badge={headingBadge.label}
+        badgeTone={headingBadge.tone}
         description="Browse archived local wallpapers."
         eyebrow="Local wallpaper library"
         title="Gallery"
       />
 
       <section aria-label="Gallery archive" className="space-y-6">
-        <div className="grid grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] items-center gap-4">
-          <label className="relative block">
+        <div className="wh-dense-bento grid grid-cols-1 items-center gap-3 md:grid-cols-[minmax(240px,1fr)_repeat(2,minmax(88px,1fr))] xl:grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] xl:gap-4">
+          <label className="relative block md:col-span-3 xl:col-span-1">
             <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               aria-label="Search local gallery"
@@ -541,7 +627,7 @@ export function GalleryPage() {
               className={
                 activeChip === chip
                   ? "wh-selected-surface h-[42px] rounded-full border px-4 text-[13px] font-semibold text-foreground"
-                  : "h-[42px] rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground transition hover:border-border-strong hover:text-foreground"
+                  : "h-[42px] rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground transition-[border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:text-foreground"
               }
               key={chip}
               onClick={() => {
@@ -555,19 +641,28 @@ export function GalleryPage() {
             </button>
           ))}
 
-          <div aria-label="Gallery view" className="wh-control grid h-[42px] grid-cols-[1fr_42px] items-center overflow-hidden" role="group">
+          <div aria-label="Gallery view" className="wh-control grid h-[42px] grid-cols-2 items-center overflow-hidden p-0" role="group">
             <button
               aria-pressed={galleryView === "grid"}
-              className="h-full px-4 text-left text-[13px] font-semibold"
+              className={
+                galleryView === "grid"
+                  ? "wh-selected-surface flex h-full items-center justify-center gap-2 px-3 text-[13px] font-semibold text-foreground"
+                  : "flex h-full items-center justify-center gap-2 px-3 text-[13px] font-semibold text-muted-foreground transition hover:text-foreground"
+              }
               onClick={() => setGalleryView("grid")}
               type="button"
             >
+              <Grid3X3 className="h-4 w-4" />
               Grid
             </button>
             <button
               aria-label="List view"
-              aria-pressed={galleryView === "list" || galleryView === "compact"}
-              className="flex h-full items-center justify-center border-l border-border text-muted-foreground transition hover:text-foreground"
+              aria-pressed={galleryView === "list"}
+              className={
+                galleryView === "list"
+                  ? "wh-selected-surface flex h-full items-center justify-center border-l border-border text-foreground"
+                  : "flex h-full items-center justify-center border-l border-border text-muted-foreground transition hover:text-foreground"
+              }
               onClick={() => setGalleryView("list")}
               type="button"
             >
@@ -584,8 +679,8 @@ export function GalleryPage() {
           <div className="wh-soft-success flex h-[54px] items-center justify-between rounded-[16px] px-6">
             <p className="text-[15px] font-semibold">{galleryCountLabel}</p>
             <button
-              className="max-w-[420px] truncate text-[12px] font-semibold text-muted-foreground transition hover:text-foreground"
-              disabled={!selectedItem || pendingAction === `reveal:${selectedItem.wallpaperId}`}
+              className="max-w-[420px] truncate text-[12px] font-semibold text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-muted-foreground"
+              disabled={!selectedItem || pendingAction === `reveal:${selectedItem.wallpaperId}` || !canUseNativeShell}
               onClick={() => {
                 if (selectedItem) {
                   void handleRevealItem(selectedItem)
@@ -610,13 +705,15 @@ export function GalleryPage() {
         ) : null}
 
         {!loadError && filteredGalleryItems.length > 0 ? (
-          <div className="grid grid-cols-[minmax(716px,1fr)_428px] items-start gap-6">
+          <div className="wh-dense-bento grid grid-cols-1 items-start gap-6 min-[1280px]:grid-cols-[minmax(0,1fr)_360px] min-[1500px]:grid-cols-[minmax(0,1fr)_428px]">
             <div className="space-y-9">
               <GalleryGrid
                 items={filteredGalleryItems}
                 onTag={(item) => {
                   setSelectedWallpaperId(item.wallpaperId)
                   setTagDraft(item.tags.join(", "))
+                  setTagDraftWallpaperId(item.wallpaperId)
+                  setFocusedTagWallpaperId(item.wallpaperId)
                 }}
                 onSelect={(item) => setSelectedWallpaperId(item.wallpaperId)}
                 onToggleFavorite={(item) => {
@@ -628,37 +725,45 @@ export function GalleryPage() {
 
               <section className="app-panel h-[252px] p-6">
                 <h3 className="text-[20px] font-semibold leading-7 text-foreground">Timeline</h3>
-                <div className="mt-6 grid grid-cols-[1fr_296px] gap-6">
+                <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[1fr_240px] min-[1400px]:grid-cols-[1fr_296px]">
                   <div className="space-y-5">
-                    {timelineGroups.map(({ label, count }, index) => (
+                    {timelineGroups.map(({ label, count }) => (
                       <div className="grid grid-cols-[18px_1fr_120px] items-center gap-4" key={label}>
-                        <span className={activeImportGroup === label || (!activeImportGroup && index === 0) ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
+                        <span className={activeImportGroup === label ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
                         <span className="text-[14px] font-semibold text-foreground">{label}</span>
                         <span className="text-[13px] font-medium text-muted-foreground">{count} imported</span>
                       </div>
                     ))}
                   </div>
                   <div className="space-y-3">
-                    {timelineGroups.map(({ label, count }) => (
-                      <Button
-                        aria-label={`Open group ${label}`}
-                        className="h-10 w-full justify-start rounded-[14px]"
-                        disabled={count === 0}
-                        key={label}
-                        onClick={() => {
-                          setActiveChip("All")
-                          setActiveCollectionShortcut(null)
-                          setActiveImportGroup(label)
-                          setLocalQuery("")
-                          setSelectedWallpaperId(null)
-                        }}
-                        type="button"
-                        variant="outline"
-                      >
-                        Open group
-                        <span className="sr-only">{label}</span>
-                      </Button>
-                    ))}
+                    {timelineGroups.map(({ label, count }) => {
+                      const isActiveTimelineGroup = activeImportGroup === label
+
+                      return (
+                        <Button
+                          aria-label={`Open group ${label}`}
+                          aria-pressed={isActiveTimelineGroup}
+                          className={
+                            isActiveTimelineGroup
+                              ? "wh-selected-surface h-10 w-full justify-start rounded-[14px] text-foreground"
+                              : "h-10 w-full justify-start rounded-[14px]"
+                          }
+                          disabled={count === 0}
+                          key={label}
+                          onClick={() => {
+                            setActiveChip("All")
+                            setActiveCollectionShortcut(null)
+                            setActiveImportGroup(label)
+                            setLocalQuery("")
+                            setSelectedWallpaperId(null)
+                          }}
+                          type="button"
+                          variant="outline"
+                        >
+                          Open {label}
+                        </Button>
+                      )
+                    })}
                   </div>
                 </div>
               </section>
@@ -680,7 +785,7 @@ export function GalleryPage() {
                   <div className="space-y-2">
                     <h4 className="truncate text-[18px] font-semibold text-foreground">{selectedItem.fileName}</h4>
                     <p className="text-[13px] font-medium text-muted-foreground">
-                      3840 × 2160 · local asset · {(selectedItem.purity ?? "sfw").toUpperCase()}
+                      Local asset · {(selectedItem.purity ?? "sfw").toUpperCase()} · {selectedItem.category ?? "general"}
                     </p>
                     <p className="truncate text-[12px] text-muted-foreground">{selectedItem.relativeFilePath}</p>
                   </div>
@@ -708,6 +813,15 @@ export function GalleryPage() {
                       <Download className="h-4 w-4" />
                       {pendingAction === `download:${selectedItem.wallpaperId}` ? "Queueing" : "Download"}
                     </Button>
+                    <a
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-2 text-[13px] font-semibold transition-colors hover:border-border-strong hover:bg-[var(--surface-hover)]"
+                      href={selectedItem.sourceUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open source
+                    </a>
                     <Button
                       className="h-12 w-full rounded-[14px]"
                       disabled={pendingAction === `favorite:${selectedItem.wallpaperId}`}
@@ -742,13 +856,17 @@ export function GalleryPage() {
                       autoComplete="off"
                       className="wh-control mt-3 h-10 w-full px-4 text-[13px]"
                       id="gallery-tags"
-                      onChange={(event) => setTagDraft(event.currentTarget.value)}
+                      onChange={(event) => {
+                        setTagDraft(event.currentTarget.value)
+                        setTagDraftWallpaperId(selectedItem.wallpaperId)
+                      }}
                       placeholder="nature, ultrawide, OLED"
+                      ref={tagInputRef}
                       value={tagDraft}
                     />
                     <Button
                       className="mt-3 h-10 w-full rounded-[14px]"
-                      disabled={pendingAction === `tags:${selectedItem.wallpaperId}`}
+                      disabled={pendingAction === `tags:${selectedItem.wallpaperId}` || !hasTagDraftChanges}
                       onClick={() => {
                         void handleSaveTags(selectedItem)
                       }}
@@ -763,7 +881,7 @@ export function GalleryPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       className="h-10 rounded-[14px]"
-                      disabled={pendingAction === `reveal:${selectedItem.wallpaperId}`}
+                      disabled={pendingAction === `reveal:${selectedItem.wallpaperId}` || !canUseNativeShell}
                       onClick={() => {
                         void handleRevealItem(selectedItem)
                       }}
@@ -786,6 +904,11 @@ export function GalleryPage() {
                       {pendingAction === `delete:${selectedItem.wallpaperId}` ? "Deleting" : "Delete"}
                     </Button>
                   </div>
+                  {!canUseNativeShell ? (
+                    <p className="text-[12px] leading-5 text-muted-foreground">
+                      Revealing local files is available in the desktop app.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <EmptyState

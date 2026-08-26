@@ -25,6 +25,38 @@ type DiagnoseWallhavenAccessInput = {
   networkProxyAddress: string;
 };
 
+const STORAGE_UNAVAILABLE_REASON =
+  "Desktop settings storage is unavailable in this web preview. Run the app through Tauri to save settings, choose folders, and test Wallhaven connectivity.";
+
+function createPreviewDownloadDirectory(): DownloadDirectorySettings {
+  return {
+    customDirectoryPath: "",
+    effectiveDirectoryPath: "Desktop app default directory",
+    defaultDirectoryPath: "Desktop app default directory",
+    isUsingDefaultDirectory: true,
+  };
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return "";
+}
+
+function isTauriBridgeUnavailable(error: unknown): boolean {
+  const message = getErrorMessage(error);
+  return (
+    message.includes("Cannot read properties of undefined (reading 'invoke')") ||
+    message.includes("__TAURI_INTERNALS__")
+  );
+}
+
 async function loadOptionalSetting<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await loader();
@@ -34,8 +66,21 @@ async function loadOptionalSetting<T>(loader: () => Promise<T>, fallback: T): Pr
 }
 
 export async function loadSettings(): Promise<SettingsSnapshot> {
-  const [downloadDirectory, wallhavenKey, networkProxy, preferences] = await Promise.all([
-    loadDownloadDirectorySettings(),
+  let storageUnavailableReason: string | undefined;
+  let downloadDirectory: DownloadDirectorySettings;
+
+  try {
+    downloadDirectory = await loadDownloadDirectorySettings();
+  } catch (error) {
+    if (!isTauriBridgeUnavailable(error)) {
+      throw error;
+    }
+
+    storageUnavailableReason = STORAGE_UNAVAILABLE_REASON;
+    downloadDirectory = createPreviewDownloadDirectory();
+  }
+
+  const [wallhavenKey, networkProxy, preferences] = await Promise.all([
     loadOptionalSetting(loadStoredWallhavenKey, ""),
     loadOptionalSetting(loadNetworkProxySettings, null),
     loadOptionalSetting(loadUserPreferencesFromRepository, defaultSettingsPreferences),
@@ -46,6 +91,7 @@ export async function loadSettings(): Promise<SettingsSnapshot> {
     downloadDirectory,
     networkProxy,
     preferences,
+    ...(storageUnavailableReason ? { storageUnavailableReason } : {}),
   };
 }
 

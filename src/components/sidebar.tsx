@@ -1,6 +1,6 @@
 import { Download, Heart, Images, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 import {
@@ -31,8 +31,17 @@ const collectionItems: Array<{ label: GalleryCollectionShortcut; icon: LucideIco
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeGalleryCollectionShortcut = useUiShellStore((state) => state.activeGalleryCollectionShortcut);
   const downloadSummary = useUiShellStore((state) => state.downloadSummary);
   const requestGalleryCollection = useUiShellStore((state) => state.requestGalleryCollection);
+  const totalDownloads = downloadSummary.activeCount + downloadSummary.completedCount + downloadSummary.failedCount;
+  const queueStatusLabel =
+    downloadSummary.activeCount > 0
+      ? `${downloadSummary.activeCount} active`
+      : downloadSummary.failedCount > 0
+        ? `${downloadSummary.failedCount} failed`
+        : `${downloadSummary.completedCount} completed`;
 
   return (
     <aside
@@ -41,7 +50,7 @@ export function Sidebar() {
     >
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_rgb(47_139_255_/_0.1)]">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/45 bg-primary/15 text-primary shadow-[0_0_0_1px_rgb(var(--primary-rgb)_/_0.18)]">
             <span className="text-lg font-bold">W</span>
           </div>
           <div>
@@ -60,7 +69,7 @@ export function Sidebar() {
               aria-label={item.label}
               className={({ isActive }) =>
                 cn(
-                  "group flex h-[42px] items-center gap-3 rounded-[14px] border px-3 text-[14px] font-semibold transition-colors",
+                  "group flex h-[42px] items-center gap-3 rounded-[14px] border px-3 text-[14px] font-semibold transition-[background,border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5",
                   isActive
                     ? "wh-selected-surface text-foreground"
                     : "border-transparent text-muted-foreground hover:bg-[var(--surface-hover)]/65 hover:text-foreground",
@@ -83,9 +92,19 @@ export function Sidebar() {
         <div className="space-y-1.5">
           {collectionItems.map((item) => {
             const Icon = item.icon;
+            const isCollectionActive =
+              location.pathname === "/gallery" &&
+              activeGalleryCollectionShortcut === item.label;
+
             return (
               <button
-                className="flex h-[32px] w-full items-center justify-between rounded-xl px-2 text-left text-[13px] font-medium text-muted-foreground transition hover:bg-[var(--surface-hover)]/65 hover:text-foreground"
+                aria-pressed={isCollectionActive}
+                className={cn(
+                  "flex h-[32px] w-full items-center justify-between rounded-xl border px-2 text-left text-[13px] font-medium transition-[background,border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5",
+                  isCollectionActive
+                    ? "wh-selected-surface text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-[var(--surface-hover)]/65 hover:text-foreground",
+                )}
                 key={item.label}
                 onClick={() => {
                   requestGalleryCollection(item.label);
@@ -103,19 +122,25 @@ export function Sidebar() {
         </div>
       </div>
 
-      <section className="mt-auto rounded-[14px] border border-border bg-[var(--surface-deep)] p-3">
-        <div className="flex items-start justify-between gap-3">
+      <section className="wh-kinetic-card mt-auto rounded-[16px] border border-border bg-[var(--surface-deep)] p-3" aria-label="Download queue summary">
+        <button
+          className="flex w-full items-start justify-between gap-3 text-left"
+          onClick={() => navigate("/downloads")}
+          type="button"
+        >
           <div className="flex min-w-0 items-center gap-3">
-            <span className="h-9 w-9 rounded-full bg-[linear-gradient(135deg,var(--primary)_0%,color-mix(in_srgb,var(--primary)_42%,#7042b9)_100%)]" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary">
+              <Download className="h-4 w-4" />
+            </span>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-foreground">zhengy</p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase text-primary">Pro</p>
+              <p className="truncate text-[13px] font-semibold text-foreground">Download queue</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase text-primary">{queueStatusLabel}</p>
             </div>
           </div>
           <span className="rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-[10px] font-semibold text-primary">
-            {downloadSummary.activeCount + downloadSummary.completedCount + downloadSummary.failedCount}
+            {totalDownloads}
           </span>
-        </div>
+        </button>
       </section>
     </aside>
   );

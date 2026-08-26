@@ -30,6 +30,7 @@ export type SettingsSnapshot = {
   downloadDirectory: DownloadDirectorySettings;
   networkProxy: NetworkProxySettings | null;
   preferences: SettingsPreferences;
+  storageUnavailableReason?: string;
 };
 
 export type SaveSettingsInput = {

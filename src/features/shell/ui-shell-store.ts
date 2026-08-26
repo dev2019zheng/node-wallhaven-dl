@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
-export type GalleryView = "grid" | "timeline" | "list" | "compact";
+export type GalleryView = "grid" | "list";
 export type GalleryCollectionShortcut = "Favorites" | "4K Ultra" | "Nature" | "Anime" | "Space";
-export type ShellPanel = "quick-navigation" | "help";
+export type ShellPanel = "quick-navigation";
 
 export type DownloadSummary = {
   activeCount: number;
@@ -32,20 +32,22 @@ export type GalleryCollectionRequest = {
   requestId: number;
 };
 
+export const MAX_VISIBLE_TOASTS = 4;
+
 type UiShellState = {
-  globalQuery: string;
   selectedSearchIds: string[];
   galleryView: GalleryView;
   galleryCollectionRequest: GalleryCollectionRequest | null;
+  activeGalleryCollectionShortcut: GalleryCollectionShortcut | null;
   downloadSummary: DownloadSummary;
   toasts: ShellToast[];
   confirm: ConfirmState | null;
   activeShellPanel: ShellPanel | null;
-  setGlobalQuery: (value: string) => void;
   setSelectedSearchIds: (ids: string[]) => void;
   clearSelectedSearchIds: () => void;
   setGalleryView: (view: GalleryView) => void;
   requestGalleryCollection: (label: GalleryCollectionShortcut) => void;
+  setActiveGalleryCollectionShortcut: (label: GalleryCollectionShortcut | null) => void;
   setDownloadSummary: (summary: DownloadSummary) => void;
   enqueueToast: (toast: ShellToast) => void;
   dismissToast: (id: string) => void;
@@ -60,17 +62,14 @@ export const defaultDownloadSummary: DownloadSummary = {
 };
 
 export const useUiShellStore = create<UiShellState>((set) => ({
-  globalQuery: "",
   selectedSearchIds: [],
   galleryView: "grid",
   galleryCollectionRequest: null,
+  activeGalleryCollectionShortcut: null,
   downloadSummary: { ...defaultDownloadSummary },
   toasts: [],
   confirm: null,
   activeShellPanel: null,
-  setGlobalQuery: (value) => {
-    set({ globalQuery: value });
-  },
   setSelectedSearchIds: (ids) => {
     set({ selectedSearchIds: ids });
   },
@@ -86,14 +85,20 @@ export const useUiShellStore = create<UiShellState>((set) => ({
         label,
         requestId: (state.galleryCollectionRequest?.requestId ?? 0) + 1,
       },
+      activeGalleryCollectionShortcut: label,
     }));
+  },
+  setActiveGalleryCollectionShortcut: (label) => {
+    set({ activeGalleryCollectionShortcut: label });
   },
   setDownloadSummary: (summary) => {
     set({ downloadSummary: { ...summary } });
   },
   enqueueToast: (toast) => {
     set((state) => ({
-      toasts: [...state.toasts, toast],
+      toasts: [...state.toasts.filter((currentToast) => currentToast.id !== toast.id), toast].slice(
+        -MAX_VISIBLE_TOASTS,
+      ),
     }));
   },
   dismissToast: (id) => {
