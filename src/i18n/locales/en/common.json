@@ -1,0 +1,34 @@
+{
+  "brand": {
+    "name": "Wallhaven",
+    "subtitle": "Desktop"
+  },
+  "language": {
+    "toggleLabel": "Language",
+    "showZh": "中文",
+    "showEn": "EN",
+    "switchToZh": "Switch to Chinese",
+    "switchToEn": "Switch to English"
+  },
+  "theme": {
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "light": "Light",
+    "dark": "Dark",
+    "accent": "Accent theme",
+    "useAccent": "Use {{label}} accent"
+  },
+  "desktopRuntimeUnavailable": "This action needs the Tauri desktop runtime and is unavailable in the web preview.",
+  "desktopRuntimeUnavailableTitle": "Desktop runtime unavailable",
+  "actions": {
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "copy": "Copy",
+    "delete": "Delete",
+    "open": "Open",
+    "save": "Save"
+  },
+  "loading": "Loading..."
+}

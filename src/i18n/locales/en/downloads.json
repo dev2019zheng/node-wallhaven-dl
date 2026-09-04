@@ -1,0 +1,49 @@
+{
+  "eyebrow": "Wallpaper transfer queue",
+  "title": "Downloads",
+  "description": "Track queued, running, completed and failed transfers.",
+  "badge": {
+    "loading": "Loading queue",
+    "unavailable": "Queue unavailable",
+    "active": "Transfers active",
+    "ready": "Queue ready"
+  },
+  "commandCenter": "Command Center",
+  "queueHealth": "Queue health",
+  "queued": "Queued",
+  "running": "Running",
+  "completed": "Completed",
+  "failed": "Failed",
+  "progress": "Progress",
+  "waitingByteProgress": "Waiting for byte progress",
+  "knownBytesPercent": "{{percent}}% of known bytes",
+  "openFolder": "Open folder",
+  "opening": "Opening...",
+  "nativeFolderHint": "Local folder and file opening is available in the desktop app.",
+  "tasks": "Tasks",
+  "refresh": "Refresh",
+  "tabs": {
+    "filters": "Download queue filters",
+    "all": "All",
+    "downloading": "Downloading",
+    "queued": "Queued",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "empty": {
+    "all": "No downloads yet. Start one from Search and track progress here.",
+    "queued": "No queued transfers right now.",
+    "running": "No running transfers right now.",
+    "completed": "No completed downloads yet.",
+    "failed": "No failed downloads right now."
+  },
+  "loading": "Loading existing downloads...",
+  "liveEvents": "Live events",
+  "transfer": {
+    "received": "{{bytes}} received",
+    "activeTransfers": "{{count}} active transfers",
+    "runningQueued": "{{running}} running · {{queued}} queued",
+    "completeFailed": "{{completed}} complete · {{failed}} failed",
+    "noActivity": "No transfer activity yet"
+  }
+}

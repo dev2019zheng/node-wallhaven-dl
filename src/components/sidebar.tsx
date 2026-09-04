@@ -1,5 +1,6 @@
 import { Download, Heart, Images, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
@@ -10,15 +11,15 @@ import {
 
 type NavigationItem = {
   to: string;
-  label: string;
+  labelKey: "nav.search" | "nav.downloads" | "nav.gallery" | "nav.settings";
   icon: LucideIcon;
 };
 
 const navigationItems: NavigationItem[] = [
-  { to: "/search", label: "Search", icon: Search },
-  { to: "/downloads", label: "Downloads", icon: Download },
-  { to: "/gallery", label: "Gallery", icon: Images },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/search", labelKey: "nav.search", icon: Search },
+  { to: "/downloads", labelKey: "nav.downloads", icon: Download },
+  { to: "/gallery", labelKey: "nav.gallery", icon: Images },
+  { to: "/settings", labelKey: "nav.settings", icon: Settings },
 ];
 
 const collectionItems: Array<{ label: GalleryCollectionShortcut; icon: LucideIcon }> = [
@@ -30,6 +31,7 @@ const collectionItems: Array<{ label: GalleryCollectionShortcut; icon: LucideIco
 ];
 
 export function Sidebar() {
+  const { t } = useTranslation(["shell", "common"]);
   const navigate = useNavigate();
   const location = useLocation();
   const activeGalleryCollectionShortcut = useUiShellStore((state) => state.activeGalleryCollectionShortcut);
@@ -38,14 +40,14 @@ export function Sidebar() {
   const totalDownloads = downloadSummary.activeCount + downloadSummary.completedCount + downloadSummary.failedCount;
   const queueStatusLabel =
     downloadSummary.activeCount > 0
-      ? `${downloadSummary.activeCount} active`
+      ? t("downloadQueue.active", { count: downloadSummary.activeCount })
       : downloadSummary.failedCount > 0
-        ? `${downloadSummary.failedCount} failed`
-        : `${downloadSummary.completedCount} completed`;
+        ? t("downloadQueue.failed", { count: downloadSummary.failedCount })
+        : t("downloadQueue.completed", { count: downloadSummary.completedCount });
 
   return (
     <aside
-      aria-label="sidebar"
+      aria-label={t("nav.sidebar")}
       className="app-shell-sidebar flex flex-col gap-6 border border-border bg-[var(--sidebar)] px-[18px] py-6"
     >
       <div className="space-y-5">
@@ -54,19 +56,20 @@ export function Sidebar() {
             <span className="text-lg font-bold">W</span>
           </div>
           <div>
-            <p className="text-[16px] font-semibold tracking-tight text-foreground">Wallhaven</p>
-            <p className="text-[13px] font-medium text-muted-foreground">Desktop</p>
+            <p className="text-[16px] font-semibold tracking-tight text-foreground">{t("common:brand.name")}</p>
+            <p className="text-[13px] font-medium text-muted-foreground">{t("common:brand.subtitle")}</p>
           </div>
         </div>
       </div>
 
-      <nav aria-label="Primary" className="space-y-1.5">
+      <nav aria-label={t("nav.primary")} className="space-y-1.5">
         {navigationItems.map((item) => {
           const Icon = item.icon;
+          const label = t(item.labelKey);
 
           return (
             <NavLink
-              aria-label={item.label}
+              aria-label={label}
               className={({ isActive }) =>
                 cn(
                   "group flex h-[42px] items-center gap-3 rounded-[14px] border px-3 text-[14px] font-semibold transition-[background,border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5",
@@ -79,7 +82,7 @@ export function Sidebar() {
               to={item.to}
             >
               <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-              <span>{item.label}</span>
+              <span>{label}</span>
             </NavLink>
           );
         })}
@@ -87,7 +90,7 @@ export function Sidebar() {
 
       <div className="space-y-3 border-t border-border pt-5">
         <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          <span>Collections</span>
+          <span>{t("collections.heading")}</span>
         </div>
         <div className="space-y-1.5">
           {collectionItems.map((item) => {
@@ -95,9 +98,11 @@ export function Sidebar() {
             const isCollectionActive =
               location.pathname === "/gallery" &&
               activeGalleryCollectionShortcut === item.label;
+            const displayLabel = t(`collections.${item.label}`);
 
             return (
               <button
+                aria-label={displayLabel}
                 aria-pressed={isCollectionActive}
                 className={cn(
                   "flex h-[32px] w-full items-center justify-between rounded-xl border px-2 text-left text-[13px] font-medium transition-[background,border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5",
@@ -114,7 +119,7 @@ export function Sidebar() {
               >
                 <div className="flex items-center gap-2">
                   <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
+                  <span>{displayLabel}</span>
                 </div>
               </button>
             );
@@ -122,8 +127,9 @@ export function Sidebar() {
         </div>
       </div>
 
-      <section className="wh-kinetic-card mt-auto rounded-[16px] border border-border bg-[var(--surface-deep)] p-3" aria-label="Download queue summary">
+      <section className="wh-kinetic-card mt-auto rounded-[16px] border border-border bg-[var(--surface-deep)] p-3" aria-label={t("downloadQueue.summary")}>
         <button
+          aria-label={t("downloadQueue.title")}
           className="flex w-full items-start justify-between gap-3 text-left"
           onClick={() => navigate("/downloads")}
           type="button"
@@ -133,7 +139,7 @@ export function Sidebar() {
               <Download className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-foreground">Download queue</p>
+              <p className="truncate text-[13px] font-semibold text-foreground">{t("downloadQueue.title")}</p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase text-primary">{queueStatusLabel}</p>
             </div>
           </div>

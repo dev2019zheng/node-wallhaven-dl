@@ -1,0 +1,153 @@
+diff --git a/src/features/settings/SettingsPage.tsx b/src/features/settings/SettingsPage.tsx
+index 856cf52..c7a11da 100644
+--- a/src/features/settings/SettingsPage.tsx
++++ b/src/features/settings/SettingsPage.tsx
+@@ -11,6 +11,7 @@ import {
+   TestTube2,
+ } from "lucide-react";
+ import { useEffect, useMemo, useState } from "react";
++import { useTranslation } from "react-i18next";
+ import { useForm } from "react-hook-form";
+ import { z } from "zod";
+ 
+@@ -146,6 +147,7 @@ function Spinner() {
+ }
+ 
+ export function SettingsPage() {
++  const { t } = useTranslation(["settings", "common"]);
+   const { formState, handleSubmit, register, reset, setValue, watch } = useForm<SettingsFormValues>({
+     resolver: zodResolver(settingsSchema),
+     defaultValues: {
+@@ -557,25 +559,25 @@ export function SettingsPage() {
+     }
+   });
+   const headingBadge = isLoading
+-    ? { label: "Loading settings", tone: "info" as const }
++    ? { label: t("badge.loading"), tone: "info" as const }
+     : loadError
+-      ? { label: "Settings unavailable", tone: "error" as const }
++      ? { label: t("badge.error"), tone: "error" as const }
+       : isStorageReadOnly
+-        ? { label: "Settings preview", tone: "warning" as const }
++        ? { label: t("badge.preview"), tone: "warning" as const }
+       : formState.isSubmitting
+-        ? { label: "Saving settings", tone: "info" as const }
++        ? { label: t("badge.saving"), tone: "info" as const }
+         : formState.isDirty
+-          ? { label: "Unsaved changes", tone: "warning" as const }
+-          : { label: "Settings loaded", tone: "success" as const };
++          ? { label: t("badge.unsaved"), tone: "warning" as const }
++          : { label: t("badge.ready"), tone: "success" as const };
+ 
+   return (
+     <section className="space-y-6">
+       <PageHeading
+         badge={headingBadge.label}
+         badgeTone={headingBadge.tone}
+-        description="API key, downloads, proxy, cache, and deletion safety."
+-        eyebrow="Application settings"
+-        title="Settings"
++        description={t("description")}
++        eyebrow={t("eyebrow")}
++        title={t("title")}
+       />
+ 
+       <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1280px]:grid-cols-[minmax(0,1fr)_minmax(320px,452px)] min-[1440px]:gap-[30px]">
+@@ -583,23 +585,23 @@ export function SettingsPage() {
+           <section aria-labelledby="wallhaven-access-heading" className="space-y-4">
+             <div>
+               <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="wallhaven-access-heading">
+-                Wallhaven Access
++                {t("access.heading")}
+               </h3>
+               <p className="text-[13px] leading-6 text-muted-foreground">
+-                API key is masked by default and stored through the desktop settings layer.
++                {t("access.description")}
+               </p>
+             </div>
+ 
+             <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_minmax(0,1fr)] md:gap-4">
+               <label className="text-[13px] font-semibold text-foreground" htmlFor="wallhavenKey">
+-                API Key
++                {t("access.apiKey")}
+               </label>
+               <div className="relative">
+                 <input
+                   autoComplete="off"
+                   className="wh-control h-[42px] w-full pr-[92px] text-[13px]"
+                   id="wallhavenKey"
+-                  placeholder="Paste WALLHAVEN_KEY"
++                  placeholder={t("access.placeholder")}
+                   spellCheck={false}
+                   type={showApiKey ? "text" : "password"}
+                   disabled={isEditingDisabled}
+@@ -607,7 +609,7 @@ export function SettingsPage() {
+                 />
+                 <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+                   <button
+-                    aria-label={showApiKey ? "Hide API key" : "Show API key"}
++                    aria-label={showApiKey ? t("access.hideKey") : t("access.showKey")}
+                     className="wh-icon-button h-8 w-8"
+                     onClick={() => setShowApiKey((current) => !current)}
+                     type="button"
+@@ -615,7 +617,7 @@ export function SettingsPage() {
+                     {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                   </button>
+                   <button
+-                    aria-label="Validate key"
++                    aria-label={t("access.validateKey")}
+                     className="wh-icon-button h-8 w-8"
+                     disabled={isValidatingKey || isEditingDisabled}
+                     onClick={validateApiKey}
+@@ -630,23 +632,23 @@ export function SettingsPage() {
+               aria-live="polite"
+               className={cn("text-[12px] md:pl-[140px]", apiKeyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
+             >
+-              {apiKeyStatus?.message ?? "Empty value clears the local key. Full key is never written to UI logs."}
++              {apiKeyStatus?.message ?? t("access.emptyHint")}
+             </p>
+           </section>
+ 
+           <section aria-labelledby="download-directory-heading" className="space-y-4 border-t border-border pt-6">
+             <div>
+               <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="download-directory-heading">
+-                Download Directory
++                {t("directory.heading")}
+               </h3>
+               <p className="text-[13px] leading-6 text-muted-foreground">
+-                Changing this path affects future downloads only. Existing Gallery records keep their archived file paths.
++                {t("directory.description")}
+               </p>
+             </div>
+ 
+             <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_minmax(0,1fr)_96px] md:gap-4">
+               <label className="text-[13px] font-semibold text-foreground" htmlFor="customDownloadDirectoryPath">
+-                Download path
++                {t("directory.path")}
+               </label>
+               <input
+                 autoComplete="off"
+@@ -770,9 +772,9 @@ export function SettingsPage() {
+             <div className="grid max-w-[420px] grid-cols-1 gap-3">
+               <Toggle
+                 checked={preferences.confirmBeforeDelete}
+-                description="Protect local files"
++                description={t("confirmBeforeDelete.description")}
+                 disabled={isEditingDisabled}
+-                label="Ask before deleting"
++                label={t("confirmBeforeDelete.label")}
+                 onChange={(checked) => setValue("confirmBeforeDelete", checked, { shouldDirty: true, shouldTouch: true })}
+               />
+             </div>
+@@ -805,9 +807,9 @@ export function SettingsPage() {
+         </form>
+ 
+         <aside aria-label="Effective destination" className="app-panel min-h-0 p-5 min-[900px]:p-[30px] min-[1280px]:min-h-[640px]">
+-          {!downloadDirectory && !loadError ? <LoadingSkeleton label="Loading storage details..." /> : null}
++          {!downloadDirectory && !loadError ? <LoadingSkeleton label={t("storage.loading")} /> : null}
+           {!downloadDirectory && loadError ? (
+-            <ErrorState message="Settings failed to load, so storage summary is unavailable." title="Storage unavailable" />
++            <ErrorState message={t("storage.unavailableMessage")} title={t("storage.unavailableTitle")} />
+           ) : null}
+ 
+           {effectiveDestination ? (

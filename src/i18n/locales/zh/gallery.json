@@ -1,0 +1,39 @@
+{
+  "eyebrow": "本地壁纸库",
+  "title": "图库",
+  "description": "浏览已归档的本地壁纸。",
+  "badge": {
+    "loading": "归档加载中",
+    "error": "归档不可用",
+    "loaded": "归档已加载",
+    "empty": "归档为空"
+  },
+  "archive": "图库归档",
+  "searchLocal": "搜索本地图库",
+  "searchPlaceholder": "搜索本地库",
+  "chips": {
+    "All": "全部",
+    "Favorites": "收藏",
+    "SFW": "SFW",
+    "Sketchy": "Sketchy",
+    "NSFW": "NSFW",
+    "Anime": "动漫"
+  },
+  "view": {
+    "group": "图库视图",
+    "grid": "网格",
+    "list": "列表视图"
+  },
+  "loading": "正在加载已归档壁纸…",
+  "countFiltered": "显示已加载 {{loaded}} 张中的 {{visible}} 张。",
+  "countAll": "显示全部 {{total}} 张中的 {{loaded}} 张已归档壁纸。",
+  "pathPrefix": "路径：{{path}}",
+  "pathDefault": "路径：~/Pictures/Wallhaven",
+  "empty": {
+    "noneTitle": "还没有已归档的壁纸。",
+    "noneDescription": "从搜索页下载一张，开始构建本地图库。",
+    "noMatch": "当前本地搜索没有匹配的已归档壁纸。",
+    "noSelectionTitle": "未选择壁纸。",
+    "noSelectionDescription": "选择一张本地壁纸以查看文件详情与操作。"
+  }
+}

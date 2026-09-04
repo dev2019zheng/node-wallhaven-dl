@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "search": "Search",
+    "downloads": "Downloads",
+    "gallery": "Gallery",
+    "settings": "Settings",
+    "primary": "Primary",
+    "sidebar": "sidebar",
+    "topBar": "top bar"
+  },
+  "quickNav": {
+    "button": "Quick navigation",
+    "menu": "Quick navigation commands"
+  },
+  "collections": {
+    "heading": "Collections",
+    "Favorites": "Favorites",
+    "4K Ultra": "4K Ultra",
+    "Nature": "Nature",
+    "Anime": "Anime",
+    "Space": "Space"
+  },
+  "downloadQueue": {
+    "summary": "Download queue summary",
+    "title": "Download queue",
+    "active": "{{count}} active",
+    "failed": "{{count}} failed",
+    "completed": "{{count}} completed"
+  }
+}

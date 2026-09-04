@@ -1,36 +1,37 @@
 import type { DownloadQueueFilter, DownloadsSummary } from "@/application/downloads/downloads-service";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 type QueueTabConfig = {
   filter: DownloadQueueFilter;
-  label: string;
+  labelKey: "tabs.all" | "tabs.downloading" | "tabs.queued" | "tabs.completed" | "tabs.failed";
   count: (summary: DownloadsSummary) => number;
 };
 
 const queueTabs: QueueTabConfig[] = [
   {
     filter: "all",
-    label: "All",
+    labelKey: "tabs.all",
     count: (summary) => summary.totalCount,
   },
   {
     filter: "running",
-    label: "Downloading",
+    labelKey: "tabs.downloading",
     count: (summary) => summary.runningCount,
   },
   {
     filter: "queued",
-    label: "Queued",
+    labelKey: "tabs.queued",
     count: (summary) => summary.queuedCount,
   },
   {
     filter: "completed",
-    label: "Completed",
+    labelKey: "tabs.completed",
     count: (summary) => summary.completedCount,
   },
   {
     filter: "failed",
-    label: "Failed",
+    labelKey: "tabs.failed",
     count: (summary) => summary.failedCount,
   },
 ];
@@ -42,8 +43,10 @@ type QueueTabsProps = {
 };
 
 export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
+  const { t } = useTranslation("downloads");
+
   return (
-    <div aria-label="Download queue filters" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="tablist">
+    <div aria-label={t("tabs.filters")} className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="tablist">
       {queueTabs.map((tab) => {
         const isActive = tab.filter === activeFilter;
 
@@ -63,7 +66,7 @@ export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
             role="tab"
             type="button"
           >
-            <span className="truncate">{tab.label}</span>
+            <span className="truncate">{t(tab.labelKey)}</span>
             <span className="text-[11px] text-muted-foreground">
               {tab.count(summary)}
             </span>
