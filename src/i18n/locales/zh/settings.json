@@ -1,0 +1,37 @@
+{
+  "eyebrow": "应用设置",
+  "title": "设置",
+  "description": "API 密钥、下载、代理、缓存与删除保护。",
+  "badge": {
+    "loading": "设置加载中",
+    "error": "设置不可用",
+    "preview": "设置预览",
+    "saving": "正在保存设置",
+    "unsaved": "有未保存更改",
+    "ready": "设置已加载"
+  },
+  "access": {
+    "heading": "Wallhaven 访问",
+    "description": "API 密钥默认掩码显示，并通过桌面设置层存储。",
+    "apiKey": "API 密钥",
+    "placeholder": "粘贴 WALLHAVEN_KEY",
+    "showKey": "显示 API 密钥",
+    "hideKey": "隐藏 API 密钥",
+    "validateKey": "验证密钥",
+    "emptyHint": "留空将清除本地密钥。完整密钥不会写入界面日志。"
+  },
+  "directory": {
+    "heading": "下载目录",
+    "description": "更改此路径仅影响今后的下载。现有图库记录仍保留其归档文件路径。",
+    "path": "下载路径"
+  },
+  "confirmBeforeDelete": {
+    "label": "删除前询问",
+    "description": "保护本地文件"
+  },
+  "storage": {
+    "unavailableTitle": "存储不可用",
+    "unavailableMessage": "设置加载失败，因此无法显示存储摘要。",
+    "loading": "正在加载存储详情…"
+  }
+}

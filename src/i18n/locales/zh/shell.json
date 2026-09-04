@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "search": "搜索",
+    "downloads": "下载",
+    "gallery": "图库",
+    "settings": "设置",
+    "primary": "主导航",
+    "sidebar": "侧边栏",
+    "topBar": "顶栏"
+  },
+  "quickNav": {
+    "button": "快捷导航",
+    "menu": "快捷导航命令"
+  },
+  "collections": {
+    "heading": "收藏集",
+    "Favorites": "收藏",
+    "4K Ultra": "4K 超清",
+    "Nature": "自然",
+    "Anime": "动漫",
+    "Space": "太空"
+  },
+  "downloadQueue": {
+    "summary": "下载队列摘要",
+    "title": "下载队列",
+    "active": "{{count}} 进行中",
+    "failed": "{{count}} 失败",
+    "completed": "{{count}} 已完成"
+  }
+}

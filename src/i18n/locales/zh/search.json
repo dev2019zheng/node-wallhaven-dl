@@ -1,0 +1,25 @@
+{
+  "eyebrow": "壁纸发现",
+  "title": "搜索",
+  "description": "从 Wallhaven 搜索并发现壁纸。",
+  "badge": {
+    "searching": "搜索中",
+    "error": "搜索出错",
+    "loaded": "结果已加载",
+    "ready": "可以开始搜索"
+  },
+  "filters": "搜索筛选",
+  "results": "搜索结果",
+  "queryPlaceholder": "搜索壁纸（例如：群山、动漫、太空…）",
+  "submit": "搜索",
+  "empty": {
+    "startTitle": "先输入关键词",
+    "startDescription": "试试群山、动漫、城市夜景、太空或 4K 风景。",
+    "noMatch": "当前筛选条件下没有匹配的壁纸。"
+  },
+  "pageOf": "第 {{current}} / {{last}} 页",
+  "perPage": "每页 {{count}} 张",
+  "clearSelection": "清除选择",
+  "loadingResults": "正在加载搜索结果",
+  "inspector": "检视器"
+}

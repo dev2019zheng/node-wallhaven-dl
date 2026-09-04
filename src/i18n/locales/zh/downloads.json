@@ -1,0 +1,49 @@
+{
+  "eyebrow": "壁纸传输队列",
+  "title": "下载",
+  "description": "跟踪排队、进行中、已完成与失败的传输。",
+  "badge": {
+    "loading": "队列加载中",
+    "unavailable": "队列不可用",
+    "active": "传输进行中",
+    "ready": "队列就绪"
+  },
+  "commandCenter": "指挥中心",
+  "queueHealth": "队列健康",
+  "queued": "排队中",
+  "running": "下载中",
+  "completed": "已完成",
+  "failed": "失败",
+  "progress": "进度",
+  "waitingByteProgress": "等待字节进度",
+  "knownBytesPercent": "已知字节的 {{percent}}%",
+  "openFolder": "打开文件夹",
+  "opening": "正在打开…",
+  "nativeFolderHint": "本地文件夹与文件打开功能仅在桌面应用中可用。",
+  "tasks": "任务",
+  "refresh": "刷新",
+  "tabs": {
+    "filters": "下载队列筛选",
+    "all": "全部",
+    "downloading": "下载中",
+    "queued": "排队",
+    "completed": "已完成",
+    "failed": "失败"
+  },
+  "empty": {
+    "all": "还没有下载。从搜索页开始，并在此跟踪进度。",
+    "queued": "当前没有排队中的传输。",
+    "running": "当前没有进行中的传输。",
+    "completed": "还没有已完成的下载。",
+    "failed": "当前没有失败的下载。"
+  },
+  "loading": "正在加载已有下载…",
+  "liveEvents": "实时事件",
+  "transfer": {
+    "received": "已接收 {{bytes}}",
+    "activeTransfers": "{{count}} 个进行中传输",
+    "runningQueued": "{{running}} 下载中 · {{queued}} 排队",
+    "completeFailed": "{{completed}} 完成 · {{failed}} 失败",
+    "noActivity": "暂无传输活动"
+  }
+}

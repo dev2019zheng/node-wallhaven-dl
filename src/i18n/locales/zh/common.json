@@ -1,0 +1,34 @@
+{
+  "brand": {
+    "name": "Wallhaven",
+    "subtitle": "桌面端"
+  },
+  "language": {
+    "toggleLabel": "语言",
+    "showZh": "中文",
+    "showEn": "EN",
+    "switchToZh": "切换到中文",
+    "switchToEn": "切换到英文"
+  },
+  "theme": {
+    "switchToLight": "切换到浅色主题",
+    "switchToDark": "切换到深色主题",
+    "light": "浅色",
+    "dark": "深色",
+    "accent": "强调色",
+    "useAccent": "使用{{label}}强调色"
+  },
+  "desktopRuntimeUnavailable": "此操作需要 Tauri 桌面运行时，在网页预览中不可用。",
+  "desktopRuntimeUnavailableTitle": "桌面运行时不可用",
+  "actions": {
+    "retry": "重试",
+    "refresh": "刷新",
+    "cancel": "取消",
+    "confirm": "确认",
+    "copy": "复制",
+    "delete": "删除",
+    "open": "打开",
+    "save": "保存"
+  },
+  "loading": "加载中…"
+}
