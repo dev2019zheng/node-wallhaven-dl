@@ -124,6 +124,7 @@ export function Sidebar() {
 
       <section className="wh-kinetic-card mt-auto rounded-[16px] border border-border bg-[var(--surface-deep)] p-3" aria-label="Download queue summary">
         <button
+          aria-label="Download queue"
           className="flex w-full items-start justify-between gap-3 text-left"
           onClick={() => navigate("/downloads")}
           type="button"
@@ -133,7 +134,7 @@ export function Sidebar() {
               <Download className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-foreground">Download queue</p>
+              <p className="truncate text-[13px] font-semibold text-foreground" title="Download queue">DL queue</p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase text-primary">{queueStatusLabel}</p>
             </div>
           </div>
