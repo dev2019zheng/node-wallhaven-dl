@@ -1,6 +1,8 @@
 import { convertFileSrc } from "@tauri-apps/api/core"
+import type { TFunction } from "i18next"
 import { Check, Copy, Download, ExternalLink, FolderOpen, Grid3X3, Heart, List, Search, Tag, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { downloadWallpaper as downloadWallpaperInService } from "@/application/downloads/downloads-service"
 import {
@@ -22,7 +24,6 @@ import {
 } from "@/features/shell/ui-shell-store"
 import { writeClipboardText } from "@/infrastructure/browser/clipboard"
 import {
-  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE,
   isNativeShellAvailable,
   revealPath,
 } from "@/infrastructure/tauri/native-shell"
@@ -59,19 +60,19 @@ const collectionChipByShortcut: Partial<Record<GalleryCollectionShortcut, Filter
   Anime: "Anime",
 }
 
-function formatDisplayPath(path: string | null): string {
+function formatDisplayPath(path: string | null, t: TFunction): string {
   if (!path) {
-    return "Path: ~/Pictures/Wallhaven"
+    return t("gallery:pathDefault")
   }
 
   const normalizedPath = path.replace(/\\/g, "/")
   const segments = normalizedPath.split("/").filter(Boolean)
 
   if (segments.length <= 3) {
-    return `Path: ${normalizedPath}`
+    return t("gallery:pathPrefix", { path: normalizedPath })
   }
 
-  return `Path: ~/${segments.slice(-2).join("/")}`
+  return t("gallery:pathPrefix", { path: `~/${segments.slice(-2).join("/")}` })
 }
 
 function getGalleryCountLabel(
@@ -79,16 +80,17 @@ function getGalleryCountLabel(
   visibleCount: number,
   loadedCount: number,
   hasQuery: boolean,
+  t: TFunction,
 ): string | null {
   if (!gallery || loadedCount === 0) {
     return null
   }
 
   if (hasQuery) {
-    return `Showing ${visibleCount} of ${loadedCount} loaded archived wallpapers.`
+    return t("gallery:countFiltered", { visible: visibleCount, loaded: loadedCount })
   }
 
-  return `Showing ${loadedCount} of ${gallery.total} archived wallpapers.`
+  return t("gallery:countAll", { loaded: loadedCount, total: gallery.total })
 }
 
 function getDetailTags(item: GalleryGridItem | null): string[] {
@@ -231,6 +233,7 @@ function isInImportGroup(createdAt: string, group: string | null, now = new Date
 }
 
 export function GalleryPage() {
+  const { t } = useTranslation(["gallery", "common"])
   const [gallery, setGallery] = useState<GalleryListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -379,6 +382,7 @@ export function GalleryPage() {
           activeChip !== "All" ||
           activeCollectionShortcut !== null ||
           activeImportGroup !== null,
+        t,
       ),
     [
       activeChip,
@@ -391,8 +395,8 @@ export function GalleryPage() {
     ],
   )
   const galleryPathLabel = useMemo(
-    () => formatDisplayPath(selectedItem?.absolutePath ?? galleryItems[0]?.absolutePath ?? null),
-    [galleryItems, selectedItem],
+    () => formatDisplayPath(selectedItem?.absolutePath ?? galleryItems[0]?.absolutePath ?? null, t),
+    [galleryItems, selectedItem, t],
   )
   const parsedTagDraft = useMemo(() => parseTagDraft(tagDraft), [tagDraft])
   const hasTagDraftChanges = useMemo(
@@ -477,11 +481,11 @@ export function GalleryPage() {
       })
       updateGalleryItem(updatedItem)
       showToast(
-        isFavorite ? "Added to favorites" : "Removed from favorites",
+        isFavorite ? t("gallery:toasts.addedToFavorites") : t("gallery:toasts.removedFromFavorites"),
         item.fileName,
       )
     } catch (error) {
-      showToast("Favorite failed", getErrorMessage(error, "Unable to update favorite."), "error")
+      showToast(t("gallery:toasts.favoriteFailed"), getErrorMessage(error, "Unable to update favorite."), "error")
     } finally {
       setPendingAction(null)
     }
@@ -501,9 +505,12 @@ export function GalleryPage() {
         tags: nextTags,
       })
       updateGalleryItem(updatedItem)
-      showToast("Tags saved", updatedItem.tags.length > 0 ? updatedItem.tags.join(", ") : "No custom tags")
+      showToast(
+        t("gallery:toasts.tagsSaved"),
+        updatedItem.tags.length > 0 ? updatedItem.tags.join(", ") : t("gallery:toasts.noCustomTags"),
+      )
     } catch (error) {
-      showToast("Tag update failed", getErrorMessage(error, "Unable to update tags."), "error")
+      showToast(t("gallery:toasts.tagUpdateFailed"), getErrorMessage(error, "Unable to update tags."), "error")
     } finally {
       setPendingAction(null)
     }
@@ -512,9 +519,9 @@ export function GalleryPage() {
   const handleCopyPath = async (item: GalleryGridItem) => {
     try {
       await writeClipboardText(item.absolutePath)
-      showToast("Path copied", item.absolutePath)
+      showToast(t("gallery:toasts.pathCopied"), item.absolutePath)
     } catch (error) {
-      showToast("Copy failed", getErrorMessage(error, "Clipboard is unavailable."), "error")
+      showToast(t("gallery:toasts.copyFailed"), getErrorMessage(error, "Clipboard is unavailable."), "error")
     }
   }
 
@@ -529,9 +536,9 @@ export function GalleryPage() {
         purity: item.purity ?? undefined,
         category: item.category ?? undefined,
       })
-      showToast("Download queued", item.fileName)
+      showToast(t("gallery:toasts.downloadQueued"), item.fileName)
     } catch (error) {
-      showToast("Download failed", getErrorMessage(error, "Unable to queue download."), "error")
+      showToast(t("gallery:toasts.downloadFailed"), getErrorMessage(error, "Unable to queue download."), "error")
     } finally {
       setPendingAction(null)
     }
@@ -539,7 +546,11 @@ export function GalleryPage() {
 
   const handleRevealItem = async (item: GalleryGridItem) => {
     if (!canUseNativeShell) {
-      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      showToast(
+        t("common:desktopRuntimeUnavailableTitle"),
+        t("common:desktopRuntimeUnavailable"),
+        "info",
+      )
       return
     }
 
@@ -548,7 +559,7 @@ export function GalleryPage() {
     try {
       await revealPath(item.absolutePath)
     } catch (error) {
-      showToast("Reveal failed", getErrorMessage(error, "Unable to reveal the local file."), "error")
+      showToast(t("gallery:toasts.revealFailed"), getErrorMessage(error, "Unable to reveal the local file."), "error")
     } finally {
       setPendingAction(null)
     }
@@ -560,9 +571,9 @@ export function GalleryPage() {
     try {
       await deleteGalleryItemInService({ wallpaperId: item.wallpaperId })
       removeGalleryItem(item.wallpaperId)
-      showToast("Wallpaper deleted", item.fileName)
+      showToast(t("gallery:toasts.wallpaperDeleted"), item.fileName)
     } catch (error) {
-      showToast("Delete failed", getErrorMessage(error, "Unable to delete the local wallpaper."), "error")
+      showToast(t("gallery:toasts.deleteFailed"), getErrorMessage(error, "Unable to delete the local wallpaper."), "error")
     } finally {
       setPendingAction(null)
     }
@@ -575,38 +586,38 @@ export function GalleryPage() {
     }
 
     setConfirm({
-      title: "Delete wallpaper?",
-      description: `This removes ${item.fileName} from disk and the local gallery archive.`,
-      confirmLabel: "Delete wallpaper",
+      title: t("gallery:confirm.deleteTitle"),
+      description: t("gallery:confirm.deleteDescription", { fileName: item.fileName }),
+      confirmLabel: t("gallery:confirm.deleteLabel"),
       onConfirm: () => {
         void deleteItem(item)
       },
     })
   }
   const headingBadge = isLoading && !gallery
-    ? { label: "Loading archive", tone: "info" as const }
+    ? { label: t("gallery:badge.loading"), tone: "info" as const }
     : loadError
-      ? { label: "Archive unavailable", tone: "error" as const }
+      ? { label: t("gallery:badge.error"), tone: "error" as const }
       : galleryItems.length > 0
-        ? { label: "Archive loaded", tone: "success" as const }
-        : { label: "Archive empty", tone: "info" as const }
+        ? { label: t("gallery:badge.loaded"), tone: "success" as const }
+        : { label: t("gallery:badge.empty"), tone: "info" as const }
 
   return (
     <section className="space-y-6">
       <PageHeading
         badge={headingBadge.label}
         badgeTone={headingBadge.tone}
-        description="Browse archived local wallpapers."
-        eyebrow="Local wallpaper library"
-        title="Gallery"
+        description={t("gallery:description")}
+        eyebrow={t("gallery:eyebrow")}
+        title={t("gallery:title")}
       />
 
-      <section aria-label="Gallery archive" className="space-y-6">
+      <section aria-label={t("gallery:archive")} className="space-y-6">
         <div className="wh-dense-bento grid grid-cols-1 items-center gap-3 md:grid-cols-[minmax(240px,1fr)_repeat(2,minmax(88px,1fr))] xl:grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] xl:gap-4">
           <label className="relative block md:col-span-3 xl:col-span-1">
             <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              aria-label="Search local gallery"
+              aria-label={t("gallery:searchLocal")}
               autoComplete="off"
               className="wh-control h-[42px] w-full pl-12 pr-4 text-[13px]"
               disabled={isLoading && !gallery}
@@ -615,7 +626,7 @@ export function GalleryPage() {
                 setActiveCollectionShortcut(null)
                 setActiveImportGroup(null)
               }}
-              placeholder="Search local library"
+              placeholder={t("gallery:searchPlaceholder")}
               type="search"
               value={localQuery}
             />
@@ -637,11 +648,11 @@ export function GalleryPage() {
               }}
               type="button"
             >
-              {chip}
+              {t(`gallery:chips.${chip}`)}
             </button>
           ))}
 
-          <div aria-label="Gallery view" className="wh-control grid h-[42px] grid-cols-2 items-center overflow-hidden p-0" role="group">
+          <div aria-label={t("gallery:view.group")} className="wh-control grid h-[42px] grid-cols-2 items-center overflow-hidden p-0" role="group">
             <button
               aria-pressed={galleryView === "grid"}
               className={
@@ -653,10 +664,10 @@ export function GalleryPage() {
               type="button"
             >
               <Grid3X3 className="h-4 w-4" />
-              Grid
+              {t("gallery:view.grid")}
             </button>
             <button
-              aria-label="List view"
+              aria-label={t("gallery:view.list")}
               aria-pressed={galleryView === "list"}
               className={
                 galleryView === "list"
@@ -673,7 +684,7 @@ export function GalleryPage() {
 
         {loadError ? <ErrorState message={loadError} /> : null}
 
-        {isLoading && !gallery ? <LoadingSkeleton label="Loading archived wallpapers..." /> : null}
+        {isLoading && !gallery ? <LoadingSkeleton label={t("gallery:loading")} /> : null}
 
         {!loadError && galleryCountLabel ? (
           <div className="wh-soft-success flex h-[54px] items-center justify-between rounded-[16px] px-6">
@@ -695,13 +706,13 @@ export function GalleryPage() {
 
         {!loadError && !isLoading && galleryItems.length === 0 ? (
           <EmptyState
-            description="Download one from Search to build the local gallery."
-            title="No archived wallpapers yet."
+            description={t("gallery:empty.noneDescription")}
+            title={t("gallery:empty.noneTitle")}
           />
         ) : null}
 
         {!loadError && !isLoading && galleryItems.length > 0 && filteredGalleryItems.length === 0 ? (
-          <EmptyState title="No archived wallpapers matched the current local search." />
+          <EmptyState title={t("gallery:empty.noMatch")} />
         ) : null}
 
         {!loadError && filteredGalleryItems.length > 0 ? (
@@ -724,14 +735,14 @@ export function GalleryPage() {
               />
 
               <section className="app-panel h-[252px] p-6">
-                <h3 className="text-[20px] font-semibold leading-7 text-foreground">Timeline</h3>
+                <h3 className="text-[20px] font-semibold leading-7 text-foreground">{t("gallery:timeline.heading")}</h3>
                 <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[1fr_240px] min-[1400px]:grid-cols-[1fr_296px]">
                   <div className="space-y-5">
                     {timelineGroups.map(({ label, count }) => (
                       <div className="grid grid-cols-[18px_1fr_120px] items-center gap-4" key={label}>
                         <span className={activeImportGroup === label ? "h-3 w-3 rounded-full bg-primary" : "h-3 w-3 rounded-full bg-[var(--timeline-dot-muted)]"} />
-                        <span className="text-[14px] font-semibold text-foreground">{label}</span>
-                        <span className="text-[13px] font-medium text-muted-foreground">{count} imported</span>
+                        <span className="text-[14px] font-semibold text-foreground">{t(`gallery:timeline.groups.${label}`)}</span>
+                        <span className="text-[13px] font-medium text-muted-foreground">{t("gallery:timeline.imported", { count })}</span>
                       </div>
                     ))}
                   </div>
@@ -741,7 +752,7 @@ export function GalleryPage() {
 
                       return (
                         <Button
-                          aria-label={`Open group ${label}`}
+                          aria-label={t("gallery:timeline.openGroup", { group: t(`gallery:timeline.groups.${label}`) })}
                           aria-pressed={isActiveTimelineGroup}
                           className={
                             isActiveTimelineGroup
@@ -760,7 +771,7 @@ export function GalleryPage() {
                           type="button"
                           variant="outline"
                         >
-                          Open {label}
+                          {t("gallery:timeline.openButton", { group: t(`gallery:timeline.groups.${label}`) })}
                         </Button>
                       )
                     })}
@@ -769,10 +780,10 @@ export function GalleryPage() {
               </section>
             </div>
 
-            <aside aria-label="Wallpaper detail" className="app-panel min-h-[570px] p-6">
+            <aside aria-label={t("gallery:detail.heading")} className="app-panel min-h-[570px] p-6">
               {selectedItem ? (
                 <div className="space-y-6">
-                  <h3 className="text-[20px] font-semibold leading-7 text-foreground">Wallpaper Detail</h3>
+                  <h3 className="text-[20px] font-semibold leading-7 text-foreground">{t("gallery:detail.heading")}</h3>
                   <div className="h-[210px] overflow-hidden rounded-[16px] border border-border bg-[var(--surface-deep)]">
                     <img
                       alt={`Selected wallpaper ${selectedItem.wallpaperId}`}
@@ -785,7 +796,10 @@ export function GalleryPage() {
                   <div className="space-y-2">
                     <h4 className="truncate text-[18px] font-semibold text-foreground">{selectedItem.fileName}</h4>
                     <p className="text-[13px] font-medium text-muted-foreground">
-                      Local asset · {(selectedItem.purity ?? "sfw").toUpperCase()} · {selectedItem.category ?? "general"}
+                      {t("gallery:detail.localAsset", {
+                        purity: (selectedItem.purity ?? "sfw").toUpperCase(),
+                        category: selectedItem.category ?? "general",
+                      })}
                     </p>
                     <p className="truncate text-[12px] text-muted-foreground">{selectedItem.relativeFilePath}</p>
                   </div>
@@ -797,7 +811,7 @@ export function GalleryPage() {
                       </span>
                     ))}
                     {selectedItem.isFavorite ? (
-                      <span className="rounded-full border border-primary/60 bg-primary/20 px-4 py-2 text-[12px] font-semibold text-foreground">Favorite</span>
+                      <span className="rounded-full border border-primary/60 bg-primary/20 px-4 py-2 text-[12px] font-semibold text-foreground">{t("gallery:detail.favorite")}</span>
                     ) : null}
                   </div>
 
@@ -811,7 +825,7 @@ export function GalleryPage() {
                       type="button"
                     >
                       <Download className="h-4 w-4" />
-                      {pendingAction === `download:${selectedItem.wallpaperId}` ? "Queueing" : "Download"}
+                      {pendingAction === `download:${selectedItem.wallpaperId}` ? t("gallery:actions.queueing") : t("gallery:actions.download")}
                     </Button>
                     <a
                       className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 py-2 text-[13px] font-semibold transition-colors hover:border-border-strong hover:bg-[var(--surface-hover)]"
@@ -820,7 +834,7 @@ export function GalleryPage() {
                       target="_blank"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      Open source
+                      {t("gallery:actions.openSource")}
                     </a>
                     <Button
                       className="h-12 w-full rounded-[14px]"
@@ -832,7 +846,7 @@ export function GalleryPage() {
                       variant="outline"
                     >
                       <Heart className={selectedItem.isFavorite ? "h-4 w-4 fill-current text-rose-300" : "h-4 w-4"} />
-                      {selectedItem.isFavorite ? "Unfavorite" : "Favorite"}
+                      {selectedItem.isFavorite ? t("gallery:actions.unfavorite") : t("gallery:actions.favorite")}
                     </Button>
                     <Button
                       className="h-12 w-full rounded-[14px]"
@@ -843,16 +857,16 @@ export function GalleryPage() {
                       variant="outline"
                     >
                       <Copy className="h-4 w-4" />
-                      Copy path
+                      {t("gallery:actions.copyPath")}
                     </Button>
                   </div>
 
                   <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] p-3">
                     <label className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="gallery-tags">
-                      Tags
+                      {t("gallery:actions.tags")}
                     </label>
                     <input
-                      aria-label="Edit gallery tags"
+                      aria-label={t("gallery:actions.editTags")}
                       autoComplete="off"
                       className="wh-control mt-3 h-10 w-full px-4 text-[13px]"
                       id="gallery-tags"
@@ -860,7 +874,7 @@ export function GalleryPage() {
                         setTagDraft(event.currentTarget.value)
                         setTagDraftWallpaperId(selectedItem.wallpaperId)
                       }}
-                      placeholder="nature, ultrawide, OLED"
+                      placeholder={t("gallery:actions.tagsPlaceholder")}
                       ref={tagInputRef}
                       value={tagDraft}
                     />
@@ -874,7 +888,7 @@ export function GalleryPage() {
                       variant="ghost"
                     >
                       <Tag className="h-4 w-4" />
-                      {pendingAction === `tags:${selectedItem.wallpaperId}` ? "Saving tags" : "Save tags"}
+                      {pendingAction === `tags:${selectedItem.wallpaperId}` ? t("gallery:actions.savingTags") : t("gallery:actions.saveTags")}
                     </Button>
                   </div>
 
@@ -889,7 +903,7 @@ export function GalleryPage() {
                       variant="ghost"
                     >
                       <FolderOpen className="h-4 w-4" />
-                      {pendingAction === `reveal:${selectedItem.wallpaperId}` ? "Revealing" : "Reveal"}
+                      {pendingAction === `reveal:${selectedItem.wallpaperId}` ? t("gallery:actions.revealing") : t("gallery:actions.reveal")}
                     </Button>
                     <Button
                       className="h-10 rounded-[14px]"
@@ -901,19 +915,19 @@ export function GalleryPage() {
                       variant="ghost"
                     >
                       <Trash2 className="h-4 w-4" />
-                      {pendingAction === `delete:${selectedItem.wallpaperId}` ? "Deleting" : "Delete"}
+                      {pendingAction === `delete:${selectedItem.wallpaperId}` ? t("gallery:actions.deleting") : t("gallery:actions.delete")}
                     </Button>
                   </div>
                   {!canUseNativeShell ? (
                     <p className="text-[12px] leading-5 text-muted-foreground">
-                      Revealing local files is available in the desktop app.
+                      {t("gallery:detail.revealHint")}
                     </p>
                   ) : null}
                 </div>
               ) : (
                 <EmptyState
-                  description="Select a local wallpaper to inspect file details and actions."
-                  title="No wallpaper selected."
+                  description={t("gallery:empty.noSelectionDescription")}
+                  title={t("gallery:empty.noSelectionTitle")}
                 />
               )}
             </aside>

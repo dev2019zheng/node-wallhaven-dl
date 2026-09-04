@@ -1,5 +1,6 @@
 import { FolderOpen, Radio, RefreshCcw } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import {
   applyDownloadProgressEvent,
@@ -27,7 +28,6 @@ import {
   listenForDownloadStatusEvents,
 } from "@/infrastructure/tauri/download-events"
 import {
-  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE,
   isNativeShellAvailable,
   openNativePath,
 } from "@/infrastructure/tauri/native-shell"
@@ -97,6 +97,7 @@ function formatBytes(bytes: number): string {
 function summarizeTransferProgress(
   downloads: DownloadListItem[],
   summary: ReturnType<typeof summarizeDownloads>,
+  t: (key: string, options?: Record<string, unknown>) => string,
 ): {
   primary: string
   secondary: string
@@ -110,14 +111,20 @@ function summarizeTransferProgress(
     knownTotalBytes > 0
       ? `${formatBytes(downloadedBytes)} / ${formatBytes(knownTotalBytes)}`
       : downloadedBytes > 0
-        ? `${formatBytes(downloadedBytes)} received`
-        : `${summary.activeCount} active transfers`
+        ? t("downloads:transfer.received", { bytes: formatBytes(downloadedBytes) })
+        : t("downloads:transfer.activeTransfers", { count: summary.activeCount })
   const secondary =
     summary.activeCount > 0
-      ? `${summary.runningCount} running · ${summary.queuedCount} queued`
+      ? t("downloads:transfer.runningQueued", {
+          running: summary.runningCount,
+          queued: summary.queuedCount,
+        })
       : summary.totalCount > 0
-        ? `${summary.completedCount} complete · ${summary.failedCount} failed`
-        : "No transfer activity yet"
+        ? t("downloads:transfer.completeFailed", {
+            completed: summary.completedCount,
+            failed: summary.failedCount,
+          })
+        : t("downloads:transfer.noActivity")
 
   return {
     primary,
@@ -127,6 +134,7 @@ function summarizeTransferProgress(
 }
 
 export function DownloadsPage() {
+  const { t } = useTranslation(["downloads", "common"])
   const [downloads, setDownloads] = useState<DownloadListItem[]>([])
   const [activeFilter, setActiveFilter] = useState<DownloadQueueFilter>("all")
   const [isLoading, setIsLoading] = useState(true)
@@ -175,14 +183,14 @@ export function DownloadsPage() {
                         : "info",
                 message:
                   event.payload.status === "queued"
-                    ? `已加入队列 · ${event.payload.fileName}`
+                    ? t("downloads:liveEventMessages.status.queued", { fileName: event.payload.fileName })
                     : event.payload.status === "running"
-                      ? `开始下载 · ${event.payload.fileName}`
+                      ? t("downloads:liveEventMessages.status.running", { fileName: event.payload.fileName })
                       : event.payload.status === "succeeded"
-                        ? `任务完成 · ${event.payload.fileName}`
+                        ? t("downloads:liveEventMessages.status.succeeded", { fileName: event.payload.fileName })
                         : event.payload.status === "skipped_existing"
-                          ? `已跳过重复文件 · ${event.payload.fileName}`
-                          : `下载失败 · ${event.payload.fileName}`,
+                          ? t("downloads:liveEventMessages.status.skippedExisting", { fileName: event.payload.fileName })
+                          : t("downloads:liveEventMessages.status.failed", { fileName: event.payload.fileName }),
                 timestamp: getEventTimestamp(),
               }),
             )
@@ -210,8 +218,11 @@ export function DownloadsPage() {
                 tone: "info",
                 message:
                   progressPercent === null
-                    ? `下载进度 · ${event.payload.fileName}`
-                    : `下载进度 · ${event.payload.fileName} · ${progressPercent}%`,
+                    ? t("downloads:liveEventMessages.progress.label", { fileName: event.payload.fileName })
+                    : t("downloads:liveEventMessages.progress.percent", {
+                        fileName: event.payload.fileName,
+                        percent: progressPercent,
+                      }),
                 timestamp: getEventTimestamp(),
               }),
             )
@@ -236,8 +247,8 @@ export function DownloadsPage() {
               tone: "warn",
               message:
                 listenerErrors.length > 1
-                  ? "Live event stream unavailable. Use Refresh to reload task snapshots."
-                  : "Live event stream partially unavailable. Use Refresh to reload task snapshots.",
+                  ? t("downloads:liveEventMessages.streamUnavailable")
+                  : t("downloads:liveEventMessages.streamPartiallyUnavailable"),
               timestamp: getEventTimestamp(),
             }),
           )
@@ -285,8 +296,8 @@ export function DownloadsPage() {
 
   const summary = useMemo(() => summarizeDownloads(downloads), [downloads])
   const transferProgress = useMemo(
-    () => summarizeTransferProgress(downloads, summary),
-    [downloads, summary],
+    () => summarizeTransferProgress(downloads, summary, t),
+    [downloads, summary, t],
   )
   const filteredDownloads = useMemo(
     () => filterDownloads(downloads, activeFilter),
@@ -331,7 +342,11 @@ export function DownloadsPage() {
 
   const handleOpenFolder = async () => {
     if (!canUseNativeShell) {
-      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      showToast(
+        t("common:desktopRuntimeUnavailableTitle"),
+        t("common:desktopRuntimeUnavailable"),
+        "info",
+      )
       return
     }
 
@@ -341,7 +356,11 @@ export function DownloadsPage() {
       const downloadDirectory = await loadDownloadDirectory()
       await openNativePath(downloadDirectory.effectiveDirectoryPath)
     } catch (error) {
-      showToast("Open folder failed", getErrorMessage(error, "Unable to open the download directory."), "error")
+      showToast(
+        t("downloads:toasts.openFolderFailed"),
+        getErrorMessage(error, "Unable to open the download directory."),
+        "error",
+      )
     } finally {
       setIsOpeningFolder(false)
     }
@@ -356,10 +375,18 @@ export function DownloadsPage() {
       setDownloads((currentDownloads) =>
         mergeLoadedDownloads(currentDownloads, loadedDownloads),
       )
-      showToast("Queue refreshed", `${loadedDownloads.length} tasks loaded.`, "info")
+      showToast(
+        t("downloads:toasts.queueRefreshed"),
+        t("downloads:toasts.tasksLoaded", { count: loadedDownloads.length }),
+        "info",
+      )
     } catch (error) {
       setLoadError(getErrorMessage(error, "Failed to refresh downloads."))
-      showToast("Refresh failed", getErrorMessage(error, "Unable to reload download tasks."), "error")
+      showToast(
+        t("downloads:toasts.refreshFailed"),
+        getErrorMessage(error, "Unable to reload download tasks."),
+        "error",
+      )
     } finally {
       setIsLoading(false)
     }
@@ -367,7 +394,11 @@ export function DownloadsPage() {
 
   const handlePrimaryAction = async (download: DownloadListItem) => {
     if (download.status !== "failed" && !canUseNativeShell) {
-      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      showToast(
+        t("common:desktopRuntimeUnavailableTitle"),
+        t("common:desktopRuntimeUnavailable"),
+        "info",
+      )
       return
     }
 
@@ -386,7 +417,7 @@ export function DownloadsPage() {
           purity: download.purity,
           category: download.category,
         })
-        showToast("Retry queued", download.fileName)
+        showToast(t("downloads:toasts.retryQueued"), download.fileName)
         return
       }
 
@@ -401,7 +432,11 @@ export function DownloadsPage() {
 
       await openNativePath(getParentDirectory(download.absolutePath))
     } catch (error) {
-      showToast("Task action failed", getErrorMessage(error, "Unable to open the selected download."), "error")
+      showToast(
+        t("downloads:toasts.taskActionFailed"),
+        getErrorMessage(error, "Unable to open the selected download."),
+        "error",
+      )
     } finally {
       setPendingTaskAction(download.id, null)
     }
@@ -416,9 +451,13 @@ export function DownloadsPage() {
       }
 
       await writeClipboardText(download.absolutePath)
-      showToast("Path copied", download.absolutePath)
+      showToast(t("downloads:toasts.pathCopied"), download.absolutePath)
     } catch (error) {
-      showToast("Copy failed", getErrorMessage(error, "Clipboard is unavailable."), "error")
+      showToast(
+        t("downloads:toasts.copyFailed"),
+        getErrorMessage(error, "Clipboard is unavailable."),
+        "error",
+      )
     } finally {
       setPendingTaskAction(download.id, null)
     }
@@ -432,9 +471,13 @@ export function DownloadsPage() {
       setDownloads((currentDownloads) =>
         currentDownloads.filter((currentDownload) => currentDownload.id !== download.id),
       )
-      showToast("Task deleted", download.fileName)
+      showToast(t("downloads:toasts.taskDeleted"), download.fileName)
     } catch (error) {
-      showToast("Delete failed", getErrorMessage(error, "Unable to delete the download task."), "error")
+      showToast(
+        t("downloads:toasts.deleteFailed"),
+        getErrorMessage(error, "Unable to delete the download task."),
+        "error",
+      )
     } finally {
       setPendingTaskAction(download.id, null)
     }
@@ -456,60 +499,60 @@ export function DownloadsPage() {
     }
 
     setConfirm({
-      title: "Delete download task?",
+      title: t("downloads:confirm.deleteTitle"),
       description,
-      confirmLabel: "Delete task",
+      confirmLabel: t("downloads:confirm.deleteLabel"),
       onConfirm: () => {
         void deleteTask(download)
       },
     })
   }
   const headingBadge = isLoading
-    ? { label: "Loading queue", tone: "info" as const }
+    ? { label: t("downloads:badge.loading"), tone: "info" as const }
     : loadError
-      ? { label: "Queue unavailable", tone: "error" as const }
+      ? { label: t("downloads:badge.unavailable"), tone: "error" as const }
       : summary.activeCount > 0
-        ? { label: "Transfers active", tone: "success" as const }
-        : { label: "Queue ready", tone: "info" as const }
+        ? { label: t("downloads:badge.active"), tone: "success" as const }
+        : { label: t("downloads:badge.ready"), tone: "info" as const }
 
   return (
     <section className="space-y-6">
       <PageHeading
         badge={headingBadge.label}
         badgeTone={headingBadge.tone}
-        description="Track queued, running, completed and failed transfers."
-        eyebrow="Wallpaper transfer queue"
-        title="Downloads"
+        description={t("downloads:description")}
+        eyebrow={t("downloads:eyebrow")}
+        title={t("downloads:title")}
       />
 
       <section className="wh-dense-bento grid grid-cols-1 items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)] min-[1500px]:grid-cols-[260px_minmax(0,1fr)_260px]">
         <aside className="app-panel space-y-6 p-6 min-[1500px]:h-[698px]">
           <div className="space-y-2">
-            <h3 className="text-[20px] font-semibold leading-7 text-foreground">Command Center</h3>
-            <p className="text-[13px] font-medium text-muted-foreground">Queue health</p>
+            <h3 className="text-[20px] font-semibold leading-7 text-foreground">{t("downloads:commandCenter")}</h3>
+            <p className="text-[13px] font-medium text-muted-foreground">{t("downloads:queueHealth")}</p>
           </div>
 
           <dl className="grid gap-[18px]">
             <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
-              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Queued</dt>
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("downloads:queued")}</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-foreground">{summary.queuedCount}</dd>
             </div>
             <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
-              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Running</dt>
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("downloads:running")}</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-primary">{summary.runningCount}</dd>
             </div>
             <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
-              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Completed</dt>
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("downloads:completed")}</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-emerald-400">{summary.completedCount}</dd>
             </div>
             <div className="wh-kinetic-card h-[62px] rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-3">
-              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Failed</dt>
+              <dt className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("downloads:failed")}</dt>
               <dd className="mt-1 text-[22px] font-bold leading-7 text-destructive">{summary.failedCount}</dd>
             </div>
           </dl>
 
           <div className="space-y-3">
-            <p className="text-[14px] font-semibold text-foreground">Progress</p>
+            <p className="text-[14px] font-semibold text-foreground">{t("downloads:progress")}</p>
             <div className="wh-kinetic-card h-[120px] rounded-[18px] border border-border bg-[var(--surface-deep)] p-4">
               <div className="truncate text-[22px] font-bold text-foreground">{transferProgress.primary}</div>
               <div className="mt-1 text-[13px] font-medium text-muted-foreground">{transferProgress.secondary}</div>
@@ -520,7 +563,9 @@ export function DownloadsPage() {
                 />
               </div>
               <p className="mt-3 text-[11px] font-medium text-muted-foreground">
-                {transferProgress.progressPercent > 0 ? `${transferProgress.progressPercent}% of known bytes` : "Waiting for byte progress"}
+                {transferProgress.progressPercent > 0
+                  ? t("downloads:knownBytesPercent", { percent: transferProgress.progressPercent })
+                  : t("downloads:waitingByteProgress")}
               </p>
             </div>
           </div>
@@ -534,11 +579,11 @@ export function DownloadsPage() {
             type="button"
           >
             <FolderOpen className="h-4 w-4" />
-            {isOpeningFolder ? "Opening..." : "Open folder"}
+            {isOpeningFolder ? t("downloads:opening") : t("downloads:openFolder")}
           </Button>
           {!canUseNativeShell ? (
             <p className="text-[12px] leading-5 text-muted-foreground">
-              Local folder and file opening is available in the desktop app.
+              {t("downloads:nativeFolderHint")}
             </p>
           ) : null}
         </aside>
@@ -546,9 +591,9 @@ export function DownloadsPage() {
         <section className="app-panel min-h-[520px] space-y-6 p-6 min-[1500px]:h-[698px]">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
-              <h3 className="text-[20px] font-semibold leading-7 text-foreground">Tasks</h3>
+              <h3 className="text-[20px] font-semibold leading-7 text-foreground">{t("downloads:tasks")}</h3>
               <p className="sr-only">
-                进入页面后先拉取已有任务，再持续接收状态与进度事件。
+                {t("downloads:tasksDescription")}
               </p>
             </div>
             <Button
@@ -561,7 +606,7 @@ export function DownloadsPage() {
               variant="outline"
             >
               <RefreshCcw className="h-4 w-4" />
-              Refresh
+              {t("downloads:refresh")}
             </Button>
           </div>
 
@@ -587,13 +632,13 @@ export function DownloadsPage() {
 
         <aside className="app-panel space-y-6 p-6 xl:col-span-2 min-[1500px]:col-span-1 min-[1500px]:h-[698px]">
           <div className="space-y-2">
-            <h3 className="text-[20px] font-semibold leading-7 text-foreground">Live Events</h3>
-            <p className="sr-only">最新状态事件会插入顶部，帮助确认队列是否仍在流动。</p>
+            <h3 className="text-[20px] font-semibold leading-7 text-foreground">{t("downloads:liveEvents")}</h3>
+            <p className="sr-only">{t("downloads:liveEventsDescription")}</p>
           </div>
 
           {liveEvents.length === 0 ? (
             <div className="rounded-[14px] border border-dashed border-border bg-[var(--surface-deep)] px-4 py-4 text-[13px] text-muted-foreground">
-              暂无事件，新的下载状态和进度会显示在这里。
+              {t("downloads:liveEventsEmpty")}
             </div>
           ) : (
             <div className="max-h-[592px] space-y-5 overflow-y-auto pr-1">
@@ -625,7 +670,9 @@ export function DownloadsPage() {
 
           <div className="mt-auto flex items-center gap-2 rounded-full border border-border bg-[var(--surface-deep)] px-3 py-2 text-[12px] font-semibold text-muted-foreground">
             <Radio className="h-3.5 w-3.5 text-emerald-400" />
-            {summary.activeCount > 0 ? `${summary.activeCount} active transfers` : "Event stream idle"}
+            {summary.activeCount > 0
+              ? t("downloads:transfer.activeTransfers", { count: summary.activeCount })
+              : t("downloads:eventStreamIdle")}
           </div>
         </aside>
       </section>

@@ -8,10 +8,96 @@
     "loaded": "Results loaded",
     "ready": "Ready to search"
   },
-  "filters": "Search filters",
-  "results": "Search results",
+  "filtersSection": "Search filters",
+  "resultsSection": "Search results",
   "queryPlaceholder": "Search for wallpapers  (e.g. mountains, anime, space...)",
   "submit": "Search",
+  "resultCountLabel": "{{count}} wallpapers loaded on this page.",
+  "summary": {
+    "results": "{{total}} results · Page {{current}} of {{last}}"
+  },
+  "selectedDownload": {
+    "loading": "Downloading selected...",
+    "disabled": "Selected items already downloading",
+    "ready": "Download selected"
+  },
+  "bulkDownload": {
+    "loading": "Downloading current query...",
+    "refreshRequired": "Search again before bulk download",
+    "multiplePages": "Download {{count}} pages",
+    "currentQuery": "Download current query"
+  },
+  "inspectorSelected": "{{count}} wallpapers selected",
+  "batch": {
+    "action": "Batch action",
+    "selectedItems": "{{count}} selected · {{count}} wallpapers",
+    "copyLinks": "Copy links",
+    "helper": "Search, then click the selection badge on cards to enable batch actions here."
+  },
+  "feedback": {
+    "copiedLinks": "Copied {{count}} Wallhaven links to clipboard.",
+    "singleDownloadStarted": "{{fileName}} download started. Check Downloads for progress.",
+    "singleDownloadFinished": "{{fileName}} download finished. Check Downloads for the task record.",
+    "selectedStarting": "Starting selected download for {{count}} wallpapers.",
+    "selectedProgress": "Selected download progress: {{processed}} finished, {{failed}} failed.",
+    "selectedFinished": "Finished downloading {{count}} wallpapers from the current selection. Check Downloads for the task record.",
+    "selectedFinishedWithFailures": "Finished downloading {{count}} wallpapers from the current selection; {{failed}} failed. Check Downloads for the task record.",
+    "bulkStarting": "Starting bulk download from page {{page}} for {{count}} page(s).",
+    "bulkProgress": "Bulk download progress: {{processed}} finished, {{failed}} failed.",
+    "bulkFinished": "Finished downloading {{count}} wallpapers. Check Downloads for the task record.",
+    "bulkFinishedWithFailures": "Finished downloading {{count}} wallpapers; {{failed}} failed. Check Downloads for the task record."
+  },
+  "filters": {
+    "queryLabel": "Query",
+    "category": "Category",
+    "purity": "Purity",
+    "sorting": "Sorting",
+    "resolution": "Resolution",
+    "aspectRatio": "Aspect Ratio",
+    "moreFilters": "More Filters",
+    "topRange": "Toplist range",
+    "useToplist": "Use Toplist",
+    "startPage": "Start page",
+    "pagesToDownload": "Pages to download",
+    "categories": {
+      "all": "All",
+      "general": "General",
+      "anime": "Anime",
+      "people": "People",
+      "ga": "General + Anime",
+      "gp": "General + People"
+    },
+    "purityOptions": {
+      "sketchy": "Sketchy",
+      "ws": "SFW + Sketchy",
+      "wn": "SFW + NSFW",
+      "sn": "Sketchy + NSFW",
+      "all": "All purity levels"
+    },
+    "sortingOptions": {
+      "dateAdded": "Date added",
+      "toplist": "Toplist"
+    },
+    "resolutionOptions": {
+      "all": "All",
+      "fullHd": "1080p+",
+      "twoK": "2K+",
+      "fourK": "4K+"
+    },
+    "aspectRatioOptions": {
+      "all": "All",
+      "portrait": "Portrait"
+    },
+    "topRangeOptions": {
+      "1M": "Past month",
+      "1d": "Past day",
+      "3d": "Past 3 days",
+      "1w": "Past week",
+      "3M": "Past 3 months",
+      "6M": "Past 6 months",
+      "1y": "Past year"
+    }
+  },
   "empty": {
     "startTitle": "Start with a query",
     "startDescription": "Try mountains, anime, city night, space, or 4K landscape.",
