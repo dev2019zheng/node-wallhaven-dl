@@ -1,5 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
+import { initI18n } from "@/i18n";
+
 if (!window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -16,3 +18,6 @@ if (!window.matchMedia) {
     })),
   });
 }
+
+// Keep existing English assertions stable across the suite.
+await initI18n({ lng: "en" });
