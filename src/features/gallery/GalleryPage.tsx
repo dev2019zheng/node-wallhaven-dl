@@ -1,6 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core"
 import { Check, Copy, Download, ExternalLink, FolderOpen, Grid3X3, Heart, List, Search, Tag, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { downloadWallpaper as downloadWallpaperInService } from "@/application/downloads/downloads-service"
 import {
@@ -22,7 +23,6 @@ import {
 } from "@/features/shell/ui-shell-store"
 import { writeClipboardText } from "@/infrastructure/browser/clipboard"
 import {
-  DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE,
   isNativeShellAvailable,
   revealPath,
 } from "@/infrastructure/tauri/native-shell"
@@ -59,36 +59,19 @@ const collectionChipByShortcut: Partial<Record<GalleryCollectionShortcut, Filter
   Anime: "Anime",
 }
 
-function formatDisplayPath(path: string | null): string {
+function formatDisplayPathValue(path: string | null): string {
   if (!path) {
-    return "Path: ~/Pictures/Wallhaven"
+    return "~/Pictures/Wallhaven"
   }
 
   const normalizedPath = path.replace(/\\/g, "/")
   const segments = normalizedPath.split("/").filter(Boolean)
 
   if (segments.length <= 3) {
-    return `Path: ${normalizedPath}`
+    return normalizedPath
   }
 
-  return `Path: ~/${segments.slice(-2).join("/")}`
-}
-
-function getGalleryCountLabel(
-  gallery: GalleryListResponse | null,
-  visibleCount: number,
-  loadedCount: number,
-  hasQuery: boolean,
-): string | null {
-  if (!gallery || loadedCount === 0) {
-    return null
-  }
-
-  if (hasQuery) {
-    return `Showing ${visibleCount} of ${loadedCount} loaded archived wallpapers.`
-  }
-
-  return `Showing ${loadedCount} of ${gallery.total} archived wallpapers.`
+  return `~/${segments.slice(-2).join("/")}`
 }
 
 function getDetailTags(item: GalleryGridItem | null): string[] {
@@ -231,6 +214,7 @@ function isInImportGroup(createdAt: string, group: string | null, now = new Date
 }
 
 export function GalleryPage() {
+  const { t } = useTranslation(["gallery", "common"])
   const [gallery, setGallery] = useState<GalleryListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -369,30 +353,47 @@ export function GalleryPage() {
       null,
     [filteredGalleryItems, selectedWallpaperId],
   )
-  const galleryCountLabel = useMemo(
-    () =>
-      getGalleryCountLabel(
-        gallery,
-        filteredGalleryItems.length,
-        galleryItems.length,
-        normalizedLocalQuery.length > 0 ||
-          activeChip !== "All" ||
-          activeCollectionShortcut !== null ||
-          activeImportGroup !== null,
-      ),
-    [
-      activeChip,
-      activeCollectionShortcut,
-      activeImportGroup,
-      filteredGalleryItems.length,
-      gallery,
-      galleryItems.length,
-      normalizedLocalQuery.length,
-    ],
-  )
+  const galleryCountLabel = useMemo(() => {
+    if (!gallery || galleryItems.length === 0) {
+      return null
+    }
+
+    const hasQuery =
+      normalizedLocalQuery.length > 0 ||
+      activeChip !== "All" ||
+      activeCollectionShortcut !== null ||
+      activeImportGroup !== null
+
+    if (hasQuery) {
+      return t("countFiltered", {
+        visible: filteredGalleryItems.length,
+        loaded: galleryItems.length,
+      })
+    }
+
+    return t("countAll", {
+      loaded: galleryItems.length,
+      total: gallery.total,
+    })
+  }, [
+    activeChip,
+    activeCollectionShortcut,
+    activeImportGroup,
+    filteredGalleryItems.length,
+    gallery,
+    galleryItems.length,
+    normalizedLocalQuery.length,
+    t,
+  ])
+
   const galleryPathLabel = useMemo(
-    () => formatDisplayPath(selectedItem?.absolutePath ?? galleryItems[0]?.absolutePath ?? null),
-    [galleryItems, selectedItem],
+    () =>
+      t("pathPrefix", {
+        path: formatDisplayPathValue(
+          selectedItem?.absolutePath ?? galleryItems[0]?.absolutePath ?? null,
+        ),
+      }),
+    [galleryItems, selectedItem, t],
   )
   const parsedTagDraft = useMemo(() => parseTagDraft(tagDraft), [tagDraft])
   const hasTagDraftChanges = useMemo(
@@ -539,7 +540,7 @@ export function GalleryPage() {
 
   const handleRevealItem = async (item: GalleryGridItem) => {
     if (!canUseNativeShell) {
-      showToast("Desktop runtime unavailable", DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE, "info")
+      showToast(t("common:desktopRuntimeUnavailableTitle"), t("common:desktopRuntimeUnavailable"), "info")
       return
     }
 
@@ -584,29 +585,29 @@ export function GalleryPage() {
     })
   }
   const headingBadge = isLoading && !gallery
-    ? { label: "Loading archive", tone: "info" as const }
+    ? { label: t("badge.loading"), tone: "info" as const }
     : loadError
-      ? { label: "Archive unavailable", tone: "error" as const }
+      ? { label: t("badge.error"), tone: "error" as const }
       : galleryItems.length > 0
-        ? { label: "Archive loaded", tone: "success" as const }
-        : { label: "Archive empty", tone: "info" as const }
+        ? { label: t("badge.loaded"), tone: "success" as const }
+        : { label: t("badge.empty"), tone: "info" as const }
 
   return (
     <section className="space-y-6">
       <PageHeading
         badge={headingBadge.label}
         badgeTone={headingBadge.tone}
-        description="Browse archived local wallpapers."
-        eyebrow="Local wallpaper library"
-        title="Gallery"
+        description={t("description")}
+        eyebrow={t("eyebrow")}
+        title={t("title")}
       />
 
-      <section aria-label="Gallery archive" className="space-y-6">
+      <section aria-label={t("archive")} className="space-y-6">
         <div className="wh-dense-bento grid grid-cols-1 items-center gap-3 md:grid-cols-[minmax(240px,1fr)_repeat(2,minmax(88px,1fr))] xl:grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] xl:gap-4">
           <label className="relative block md:col-span-3 xl:col-span-1">
             <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              aria-label="Search local gallery"
+              aria-label={t("searchLocal")}
               autoComplete="off"
               className="wh-control h-[42px] w-full pl-12 pr-4 text-[13px]"
               disabled={isLoading && !gallery}
@@ -615,7 +616,7 @@ export function GalleryPage() {
                 setActiveCollectionShortcut(null)
                 setActiveImportGroup(null)
               }}
-              placeholder="Search local library"
+              placeholder={t("searchPlaceholder")}
               type="search"
               value={localQuery}
             />
@@ -637,11 +638,11 @@ export function GalleryPage() {
               }}
               type="button"
             >
-              {chip}
+              {t(`chips.${chip}`)}
             </button>
           ))}
 
-          <div aria-label="Gallery view" className="wh-control grid h-[42px] grid-cols-2 items-center overflow-hidden p-0" role="group">
+          <div aria-label={t("view.group")} className="wh-control grid h-[42px] grid-cols-2 items-center overflow-hidden p-0" role="group">
             <button
               aria-pressed={galleryView === "grid"}
               className={
@@ -653,10 +654,10 @@ export function GalleryPage() {
               type="button"
             >
               <Grid3X3 className="h-4 w-4" />
-              Grid
+              {t("view.grid")}
             </button>
             <button
-              aria-label="List view"
+              aria-label={t("view.list")}
               aria-pressed={galleryView === "list"}
               className={
                 galleryView === "list"
@@ -673,7 +674,7 @@ export function GalleryPage() {
 
         {loadError ? <ErrorState message={loadError} /> : null}
 
-        {isLoading && !gallery ? <LoadingSkeleton label="Loading archived wallpapers..." /> : null}
+        {isLoading && !gallery ? <LoadingSkeleton label={t("loading")} /> : null}
 
         {!loadError && galleryCountLabel ? (
           <div className="wh-soft-success flex h-[54px] items-center justify-between rounded-[16px] px-6">
@@ -695,13 +696,13 @@ export function GalleryPage() {
 
         {!loadError && !isLoading && galleryItems.length === 0 ? (
           <EmptyState
-            description="Download one from Search to build the local gallery."
-            title="No archived wallpapers yet."
+            description={t("empty.noneDescription")}
+            title={t("empty.noneTitle")}
           />
         ) : null}
 
         {!loadError && !isLoading && galleryItems.length > 0 && filteredGalleryItems.length === 0 ? (
-          <EmptyState title="No archived wallpapers matched the current local search." />
+          <EmptyState title={t("empty.noMatch")} />
         ) : null}
 
         {!loadError && filteredGalleryItems.length > 0 ? (
@@ -912,8 +913,8 @@ export function GalleryPage() {
                 </div>
               ) : (
                 <EmptyState
-                  description="Select a local wallpaper to inspect file details and actions."
-                  title="No wallpaper selected."
+                  description={t("empty.noSelectionDescription")}
+                  title={t("empty.noSelectionTitle")}
                 />
               )}
             </aside>
