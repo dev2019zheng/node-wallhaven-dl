@@ -4,6 +4,14 @@ import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener"
 export const DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE =
   "This action needs the Tauri desktop runtime and is unavailable in the web preview."
 
+/** Prefer translating via i18n key `common:desktopRuntimeUnavailable` in UI. */
+export function getDesktopRuntimeUnavailableMessage(t?: (key: string) => string): string {
+  if (t) {
+    return t("common:desktopRuntimeUnavailable")
+  }
+  return DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE
+}
+
 export function isNativeShellAvailable(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
 }
