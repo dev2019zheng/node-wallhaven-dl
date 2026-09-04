@@ -2,6 +2,7 @@ import type { DownloadListItem } from "@/application/downloads/downloads.types"
 import type { DownloadQueueFilter } from "@/application/downloads/downloads-service"
 import { EmptyState } from "@/components/empty-state"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { useTranslation } from "react-i18next"
 
 import { DownloadTaskCard } from "./DownloadTaskCard"
 
@@ -16,18 +17,18 @@ type DownloadQueueProps = {
   pendingActionByTaskId: Record<string, "copy" | "delete" | "primary" | null>
 }
 
-function getEmptyStateCopy(filter: DownloadQueueFilter): string {
+function getEmptyStateKey(filter: DownloadQueueFilter): "empty.all" | "empty.queued" | "empty.running" | "empty.completed" | "empty.failed" {
   switch (filter) {
     case "all":
-      return "No downloads yet. Start one from Search and track progress here."
+      return "empty.all"
     case "queued":
-      return "No queued transfers right now."
+      return "empty.queued"
     case "running":
-      return "No running transfers right now."
+      return "empty.running"
     case "completed":
-      return "No completed downloads yet."
+      return "empty.completed"
     case "failed":
-      return "No failed downloads right now."
+      return "empty.failed"
   }
 }
 
@@ -41,12 +42,14 @@ export function DownloadQueue({
   onPrimaryAction,
   pendingActionByTaskId,
 }: DownloadQueueProps) {
+  const { t } = useTranslation("downloads")
+
   if (isLoading && downloads.length === 0) {
-    return <LoadingSkeleton label="Loading existing downloads..." />
+    return <LoadingSkeleton label={t("loading")} />
   }
 
   if (downloads.length === 0) {
-    return <EmptyState title={getEmptyStateCopy(filter)} />
+    return <EmptyState title={t(getEmptyStateKey(filter))} />
   }
 
   return (
