@@ -1,0 +1,144 @@
+diff --git a/src/features/search/SearchPage.tsx b/src/features/search/SearchPage.tsx
+index 9684285..45b6f25 100644
+--- a/src/features/search/SearchPage.tsx
++++ b/src/features/search/SearchPage.tsx
+@@ -1,6 +1,7 @@
+ import { zodResolver } from "@hookform/resolvers/zod";
+ import { Copy, Download, Loader2, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
+ import { useEffect, useMemo, useRef, useState } from "react";
++import { useTranslation } from "react-i18next";
+ import { useForm } from "react-hook-form";
+ import { z } from "zod";
+ 
+@@ -259,6 +260,7 @@ function decrementDownloadActivity(
+ }
+ 
+ export function SearchPage() {
++  const { t } = useTranslation(["search", "common"]);
+   const initialSessionSnapshot = getSearchPageSessionSnapshot();
+   const restoredSearchState = getRestoredSearchState(initialSessionSnapshot);
+   const { formState, handleSubmit, register, setValue, watch } = useForm<SearchPageFormValues>({
+@@ -645,26 +647,26 @@ export function SearchPage() {
+     }
+   };
+   const headingBadge = formState.isSubmitting
+-    ? { label: "Searching", tone: "info" as const }
++    ? { label: t("badge.searching"), tone: "info" as const }
+     : searchError
+-      ? { label: "Search error", tone: "error" as const }
++      ? { label: t("badge.error"), tone: "error" as const }
+       : result
+-        ? { label: "Results loaded", tone: "success" as const }
+-        : { label: "Ready to search", tone: "info" as const };
++        ? { label: t("badge.loaded"), tone: "success" as const }
++        : { label: t("badge.ready"), tone: "info" as const };
+ 
+   return (
+     <section className="space-y-6">
+       <PageHeading
+         badge={headingBadge.label}
+         badgeTone={headingBadge.tone}
+-        description="Search and discover wallpapers from Wallhaven."
+-        eyebrow="Wallpaper discovery"
+-        title="Search"
++        description={t("description")}
++        eyebrow={t("eyebrow")}
++        title={t("title")}
+       />
+ 
+       <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1440px]:gap-[26px]">
+         <div className="min-w-0 space-y-6">
+-          <section aria-label="Search filters">
++          <section aria-label={t("filters")}>
+             <form className="space-y-4" onSubmit={onSubmit}>
+               <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-[minmax(0,1fr)_122px] sm:gap-[18px]">
+                 <label className="relative block" htmlFor="search-query">
+@@ -674,7 +676,7 @@ export function SearchPage() {
+                     aria-label="关键词"
+                     className="wh-control h-[42px] w-full pl-12 pr-4 text-[13px]"
+                     id="search-query"
+-                    placeholder="Search for wallpapers  (e.g. mountains, anime, space...)"
++                    placeholder={t("queryPlaceholder")}
+                     {...register("q")}
+                   />
+                 </label>
+@@ -685,7 +687,7 @@ export function SearchPage() {
+                   type="submit"
+                 >
+                   {formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+-                  Search
++                  {t("submit")}
+                 </Button>
+               </div>
+ 
+@@ -777,15 +779,15 @@ export function SearchPage() {
+             </form>
+           </section>
+ 
+-          <section aria-label="Search results" className="space-y-4">
++          <section aria-label={t("results")} className="space-y-4">
+             <div className="flex min-h-[42px] flex-wrap items-center justify-between gap-3">
+               <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
+                 <h3 className="text-[14px] font-semibold text-foreground">
+-                  {resultSummaryLabel ?? "Start with a query"}
++                  {resultSummaryLabel ?? t("empty.startTitle")}
+                 </h3>
+                 {result ? (
+                   <span className="text-[13px] font-medium text-muted-foreground">
+-                    Page {result.meta.currentPage} of {result.meta.lastPage}
++                    {t("pageOf", { current: result.meta.currentPage, last: result.meta.lastPage })}
+                   </span>
+                 ) : null}
+               </div>
+@@ -804,10 +806,10 @@ export function SearchPage() {
+                     <span className="sr-only">{bulkDownloadLabel}</span>
+                   </Button>
+                   <div className="inline-flex h-[42px] items-center rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground">
+-                    {result.meta.perPage} per page
++                    {t("perPage", { count: result.meta.perPage })}
+                   </div>
+                   <button
+-                    aria-label="Clear selection"
++                    aria-label={t("clearSelection")}
+                     className="wh-icon-button h-[42px] w-[42px]"
+                     disabled={selectedSearchIds.length === 0 || isSelectedDownloading}
+                     onClick={clearSelectedSearchIds}
+@@ -839,7 +841,7 @@ export function SearchPage() {
+             ) : null}
+ 
+             {formState.isSubmitting ? (
+-              <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-3" aria-label="Loading search results">
++              <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-3" aria-label={t("loadingResults")}>
+                 {Array.from({ length: 9 }, (_, index) => (
+                   <div className="h-[156px] animate-pulse rounded-2xl border border-border bg-[var(--surface-deep)]" key={index} />
+                 ))}
+@@ -847,7 +849,7 @@ export function SearchPage() {
+             ) : null}
+ 
+             {!searchError && !formState.isSubmitting && result && result.data.length === 0 ? (
+-              <EmptyState title="No wallpapers matched the current filters." />
++              <EmptyState title={t("empty.noMatch")} />
+             ) : null}
+ 
+             {!searchError && !formState.isSubmitting && result && result.data.length > 0 ? (
+@@ -865,16 +867,16 @@ export function SearchPage() {
+ 
+             {!searchError && !formState.isSubmitting && !result ? (
+               <EmptyState
+-                description="Try mountains, anime, city night, space, or 4K landscape."
+-                title="Start with a query"
++                description={t("empty.startDescription")}
++                title={t("empty.startTitle")}
+               />
+             ) : null}
+           </section>
+         </div>
+ 
+-        <aside className="app-panel space-y-6 p-6 min-[1180px]:min-h-[600px]" aria-label="Inspector">
++        <aside className="app-panel space-y-6 p-6 min-[1180px]:min-h-[600px]" aria-label={t("inspector")}>
+           <div className="space-y-2">
+-            <h3 className="text-[20px] font-semibold leading-7 text-foreground">Inspector</h3>
++            <h3 className="text-[20px] font-semibold leading-7 text-foreground">{t("inspector")}</h3>
+             <p className="text-[13px] font-medium text-muted-foreground">
+               {selectedWallpapers.length > 0
+                 ? `Selected ${selectedWallpapers.length} wallpapers`
