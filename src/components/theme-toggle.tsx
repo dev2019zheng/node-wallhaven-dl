@@ -1,12 +1,14 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { useTranslation } from "react-i18next";
 
 import { themeAccentOptions, useThemeAccent } from "@/components/theme-accent-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function ThemeToggle() {
+  const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
   const { accent, isMounted: isAccentMounted, setAccent } = useThemeAccent();
   const [isThemeMounted, setIsThemeMounted] = useState(false);
@@ -26,7 +28,7 @@ export function ThemeToggle() {
   return (
     <div className="theme-control-shell">
       <Button
-        aria-label={isDarkTheme ? "Switch to light theme" : "Switch to dark theme"}
+        aria-label={isDarkTheme ? t("theme.switchToLight") : t("theme.switchToDark")}
         className="h-8 rounded-full px-4 shadow-none"
         onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
         size="sm"
@@ -34,19 +36,19 @@ export function ThemeToggle() {
         variant="outline"
       >
         {isDarkTheme ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        <span className="theme-mode-label">{isDarkTheme ? "Light" : "Dark"}</span>
+        <span className="theme-mode-label">{isDarkTheme ? t("theme.light") : t("theme.dark")}</span>
       </Button>
 
       <div className="theme-accent-divider h-5 w-px bg-border max-[640px]:hidden" />
 
-      <div aria-label="Accent theme" className="theme-accent-group flex items-center gap-1 max-[640px]:hidden" role="radiogroup">
+      <div aria-label={t("theme.accent")} className="theme-accent-group flex items-center gap-1 max-[640px]:hidden" role="radiogroup">
         {themeAccentOptions.map((option) => {
           const isActive = option.value === accent;
 
           return (
             <button
               aria-checked={isActive}
-              aria-label={`Use ${option.label} accent`}
+              aria-label={t("theme.useAccent", { label: option.label })}
               className={cn("theme-accent-option", isActive ? "shadow-[0_0_0_1px_var(--control-selected-border)]" : "")}
               data-active={isActive}
               key={option.value}
