@@ -10,6 +10,7 @@ import {
   saveStoredWallhavenKey,
   saveUserPreferences,
 } from "@/infrastructure/tauri/settings-repository";
+import { isDesktopRuntimeUnavailableError } from "@/infrastructure/tauri/runtime-errors";
 
 import type {
   DownloadDirectorySettings,
@@ -37,24 +38,8 @@ function createPreviewDownloadDirectory(): DownloadDirectorySettings {
   };
 }
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  return "";
-}
-
 function isTauriBridgeUnavailable(error: unknown): boolean {
-  const message = getErrorMessage(error);
-  return (
-    message.includes("Cannot read properties of undefined (reading 'invoke')") ||
-    message.includes("__TAURI_INTERNALS__")
-  );
+  return isDesktopRuntimeUnavailableError(error);
 }
 
 async function loadOptionalSetting<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
