@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
 import { writeClipboardText } from "@/infrastructure/browser/clipboard";
 import { chooseDirectory, revealPath } from "@/infrastructure/tauri/native-shell";
+import { toUserFacingErrorMessage } from "@/infrastructure/tauri/runtime-errors";
 import { cn } from "@/lib/utils";
 
 const settingsSchema = z.object({
@@ -79,11 +80,7 @@ const defaultPreferences: SettingsPreferences = {
 };
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallbackMessage;
+  return toUserFacingErrorMessage(error, fallbackMessage);
 }
 
 function isAbsolutePath(path: string): boolean {

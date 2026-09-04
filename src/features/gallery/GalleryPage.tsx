@@ -26,15 +26,12 @@ import {
   isNativeShellAvailable,
   revealPath,
 } from "@/infrastructure/tauri/native-shell"
+import { toUserFacingErrorMessage } from "@/infrastructure/tauri/runtime-errors"
 
 import { GalleryGrid, type GalleryGridItem } from "./components/GalleryGrid"
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallbackMessage
+  return toUserFacingErrorMessage(error, fallbackMessage)
 }
 
 function matchesLocalQuery(item: GalleryGridItem, query: string): boolean {
@@ -602,8 +599,8 @@ export function GalleryPage() {
       />
 
       <section aria-label="Gallery archive" className="space-y-6">
-        <div className="wh-dense-bento grid grid-cols-1 items-center gap-3 md:grid-cols-[minmax(240px,1fr)_repeat(2,minmax(88px,1fr))] xl:grid-cols-[minmax(360px,1fr)_repeat(5,116px)_164px] xl:gap-4">
-          <label className="relative block md:col-span-3 xl:col-span-1">
+        <div className="wh-dense-bento flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-4">
+          <label className="relative block w-full shrink-0 xl:max-w-[360px] xl:flex-1">
             <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               aria-label="Search local gallery"
@@ -621,27 +618,32 @@ export function GalleryPage() {
             />
           </label>
 
-          {filterChips.map((chip) => (
-            <button
-              aria-pressed={activeChip === chip}
-              className={
-                activeChip === chip
-                  ? "wh-selected-surface h-[42px] rounded-full border px-4 text-[13px] font-semibold text-foreground"
-                  : "h-[42px] rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground transition-[border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:text-foreground"
-              }
-              key={chip}
-              onClick={() => {
-                setActiveChip(chip)
-                setActiveCollectionShortcut(null)
-                setActiveImportGroup(null)
-              }}
-              type="button"
-            >
-              {chip}
-            </button>
-          ))}
+          <div
+            aria-label="Gallery purity filters"
+            className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {filterChips.map((chip) => (
+              <button
+                aria-pressed={activeChip === chip}
+                className={
+                  activeChip === chip
+                    ? "wh-selected-surface h-[42px] shrink-0 rounded-full border px-4 text-[13px] font-semibold whitespace-nowrap text-foreground"
+                    : "h-[42px] shrink-0 rounded-full border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold whitespace-nowrap text-muted-foreground transition-[border-color,color,transform] duration-300 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:text-foreground"
+                }
+                key={chip}
+                onClick={() => {
+                  setActiveChip(chip)
+                  setActiveCollectionShortcut(null)
+                  setActiveImportGroup(null)
+                }}
+                type="button"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
 
-          <div aria-label="Gallery view" className="wh-control grid h-[42px] grid-cols-2 items-center overflow-hidden p-0" role="group">
+          <div aria-label="Gallery view" className="wh-control grid h-[42px] w-full shrink-0 grid-cols-2 items-center overflow-hidden p-0 xl:w-[164px]" role="group">
             <button
               aria-pressed={galleryView === "grid"}
               className={

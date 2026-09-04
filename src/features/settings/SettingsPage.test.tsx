@@ -396,7 +396,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     expect(
-      await screen.findByText(/Cannot read properties of undefined \(reading 'invoke'\)/i),
+      await screen.findByText(/Desktop runtime unavailable\. Open the Tauri desktop app to use this feature\./i),
     ).toBeInTheDocument();
     expect(screen.getByText("Storage unavailable")).toBeInTheDocument();
     expect(screen.getByText("Settings unavailable")).toBeInTheDocument();
