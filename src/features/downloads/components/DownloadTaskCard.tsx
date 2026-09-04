@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Copy, ExternalLink, FolderOpen, ImageIcon, RotateCcw, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 import type {
@@ -46,40 +47,46 @@ function formatBytes(bytes: number): string {
   return `${formatter.format(value)} ${units[unitIndex]}`;
 }
 
-function formatStatus(status: DownloadTaskStatus): string {
+function formatStatus(
+  status: DownloadTaskStatus,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   switch (status) {
     case "queued":
-      return "Queued";
+      return t("downloads:status.queued");
     case "running":
-      return "Downloading";
+      return t("downloads:status.running");
     case "succeeded":
-      return "Completed";
+      return t("downloads:status.succeeded");
     case "failed":
-      return "Failed";
+      return t("downloads:status.failed");
     case "skipped_existing":
-      return "Skipped";
+      return t("downloads:status.skippedExisting");
   }
 }
 
-function getProgressLabel(download: DownloadListItem): string {
+function getProgressLabel(
+  download: DownloadListItem,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   if (download.downloadedBytes > 0 && download.totalBytes) {
     return `${formatBytes(download.downloadedBytes)} / ${formatBytes(download.totalBytes)}`;
   }
 
   if (download.downloadedBytes > 0) {
-    return `${formatBytes(download.downloadedBytes)} downloaded`;
+    return t("downloads:progressLabel.downloaded", { bytes: formatBytes(download.downloadedBytes) });
   }
 
   switch (download.status) {
     case "queued":
-      return "Waiting to start";
+      return t("downloads:progressLabel.waitingToStart");
     case "running":
-      return "Connecting";
+      return t("downloads:progressLabel.connecting");
     case "succeeded":
     case "skipped_existing":
-      return "Saved to disk";
+      return t("downloads:progressLabel.savedToDisk");
     case "failed":
-      return "Failed before transfer";
+      return t("downloads:progressLabel.failedBeforeTransfer");
   }
 }
 
@@ -95,18 +102,21 @@ function getProgressPercent(download: DownloadListItem): number | null {
   return null;
 }
 
-function getTaskDetailLabel(download: DownloadListItem): string {
+function getTaskDetailLabel(
+  download: DownloadListItem,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   switch (download.status) {
     case "queued":
-      return "Waiting";
+      return t("downloads:detail.waiting");
     case "running":
-      return download.downloadedBytes > 0 ? "Byte progress" : "Connecting";
+      return download.downloadedBytes > 0 ? t("downloads:detail.byteProgress") : t("downloads:detail.connecting");
     case "succeeded":
-      return download.absolutePath ? "Ready to open" : "Path unavailable";
+      return download.absolutePath ? t("downloads:detail.readyToOpen") : t("downloads:detail.pathUnavailable");
     case "skipped_existing":
-      return download.absolutePath ? "Already saved" : "Path unavailable";
+      return download.absolutePath ? t("downloads:detail.alreadySaved") : t("downloads:detail.pathUnavailable");
     case "failed":
-      return download.sourceUrl ? "Retry available" : "Retry URL unavailable";
+      return download.sourceUrl ? t("downloads:detail.retryAvailable") : t("downloads:detail.retryUnavailable");
   }
 }
 
@@ -124,7 +134,10 @@ function getProgressBarClass(status: DownloadTaskStatus): string {
   }
 }
 
-function getPrimaryActionMeta(download: DownloadListItem): {
+function getPrimaryActionMeta(
+  download: DownloadListItem,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): {
   icon: ReactNode;
   label: string;
 } {
@@ -134,23 +147,23 @@ function getPrimaryActionMeta(download: DownloadListItem): {
       return {
         icon: <FolderOpen className="h-4 w-4" />,
         label: download.absolutePath
-          ? `Open folder for task ${download.id}`
-          : `Open folder unavailable for task ${download.id}`,
+          ? t("downloads:actions.openFolderForTask", { id: download.id })
+          : t("downloads:actions.openFolderUnavailableForTask", { id: download.id }),
       };
     case "succeeded":
     case "skipped_existing":
       return {
         icon: <ExternalLink className="h-4 w-4" />,
         label: download.absolutePath
-          ? `Open file for task ${download.id}`
-          : `Open file unavailable for task ${download.id}`,
+          ? t("downloads:actions.openFileForTask", { id: download.id })
+          : t("downloads:actions.openFileUnavailableForTask", { id: download.id }),
       };
     case "failed":
       return {
         icon: <RotateCcw className="h-4 w-4" />,
         label: download.sourceUrl
-          ? `Retry task ${download.id}`
-          : `Retry unavailable for task ${download.id}`,
+          ? t("downloads:actions.retryTask", { id: download.id })
+          : t("downloads:actions.retryUnavailableForTask", { id: download.id }),
       };
   }
 }
@@ -163,10 +176,13 @@ function isPrimaryActionDisabled(download: DownloadListItem, canUseNativeShell: 
   return !canUseNativeShell || !download.absolutePath;
 }
 
-function getCopyActionLabel(download: DownloadListItem): string {
+function getCopyActionLabel(
+  download: DownloadListItem,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   return download.absolutePath
-    ? `Copy path for task ${download.id}`
-    : `Copy path unavailable for task ${download.id}`;
+    ? t("downloads:actions.copyPathForTask", { id: download.id })
+    : t("downloads:actions.copyPathUnavailableForTask", { id: download.id });
 }
 
 function getPreviewSrc(download: DownloadListItem): string | null {
@@ -192,9 +208,10 @@ export function DownloadTaskCard({
   onPrimaryAction,
   pendingAction,
 }: DownloadTaskCardProps) {
-  const progressLabel = getProgressLabel(download);
+  const { t } = useTranslation("downloads");
+  const progressLabel = getProgressLabel(download, t);
   const progressPercent = getProgressPercent(download) ?? 0;
-  const primaryAction = getPrimaryActionMeta(download);
+  const primaryAction = getPrimaryActionMeta(download, t);
   const primaryActionDisabled =
     pendingAction === "primary" || isPrimaryActionDisabled(download, canUseNativeShell);
   const copyActionDisabled = pendingAction === "copy" || !download.absolutePath;
@@ -224,7 +241,7 @@ export function DownloadTaskCard({
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
               <ImageIcon className="h-4 w-4" />
-              <span className="sr-only">Preview unavailable for {download.fileName}</span>
+              <span className="sr-only">{t("downloads:actions.previewUnavailable", { fileName: download.fileName })}</span>
             </div>
           )}
         </div>
@@ -238,8 +255,8 @@ export function DownloadTaskCard({
               </p>
             </div>
             <div className="text-left sm:text-right">
-              <span className={`text-[13px] font-semibold ${statusTextClasses[download.status]}`}>{formatStatus(download.status)}</span>
-              <p className="mt-1 text-[11px] text-muted-foreground">{getTaskDetailLabel(download)}</p>
+              <span className={`text-[13px] font-semibold ${statusTextClasses[download.status]}`}>{formatStatus(download.status, t)}</span>
+              <p className="mt-1 text-[11px] text-muted-foreground">{getTaskDetailLabel(download, t)}</p>
             </div>
           </div>
 
@@ -265,7 +282,7 @@ export function DownloadTaskCard({
             {primaryAction.icon}
           </button>
           <button
-            aria-label={getCopyActionLabel(download)}
+            aria-label={getCopyActionLabel(download, t)}
             className="wh-icon-button h-8 w-8"
             disabled={copyActionDisabled}
             onClick={() => onCopyPath(download)}
@@ -274,7 +291,7 @@ export function DownloadTaskCard({
             <Copy className="h-4 w-4" />
           </button>
           <button
-            aria-label={`Delete task ${download.id}`}
+            aria-label={t("downloads:actions.deleteTask", { id: download.id })}
             className="wh-icon-button h-8 w-8"
             disabled={isDeleteDisabled}
             onClick={() => onDelete(download)}

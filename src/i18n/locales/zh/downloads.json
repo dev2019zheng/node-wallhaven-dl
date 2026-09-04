@@ -39,6 +39,77 @@
   },
   "loading": "正在加载已有下载…",
   "liveEvents": "实时事件",
+  "liveEventsDescription": "最新状态事件会插入顶部，帮助确认队列是否仍在流动。",
+  "liveEventsEmpty": "暂无事件，新的下载状态和进度会显示在这里。",
+  "eventStreamIdle": "事件流空闲",
+  "tasksDescription": "进入页面后先拉取已有任务，再持续接收状态与进度事件。",
+  "status": {
+    "queued": "排队中",
+    "running": "下载中",
+    "succeeded": "已完成",
+    "failed": "失败",
+    "skippedExisting": "已跳过"
+  },
+  "progressLabel": {
+    "downloaded": "已下载 {{bytes}}",
+    "waitingToStart": "等待开始",
+    "connecting": "连接中",
+    "savedToDisk": "已保存到磁盘",
+    "failedBeforeTransfer": "传输前失败"
+  },
+  "detail": {
+    "waiting": "等待中",
+    "byteProgress": "字节进度",
+    "connecting": "连接中",
+    "readyToOpen": "可以打开",
+    "pathUnavailable": "路径不可用",
+    "alreadySaved": "已保存",
+    "retryAvailable": "可重试",
+    "retryUnavailable": "重试地址不可用"
+  },
+  "actions": {
+    "openFolderForTask": "打开任务 {{id}} 的文件夹",
+    "openFolderUnavailableForTask": "任务 {{id}} 的文件夹不可打开",
+    "openFileForTask": "打开任务 {{id}} 的文件",
+    "openFileUnavailableForTask": "任务 {{id}} 的文件不可打开",
+    "retryTask": "重试任务 {{id}}",
+    "retryUnavailableForTask": "任务 {{id}} 不可重试",
+    "copyPathForTask": "复制任务 {{id}} 的路径",
+    "copyPathUnavailableForTask": "任务 {{id}} 的路径不可复制",
+    "deleteTask": "删除任务 {{id}}",
+    "previewUnavailable": "{{fileName}} 预览不可用"
+  },
+  "confirm": {
+    "deleteTitle": "删除下载任务？",
+    "deleteLabel": "删除任务"
+  },
+  "toasts": {
+    "openFolderFailed": "打开文件夹失败",
+    "queueRefreshed": "队列已刷新",
+    "tasksLoaded": "已加载 {{count}} 个任务。",
+    "refreshFailed": "刷新失败",
+    "retryQueued": "已加入重试队列",
+    "taskActionFailed": "任务操作失败",
+    "pathCopied": "路径已复制",
+    "copyFailed": "复制失败",
+    "taskDeleted": "任务已删除",
+    "deleteFailed": "删除失败"
+  },
+  "liveEventMessages": {
+    "status": {
+      "queued": "已加入队列 · {{fileName}}",
+      "running": "开始下载 · {{fileName}}",
+      "succeeded": "任务完成 · {{fileName}}",
+      "skippedExisting": "已跳过重复文件 · {{fileName}}",
+      "failed": "下载失败 · {{fileName}}"
+    },
+    "progress": {
+      "label": "下载进度 · {{fileName}}",
+      "percent": "下载进度 · {{fileName}} · {{percent}}%"
+    },
+    "streamUnavailable": "实时事件流不可用。请使用刷新重新载入任务快照。",
+    "streamPartiallyUnavailable": "实时事件流部分不可用。请使用刷新重新载入任务快照。"
+  },
   "transfer": {
     "received": "已接收 {{bytes}}",
     "activeTransfers": "{{count}} 个进行中传输",
