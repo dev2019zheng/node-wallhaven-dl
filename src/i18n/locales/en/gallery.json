@@ -1,0 +1,39 @@
+{
+  "eyebrow": "Local wallpaper library",
+  "title": "Gallery",
+  "description": "Browse archived local wallpapers.",
+  "badge": {
+    "loading": "Loading archive",
+    "error": "Archive unavailable",
+    "loaded": "Archive loaded",
+    "empty": "Archive empty"
+  },
+  "archive": "Gallery archive",
+  "searchLocal": "Search local gallery",
+  "searchPlaceholder": "Search local library",
+  "chips": {
+    "All": "All",
+    "Favorites": "Favorites",
+    "SFW": "SFW",
+    "Sketchy": "Sketchy",
+    "NSFW": "NSFW",
+    "Anime": "Anime"
+  },
+  "view": {
+    "group": "Gallery view",
+    "grid": "Grid",
+    "list": "List view"
+  },
+  "loading": "Loading archived wallpapers...",
+  "countFiltered": "Showing {{visible}} of {{loaded}} loaded archived wallpapers.",
+  "countAll": "Showing {{loaded}} of {{total}} archived wallpapers.",
+  "pathPrefix": "Path: {{path}}",
+  "pathDefault": "Path: ~/Pictures/Wallhaven",
+  "empty": {
+    "noneTitle": "No archived wallpapers yet.",
+    "noneDescription": "Download one from Search to build the local gallery.",
+    "noMatch": "No archived wallpapers matched the current local search.",
+    "noSelectionTitle": "No wallpaper selected.",
+    "noSelectionDescription": "Select a local wallpaper to inspect file details and actions."
+  }
+}

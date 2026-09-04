@@ -1,0 +1,25 @@
+{
+  "eyebrow": "Wallpaper discovery",
+  "title": "Search",
+  "description": "Search and discover wallpapers from Wallhaven.",
+  "badge": {
+    "searching": "Searching",
+    "error": "Search error",
+    "loaded": "Results loaded",
+    "ready": "Ready to search"
+  },
+  "filters": "Search filters",
+  "results": "Search results",
+  "queryPlaceholder": "Search for wallpapers  (e.g. mountains, anime, space...)",
+  "submit": "Search",
+  "empty": {
+    "startTitle": "Start with a query",
+    "startDescription": "Try mountains, anime, city night, space, or 4K landscape.",
+    "noMatch": "No wallpapers matched the current filters."
+  },
+  "pageOf": "Page {{current}} of {{last}}",
+  "perPage": "{{count}} per page",
+  "clearSelection": "Clear selection",
+  "loadingResults": "Loading search results",
+  "inspector": "Inspector"
+}

@@ -1,0 +1,37 @@
+{
+  "eyebrow": "Application settings",
+  "title": "Settings",
+  "description": "API key, downloads, proxy, cache, and deletion safety.",
+  "badge": {
+    "loading": "Loading settings",
+    "error": "Settings unavailable",
+    "preview": "Settings preview",
+    "saving": "Saving settings",
+    "unsaved": "Unsaved changes",
+    "ready": "Settings loaded"
+  },
+  "access": {
+    "heading": "Wallhaven Access",
+    "description": "API key is masked by default and stored through the desktop settings layer.",
+    "apiKey": "API Key",
+    "placeholder": "Paste WALLHAVEN_KEY",
+    "showKey": "Show API key",
+    "hideKey": "Hide API key",
+    "validateKey": "Validate key",
+    "emptyHint": "Empty value clears the local key. Full key is never written to UI logs."
+  },
+  "directory": {
+    "heading": "Download Directory",
+    "description": "Changing this path affects future downloads only. Existing Gallery records keep their archived file paths.",
+    "path": "Download path"
+  },
+  "confirmBeforeDelete": {
+    "label": "Ask before deleting",
+    "description": "Protect local files"
+  },
+  "storage": {
+    "unavailableTitle": "Storage unavailable",
+    "unavailableMessage": "Settings failed to load, so storage summary is unavailable.",
+    "loading": "Loading storage details..."
+  }
+}
