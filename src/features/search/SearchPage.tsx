@@ -1,1 +1,1 @@
-@/workspace/node-wallhaven-dl/src/features/search/SearchPage.tsx
+PLACEHOLDER_WILL_FAIL
