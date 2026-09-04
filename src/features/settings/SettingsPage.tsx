@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import {
@@ -146,6 +147,7 @@ function Spinner() {
 }
 
 export function SettingsPage() {
+  const { t } = useTranslation(["settings", "common"]);
   const { formState, handleSubmit, register, reset, setValue, watch } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
@@ -218,10 +220,10 @@ export function SettingsPage() {
   const hasCustomDirectoryOverride = trimmedDirectory.length > 0;
   const canResetCacheEstimate = values.cacheSizeBytes > 0;
   const directoryError = !isAbsolutePath(trimmedDirectory)
-    ? "Folder does not exist or is not writable"
+    ? t("settings:errors.directoryInvalid")
     : formState.errors.customDownloadDirectoryPath?.message;
   const proxyAddressError = trimmedProxyAddress.includes("://")
-    ? "Proxy address must be host:port without a scheme"
+    ? t("settings:errors.proxyAddressInvalid")
     : formState.errors.networkProxyAddress?.message;
   const isStorageReadOnly = storageUnavailableReason !== null;
   const isEditingDisabled =
@@ -245,11 +247,13 @@ export function SettingsPage() {
     return {
       effectiveDirectoryPath: isUsingDefaultDirectory ? downloadDirectory.defaultDirectoryPath : trimmedDirectory,
       defaultDirectoryPath: downloadDirectory.defaultDirectoryPath,
-      modeLabel: isUsingDefaultDirectory ? "App default directory" : "Custom directory",
-      proxyLabel: trimmedProxyAddress ? `${proxyLabels[values.networkProxyScheme]} · ${trimmedProxyAddress}` : "Direct connection",
+      modeLabel: isUsingDefaultDirectory ? t("settings:destination.modeDefault") : t("settings:destination.modeCustom"),
+      proxyLabel: trimmedProxyAddress
+        ? `${proxyLabels[values.networkProxyScheme]} · ${trimmedProxyAddress}`
+        : t("settings:destination.directConnection"),
       hasWarning: Boolean(directoryError || proxyAddressError),
     };
-  }, [directoryError, downloadDirectory, proxyAddressError, trimmedDirectory, trimmedProxyAddress, values.networkProxyScheme]);
+  }, [directoryError, downloadDirectory, proxyAddressError, t, trimmedDirectory, trimmedProxyAddress, values.networkProxyScheme]);
 
   const preferences: SettingsPreferences = {
     launchAtLogin: values.launchAtLogin,
@@ -259,10 +263,10 @@ export function SettingsPage() {
   };
   const settingsFooterMessage =
     storageUnavailableReason ??
-    (isLoading ? "Loading saved configuration..." : "Settings affect future tasks immediately after save.");
+    (isLoading ? t("settings:footer.loading") : t("settings:footer.ready"));
   const securitySummary = isStorageReadOnly
-    ? "Desktop settings storage is unavailable in this web preview; API key persistence is disabled until the app runs inside Tauri."
-    : "API key is masked in UI and persisted through the Tauri Store settings file.";
+    ? t("settings:destination.securityPreview")
+    : t("settings:destination.securityReady");
 
   const clearInlineFeedback = () => {
     setSaveFeedback(null);
@@ -297,7 +301,7 @@ export function SettingsPage() {
       setSaveFeedback({ tone: "error", message });
       enqueueToast({
         id: `settings-directory-picker-${Date.now()}`,
-        title: "Directory picker failed",
+        title: t("settings:toasts.directoryPickerFailed"),
         description: message,
         tone: "error",
       });
@@ -320,7 +324,7 @@ export function SettingsPage() {
       setSaveFeedback({ tone: "error", message });
       enqueueToast({
         id: `settings-reveal-directory-${Date.now()}`,
-        title: "Reveal failed",
+        title: t("settings:toasts.revealFailed"),
         description: message,
         tone: "error",
       });
@@ -336,13 +340,13 @@ export function SettingsPage() {
 
     try {
       await writeClipboardText(effectiveDestination.effectiveDirectoryPath);
-      showSettingsInfo("Effective path copied");
+      showSettingsInfo(t("settings:toasts.effectivePathCopied"));
     } catch (error) {
       const message = getErrorMessage(error, "Clipboard is unavailable.");
       setSaveFeedback({ tone: "error", message });
       enqueueToast({
         id: `settings-copy-path-${Date.now()}`,
-        title: "Copy path failed",
+        title: t("settings:toasts.copyPathFailed"),
         description: message,
         tone: "error",
       });
@@ -364,7 +368,7 @@ export function SettingsPage() {
       setApiKeyStatus(status);
       enqueueToast({
         id: `settings-api-key-${Date.now()}`,
-        title: "Desktop storage unavailable",
+        title: t("settings:toasts.desktopStorageUnavailable"),
         description: storageUnavailableReason,
         tone: "info",
       });
@@ -374,7 +378,7 @@ export function SettingsPage() {
     const trimmedKey = values.wallhavenKey.trim();
 
     if (proxyAddressError) {
-      const status = { tone: "error" as const, message: "Fix proxy settings before validating the API key." };
+      const status = { tone: "error" as const, message: t("settings:apiKey.fixProxyBeforeValidation") };
       setApiKeyStatus(status);
       enqueueToast({
         id: `settings-api-key-${Date.now()}`,
@@ -385,7 +389,7 @@ export function SettingsPage() {
     }
 
     if (trimmedKey.length === 0) {
-      const status = { tone: "info" as const, message: "API key will be cleared after saving settings." };
+      const status = { tone: "info" as const, message: t("settings:apiKey.clearedAfterSave") };
       setApiKeyStatus(status);
       enqueueToast({
         id: `settings-api-key-${Date.now()}`,
@@ -407,13 +411,13 @@ export function SettingsPage() {
       const status = {
         tone: "success" as const,
         message: diagnostic.usesProxy
-          ? "Wallhaven accepted the request with this API key through the configured proxy."
-          : "Wallhaven accepted the request with this API key.",
+          ? t("settings:apiKey.validWithProxy")
+          : t("settings:apiKey.validWithoutProxy"),
       };
       setApiKeyStatus(status);
       enqueueToast({
         id: `settings-api-key-${Date.now()}`,
-        title: "API key checked",
+        title: t("settings:toasts.apiKeyChecked"),
         description: status.message,
         tone: "success",
       });
@@ -422,7 +426,7 @@ export function SettingsPage() {
       setApiKeyStatus({ tone: "error", message });
       enqueueToast({
         id: `settings-api-key-${Date.now()}`,
-        title: "API key check failed",
+        title: t("settings:toasts.apiKeyCheckFailed"),
         description: message,
         tone: "error",
       });
@@ -437,7 +441,7 @@ export function SettingsPage() {
       setProxyStatus(status);
       enqueueToast({
         id: `settings-proxy-${Date.now()}`,
-        title: "Desktop storage unavailable",
+        title: t("settings:toasts.desktopStorageUnavailable"),
         description: storageUnavailableReason,
         tone: "info",
       });
@@ -445,7 +449,7 @@ export function SettingsPage() {
     }
 
     if (proxyAddressError) {
-      const status = { tone: "error" as const, message: "Fix proxy settings before testing connectivity." };
+      const status = { tone: "error" as const, message: t("settings:network.fixProxyBeforeTesting") };
       setProxyStatus(status);
       enqueueToast({
         id: `settings-proxy-${Date.now()}`,
@@ -466,13 +470,13 @@ export function SettingsPage() {
       const status = {
         tone: "success" as const,
         message: diagnostic.usesProxy
-          ? `${proxyLabels[values.networkProxyScheme]} proxy reached Wallhaven.`
-          : "Direct Wallhaven connection succeeded.",
+          ? t("settings:network.proxyConnected", { scheme: proxyLabels[values.networkProxyScheme] })
+          : t("settings:network.directConnectionSucceeded"),
       };
       setProxyStatus(status);
       enqueueToast({
         id: `settings-proxy-${Date.now()}`,
-        title: "Connectivity checked",
+        title: t("settings:toasts.connectivityChecked"),
         description: status.message,
         tone: "success",
       });
@@ -481,7 +485,7 @@ export function SettingsPage() {
       setProxyStatus({ tone: "error", message });
       enqueueToast({
         id: `settings-proxy-${Date.now()}`,
-        title: "Connectivity check failed",
+        title: t("settings:toasts.connectivityCheckFailed"),
         description: message,
         tone: "error",
       });
@@ -492,17 +496,17 @@ export function SettingsPage() {
 
   const resetCacheEstimate = () => {
     setConfirm({
-      title: "Reset cache estimate?",
-      description: "No cache deletion command exists yet. This only resets the displayed cache estimate; downloaded wallpaper originals stay in place.",
-      confirmLabel: "Reset estimate",
+      title: t("settings:advanced.resetCacheTitle"),
+      description: t("settings:advanced.resetCacheDescription"),
+      confirmLabel: t("settings:advanced.resetEstimate"),
       onConfirm: () => {
         setIsResettingCacheEstimate(true);
         setValue("cacheSizeBytes", 0, { shouldDirty: true, shouldTouch: true });
         setIsResettingCacheEstimate(false);
         enqueueToast({
           id: `settings-cache-${Date.now()}`,
-          title: "Cache estimate reset",
-          description: "No downloaded wallpaper originals were removed.",
+          title: t("settings:toasts.cacheEstimateReset"),
+          description: t("settings:advanced.noOriginalsRemoved"),
           tone: "success",
         });
       },
@@ -541,12 +545,12 @@ export function SettingsPage() {
       setStorageUnavailableReason(snapshot.storageUnavailableReason ?? null);
       setSaveFeedback({
         tone: "success",
-        message: "Settings saved.",
+        message: t("settings:toasts.settingsSaved"),
       });
       enqueueToast({
         id: `settings-saved-${Date.now()}`,
-        title: "Settings saved",
-        description: "Future searches, downloads, and local library reads now use this configuration.",
+        title: t("settings:toasts.settingsSaved"),
+        description: t("settings:toasts.settingsSavedDescription"),
         tone: "success",
       });
     } catch (error) {
@@ -557,25 +561,25 @@ export function SettingsPage() {
     }
   });
   const headingBadge = isLoading
-    ? { label: "Loading settings", tone: "info" as const }
+    ? { label: t("settings:badge.loading"), tone: "info" as const }
     : loadError
-      ? { label: "Settings unavailable", tone: "error" as const }
+      ? { label: t("settings:badge.error"), tone: "error" as const }
       : isStorageReadOnly
-        ? { label: "Settings preview", tone: "warning" as const }
+        ? { label: t("settings:badge.preview"), tone: "warning" as const }
       : formState.isSubmitting
-        ? { label: "Saving settings", tone: "info" as const }
+        ? { label: t("settings:badge.saving"), tone: "info" as const }
         : formState.isDirty
-          ? { label: "Unsaved changes", tone: "warning" as const }
-          : { label: "Settings loaded", tone: "success" as const };
+          ? { label: t("settings:badge.unsaved"), tone: "warning" as const }
+          : { label: t("settings:badge.ready"), tone: "success" as const };
 
   return (
     <section className="space-y-6">
       <PageHeading
         badge={headingBadge.label}
         badgeTone={headingBadge.tone}
-        description="API key, downloads, proxy, cache, and deletion safety."
-        eyebrow="Application settings"
-        title="Settings"
+        description={t("settings:description")}
+        eyebrow={t("settings:eyebrow")}
+        title={t("settings:title")}
       />
 
       <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1280px]:grid-cols-[minmax(0,1fr)_minmax(320px,452px)] min-[1440px]:gap-[30px]">
@@ -583,23 +587,23 @@ export function SettingsPage() {
           <section aria-labelledby="wallhaven-access-heading" className="space-y-4">
             <div>
               <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="wallhaven-access-heading">
-                Wallhaven Access
+                {t("settings:access.heading")}
               </h3>
               <p className="text-[13px] leading-6 text-muted-foreground">
-                API key is masked by default and stored through the desktop settings layer.
+                {t("settings:access.description")}
               </p>
             </div>
 
             <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_minmax(0,1fr)] md:gap-4">
               <label className="text-[13px] font-semibold text-foreground" htmlFor="wallhavenKey">
-                API Key
+                {t("settings:access.apiKey")}
               </label>
               <div className="relative">
                 <input
                   autoComplete="off"
                   className="wh-control h-[42px] w-full pr-[92px] text-[13px]"
                   id="wallhavenKey"
-                  placeholder="Paste WALLHAVEN_KEY"
+                  placeholder={t("settings:access.placeholder")}
                   spellCheck={false}
                   type={showApiKey ? "text" : "password"}
                   disabled={isEditingDisabled}
@@ -607,7 +611,7 @@ export function SettingsPage() {
                 />
                 <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
                   <button
-                    aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                    aria-label={showApiKey ? t("settings:access.hideKey") : t("settings:access.showKey")}
                     className="wh-icon-button h-8 w-8"
                     onClick={() => setShowApiKey((current) => !current)}
                     type="button"
@@ -615,7 +619,7 @@ export function SettingsPage() {
                     {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
-                    aria-label="Validate key"
+                    aria-label={t("settings:access.validateKey")}
                     className="wh-icon-button h-8 w-8"
                     disabled={isValidatingKey || isEditingDisabled}
                     onClick={validateApiKey}
@@ -630,23 +634,23 @@ export function SettingsPage() {
               aria-live="polite"
               className={cn("text-[12px] md:pl-[140px]", apiKeyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
             >
-              {apiKeyStatus?.message ?? "Empty value clears the local key. Full key is never written to UI logs."}
+              {apiKeyStatus?.message ?? t("settings:access.emptyHint")}
             </p>
           </section>
 
           <section aria-labelledby="download-directory-heading" className="space-y-4 border-t border-border pt-6">
             <div>
               <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="download-directory-heading">
-                Download Directory
+                {t("settings:directory.heading")}
               </h3>
               <p className="text-[13px] leading-6 text-muted-foreground">
-                Changing this path affects future downloads only. Existing Gallery records keep their archived file paths.
+                {t("settings:directory.description")}
               </p>
             </div>
 
             <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_minmax(0,1fr)_96px] md:gap-4">
               <label className="text-[13px] font-semibold text-foreground" htmlFor="customDownloadDirectoryPath">
-                Download path
+                {t("settings:directory.path")}
               </label>
               <input
                 autoComplete="off"
@@ -655,7 +659,7 @@ export function SettingsPage() {
                   directoryError ? "border-destructive/70 focus:border-destructive" : "",
                 )}
                 id="customDownloadDirectoryPath"
-                placeholder="/Users/you/Pictures/Wallhaven"
+                placeholder={t("settings:directory.placeholder")}
                 spellCheck={false}
                 type="text"
                 disabled={isEditingDisabled}
@@ -669,7 +673,7 @@ export function SettingsPage() {
                 variant="outline"
               >
                 <FolderOpen className="h-4 w-4" />
-                {isChoosingDirectory ? "Choosing" : "Choose"}
+                {isChoosingDirectory ? t("settings:directory.choosing") : t("settings:directory.choose")}
               </Button>
             </div>
             {directoryError ? (
@@ -689,7 +693,7 @@ export function SettingsPage() {
                 variant="ghost"
               >
                 <RefreshCcw className="h-4 w-4" />
-                Use app default directory
+                {t("settings:directory.useDefault")}
               </Button>
             </div>
           </section>
@@ -697,15 +701,15 @@ export function SettingsPage() {
           <section aria-labelledby="network-heading" className="space-y-4 border-t border-border pt-6">
             <div>
               <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="network-heading">
-                Network Proxy
+                {t("settings:network.heading")}
               </h3>
               <p className="text-[13px] leading-6 text-muted-foreground">
-                Leave address empty for direct Wallhaven API access.
+                {t("settings:network.description")}
               </p>
             </div>
 
             <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-[124px_244px_minmax(0,1fr)_116px] md:gap-4">
-              <span className="text-[13px] font-semibold text-foreground">Protocol</span>
+              <span className="text-[13px] font-semibold text-foreground">{t("settings:network.protocol")}</span>
               <div className="wh-control grid h-[42px] grid-cols-3 overflow-hidden p-0">
                 {proxyOptions.map((option) => (
                   <button
@@ -728,7 +732,7 @@ export function SettingsPage() {
               </div>
               <input
                 autoComplete="off"
-                aria-label="Proxy address"
+                aria-label={t("settings:network.proxyAddress")}
                 className={cn(
                   "wh-control h-[42px] w-full text-[13px]",
                   proxyAddressError ? "border-destructive/70 focus:border-destructive" : "",
@@ -741,7 +745,7 @@ export function SettingsPage() {
               />
               <Button className="h-[42px] rounded-[14px]" disabled={isTestingProxy || isEditingDisabled} onClick={testProxy} type="button" variant="outline">
                 {isTestingProxy ? <Spinner /> : <TestTube2 className="h-4 w-4" />}
-                Test
+                {t("settings:network.test")}
               </Button>
             </div>
             <p
@@ -749,7 +753,7 @@ export function SettingsPage() {
               className={cn("text-[12px] md:pl-[140px]", proxyAddressError || proxyStatus?.tone === "error" ? "text-destructive" : "text-muted-foreground")}
               role={proxyAddressError ? "alert" : undefined}
             >
-              {proxyAddressError ?? proxyStatus?.message ?? "Proxy validation runs before future Search and Download requests use this setting."}
+              {proxyAddressError ?? proxyStatus?.message ?? t("settings:network.validationHint")}
             </p>
           </section>
 
@@ -757,22 +761,22 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-[20px] font-semibold leading-7 text-foreground" id="advanced-heading">
-                  Advanced
+                  {t("settings:advanced.heading")}
                 </h3>
-                <p className="text-[13px] leading-6 text-muted-foreground">Deletion prompts and the local cache estimate.</p>
+                <p className="text-[13px] leading-6 text-muted-foreground">{t("settings:advanced.description")}</p>
               </div>
               <Button className="h-10 rounded-[14px]" disabled={isResettingCacheEstimate || isEditingDisabled || !canResetCacheEstimate} onClick={resetCacheEstimate} type="button" variant="outline">
                 {isResettingCacheEstimate ? <Spinner /> : <RefreshCcw className="h-4 w-4" />}
-                Reset cache meter
+                {t("settings:advanced.resetCacheMeter")}
               </Button>
             </div>
 
             <div className="grid max-w-[420px] grid-cols-1 gap-3">
               <Toggle
                 checked={preferences.confirmBeforeDelete}
-                description="Protect local files"
+                description={t("settings:confirmBeforeDelete.description")}
                 disabled={isEditingDisabled}
-                label="Ask before deleting"
+                label={t("settings:confirmBeforeDelete.label")}
                 onChange={(checked) => setValue("confirmBeforeDelete", checked, { shouldDirty: true, shouldTouch: true })}
               />
             </div>
@@ -780,7 +784,7 @@ export function SettingsPage() {
 
           {storageUnavailableReason ? (
             <div className="rounded-[16px] border border-border px-4 py-3 text-[13px] leading-6 wh-soft-warning" role="status">
-              <p className="font-semibold text-foreground">Desktop settings preview</p>
+              <p className="font-semibold text-foreground">{t("settings:previewTitle")}</p>
               <p className="text-muted-foreground">{storageUnavailableReason}</p>
             </div>
           ) : null}
@@ -799,15 +803,15 @@ export function SettingsPage() {
             </p>
             <Button className="h-11 rounded-[14px]" disabled={isSaveDisabled} type="submit">
               {formState.isSubmitting ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
-              Save settings
+              {t("settings:save")}
             </Button>
           </div>
         </form>
 
-        <aside aria-label="Effective destination" className="app-panel min-h-0 p-5 min-[900px]:p-[30px] min-[1280px]:min-h-[640px]">
-          {!downloadDirectory && !loadError ? <LoadingSkeleton label="Loading storage details..." /> : null}
+        <aside aria-label={t("settings:destination.heading")} className="app-panel min-h-0 p-5 min-[900px]:p-[30px] min-[1280px]:min-h-[640px]">
+          {!downloadDirectory && !loadError ? <LoadingSkeleton label={t("settings:storage.loading")} /> : null}
           {!downloadDirectory && loadError ? (
-            <ErrorState message="Settings failed to load, so storage summary is unavailable." title="Storage unavailable" />
+            <ErrorState message={t("settings:storage.unavailableMessage")} title={t("settings:storage.unavailableTitle")} />
           ) : null}
 
           {effectiveDestination ? (
@@ -815,12 +819,12 @@ export function SettingsPage() {
               <div className={cn("rounded-[18px] p-5", effectiveDestination.hasWarning ? "wh-soft-warning" : "wh-soft-primary")}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Next downloads</p>
-                    <h3 className="mt-2 text-[20px] font-semibold leading-7 text-foreground">Effective Destination</h3>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings:destination.nextDownloads")}</p>
+                    <h3 className="mt-2 text-[20px] font-semibold leading-7 text-foreground">{t("settings:destination.heading")}</h3>
                   </div>
                   {formState.isDirty ? (
                     <span className="wh-soft-warning rounded-full px-3 py-1 text-[12px] font-semibold">
-                      Unsaved changes
+                      {t("settings:badge.unsaved")}
                     </span>
                   ) : null}
                 </div>
@@ -830,12 +834,12 @@ export function SettingsPage() {
               </div>
 
               {[
-                ["Mode", effectiveDestination.modeLabel],
-                ["Default app directory", effectiveDestination.defaultDirectoryPath],
-                ["Gallery compatibility", "Existing SQLite records keep their saved relative and absolute file paths."],
-                ["Proxy", effectiveDestination.proxyLabel],
-                ["Cache", `${formatBytes(values.cacheSizeBytes)} · meter reset never removes downloaded wallpaper originals.`],
-                ["Security", securitySummary],
+                [t("settings:destination.mode"), effectiveDestination.modeLabel],
+                [t("settings:destination.defaultAppDirectory"), effectiveDestination.defaultDirectoryPath],
+                [t("settings:destination.galleryCompatibility"), t("settings:destination.galleryCompatibilityValue")],
+                [t("settings:destination.proxy"), effectiveDestination.proxyLabel],
+                [t("settings:destination.cache"), t("settings:destination.cacheValue", { value: formatBytes(values.cacheSizeBytes) })],
+                [t("settings:destination.security"), securitySummary],
               ].map(([label, value]) => (
                 <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] px-4 py-4" key={label}>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -853,7 +857,7 @@ export function SettingsPage() {
                   variant="ghost"
                 >
                   <Copy className="h-4 w-4" />
-                  Copy path
+                  {t("settings:destination.copyPath")}
                 </Button>
                 <Button
                   className="h-10 rounded-[14px]"
@@ -863,7 +867,7 @@ export function SettingsPage() {
                   variant="ghost"
                 >
                   <FolderOpen className="h-4 w-4" />
-                  {isRevealingDirectory ? "Revealing" : "Reveal"}
+                  {isRevealingDirectory ? t("settings:destination.revealing") : t("settings:destination.reveal")}
                 </Button>
               </div>
             </div>

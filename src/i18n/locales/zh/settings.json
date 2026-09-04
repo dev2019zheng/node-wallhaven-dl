@@ -23,7 +23,81 @@
   "directory": {
     "heading": "下载目录",
     "description": "更改此路径仅影响今后的下载。现有图库记录仍保留其归档文件路径。",
-    "path": "下载路径"
+    "path": "下载路径",
+    "placeholder": "/Users/you/Pictures/Wallhaven",
+    "choose": "选择",
+    "choosing": "选择中",
+    "useDefault": "使用应用默认目录"
+  },
+  "network": {
+    "heading": "网络代理",
+    "description": "地址留空时将直接访问 Wallhaven API。",
+    "protocol": "协议",
+    "proxyAddress": "代理地址",
+    "test": "测试",
+    "validationHint": "代理验证会在后续搜索和下载请求使用此设置前执行。",
+    "fixProxyBeforeTesting": "请先修复代理设置，再测试连通性。",
+    "proxyConnected": "{{scheme}} 代理已连通 Wallhaven。",
+    "directConnectionSucceeded": "直连 Wallhaven 成功。"
+  },
+  "advanced": {
+    "heading": "高级",
+    "description": "删除确认和本地缓存估算。",
+    "resetCacheMeter": "重置缓存计量",
+    "resetCacheTitle": "重置缓存估算？",
+    "resetCacheDescription": "当前还没有真正的缓存删除命令。此操作只会重置界面显示的缓存估算，已下载的壁纸原图会保留。",
+    "resetEstimate": "重置估算",
+    "noOriginalsRemoved": "未删除任何已下载的壁纸原图。"
+  },
+  "destination": {
+    "heading": "实际目标位置",
+    "nextDownloads": "后续下载",
+    "mode": "模式",
+    "modeDefault": "应用默认目录",
+    "modeCustom": "自定义目录",
+    "defaultAppDirectory": "应用默认目录",
+    "galleryCompatibility": "图库兼容性",
+    "galleryCompatibilityValue": "现有 SQLite 记录会保留已保存的相对路径和绝对路径。",
+    "proxy": "代理",
+    "directConnection": "直接连接",
+    "cache": "缓存",
+    "cacheValue": "{{value}} · 重置计量不会删除已下载的壁纸原图。",
+    "security": "安全",
+    "securityPreview": "当前网页预览无法使用桌面设置存储；在 Tauri 中运行应用之前，API 密钥持久化不可用。",
+    "securityReady": "API 密钥在界面中默认隐藏，并通过 Tauri Store 设置文件持久化。",
+    "copyPath": "复制路径",
+    "reveal": "显示位置",
+    "revealing": "显示中"
+  },
+  "footer": {
+    "loading": "正在加载已保存配置…",
+    "ready": "保存后，后续任务会立即使用这些设置。"
+  },
+  "errors": {
+    "directoryInvalid": "文件夹不存在或不可写",
+    "proxyAddressInvalid": "代理地址必须是 host:port，不能包含协议"
+  },
+  "apiKey": {
+    "fixProxyBeforeValidation": "请先修复代理设置，再验证 API 密钥。",
+    "clearedAfterSave": "保存设置后会清除 API 密钥。",
+    "validWithProxy": "Wallhaven 已通过配置的代理接受此 API 密钥请求。",
+    "validWithoutProxy": "Wallhaven 已接受此 API 密钥请求。"
+  },
+  "previewTitle": "桌面设置预览",
+  "save": "保存设置",
+  "toasts": {
+    "directoryPickerFailed": "目录选择失败",
+    "revealFailed": "显示位置失败",
+    "effectivePathCopied": "已复制实际路径",
+    "copyPathFailed": "复制路径失败",
+    "desktopStorageUnavailable": "桌面存储不可用",
+    "apiKeyChecked": "API 密钥已检查",
+    "apiKeyCheckFailed": "API 密钥检查失败",
+    "connectivityChecked": "连通性已检查",
+    "connectivityCheckFailed": "连通性检查失败",
+    "cacheEstimateReset": "缓存估算已重置",
+    "settingsSaved": "设置已保存",
+    "settingsSavedDescription": "后续搜索、下载和本地图库读取现在都会使用这份配置。"
   },
   "confirmBeforeDelete": {
     "label": "删除前询问",

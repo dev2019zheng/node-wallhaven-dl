@@ -39,6 +39,77 @@
   },
   "loading": "Loading existing downloads...",
   "liveEvents": "Live events",
+  "liveEventsDescription": "Newest status events appear at the top so you can confirm the queue is still moving.",
+  "liveEventsEmpty": "No events yet. New download status and progress updates will appear here.",
+  "eventStreamIdle": "Event stream idle",
+  "tasksDescription": "Load saved tasks on entry, then keep listening for status and progress updates.",
+  "status": {
+    "queued": "Queued",
+    "running": "Downloading",
+    "succeeded": "Completed",
+    "failed": "Failed",
+    "skippedExisting": "Skipped"
+  },
+  "progressLabel": {
+    "downloaded": "{{bytes}} downloaded",
+    "waitingToStart": "Waiting to start",
+    "connecting": "Connecting",
+    "savedToDisk": "Saved to disk",
+    "failedBeforeTransfer": "Failed before transfer"
+  },
+  "detail": {
+    "waiting": "Waiting",
+    "byteProgress": "Byte progress",
+    "connecting": "Connecting",
+    "readyToOpen": "Ready to open",
+    "pathUnavailable": "Path unavailable",
+    "alreadySaved": "Already saved",
+    "retryAvailable": "Retry available",
+    "retryUnavailable": "Retry URL unavailable"
+  },
+  "actions": {
+    "openFolderForTask": "Open folder for task {{id}}",
+    "openFolderUnavailableForTask": "Open folder unavailable for task {{id}}",
+    "openFileForTask": "Open file for task {{id}}",
+    "openFileUnavailableForTask": "Open file unavailable for task {{id}}",
+    "retryTask": "Retry task {{id}}",
+    "retryUnavailableForTask": "Retry unavailable for task {{id}}",
+    "copyPathForTask": "Copy path for task {{id}}",
+    "copyPathUnavailableForTask": "Copy path unavailable for task {{id}}",
+    "deleteTask": "Delete task {{id}}",
+    "previewUnavailable": "Preview unavailable for {{fileName}}"
+  },
+  "confirm": {
+    "deleteTitle": "Delete download task?",
+    "deleteLabel": "Delete task"
+  },
+  "toasts": {
+    "openFolderFailed": "Open folder failed",
+    "queueRefreshed": "Queue refreshed",
+    "tasksLoaded": "{{count}} tasks loaded.",
+    "refreshFailed": "Refresh failed",
+    "retryQueued": "Retry queued",
+    "taskActionFailed": "Task action failed",
+    "pathCopied": "Path copied",
+    "copyFailed": "Copy failed",
+    "taskDeleted": "Task deleted",
+    "deleteFailed": "Delete failed"
+  },
+  "liveEventMessages": {
+    "status": {
+      "queued": "Queued · {{fileName}}",
+      "running": "Downloading · {{fileName}}",
+      "succeeded": "Completed · {{fileName}}",
+      "skippedExisting": "Skipped existing file · {{fileName}}",
+      "failed": "Download failed · {{fileName}}"
+    },
+    "progress": {
+      "label": "Progress · {{fileName}}",
+      "percent": "Progress · {{fileName}} · {{percent}}%"
+    },
+    "streamUnavailable": "Live event stream unavailable. Use Refresh to reload task snapshots.",
+    "streamPartiallyUnavailable": "Live event stream partially unavailable. Use Refresh to reload task snapshots."
+  },
   "transfer": {
     "received": "{{bytes}} received",
     "activeTransfers": "{{count}} active transfers",

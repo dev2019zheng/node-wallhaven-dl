@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Copy, Download, Loader2, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { downloadWallpaper as downloadWallpaperInService } from "@/application/downloads/downloads-service";
@@ -207,10 +208,6 @@ function chunkWallpapers(wallpapers: SearchWallpaper[], chunkSize: number): Sear
   return chunks;
 }
 
-function formatWallpaperCount(count: number): string {
-  return `${count} 张壁纸`;
-}
-
 function formatSearchFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) {
     return `${(bytes / 1024).toFixed(1)} KB`;
@@ -261,6 +258,7 @@ function decrementDownloadActivity(
 export function SearchPage() {
   const initialSessionSnapshot = getSearchPageSessionSnapshot();
   const restoredSearchState = getRestoredSearchState(initialSessionSnapshot);
+  const { t } = useTranslation(["search", "common"]);
   const { formState, handleSubmit, register, setValue, watch } = useForm<SearchPageFormValues>({
     resolver: zodResolver(searchSchema),
     defaultValues: initialSessionSnapshot?.formValues ?? {
@@ -327,10 +325,10 @@ export function SearchPage() {
   const canDownloadSelected =
     selectedWallpapersToDownload.length > 0 && !isSelectedDownloading && !isBulkDownloading;
   const selectedDownloadButtonLabel = isSelectedDownloading
-    ? "下载选中中..."
+    ? t("search:selectedDownload.loading")
     : selectedWallpapers.length > 0 && selectedWallpapersToDownload.length === 0
-      ? "选中项正在下载"
-      : "下载选中";
+      ? t("search:selectedDownload.disabled")
+      : t("search:selectedDownload.ready");
 
   useEffect(() => {
     if (selectedSearchIds.length === 0) {
@@ -357,34 +355,38 @@ export function SearchPage() {
       return null;
     }
 
-    return `当前页已加载 ${formatWallpaperCount(result.data.length)}。`;
-  }, [result]);
+    return t("search:resultCountLabel", { count: result.data.length });
+  }, [result, t]);
   const isResultAlignedWithForm = useMemo(
     () => Boolean(result && submittedFormValues && areFormValuesEqual(formValues, submittedFormValues)),
     [formValues, result, submittedFormValues],
   );
   const bulkDownloadLabel = useMemo(() => {
     if (isBulkDownloading) {
-      return "下载当前查询中...";
+      return t("search:bulkDownload.loading");
     }
 
     if (result && !isResultAlignedWithForm) {
-      return "重新搜索后批量下载";
+      return t("search:bulkDownload.refreshRequired");
     }
 
     if (pagesToDownload > 1) {
-      return `下载 ${pagesToDownload} 页`;
+      return t("search:bulkDownload.multiplePages", { count: pagesToDownload });
     }
 
-    return "下载当前查询";
-  }, [isBulkDownloading, isResultAlignedWithForm, pagesToDownload, result]);
+    return t("search:bulkDownload.currentQuery");
+  }, [isBulkDownloading, isResultAlignedWithForm, pagesToDownload, result, t]);
   const resultSummaryLabel = useMemo(() => {
     if (!result) {
       return null;
     }
 
-    return `${result.meta.total.toLocaleString()} results · Page ${result.meta.currentPage} of ${result.meta.lastPage}`;
-  }, [result]);
+    return t("search:summary.results", {
+      total: result.meta.total.toLocaleString(),
+      current: result.meta.currentPage,
+      last: result.meta.lastPage,
+    });
+  }, [result, t]);
   const inspectorWallpaper = selectedWallpapers[0] ?? null;
 
   const copySelectedLinks = async () => {
@@ -396,7 +398,7 @@ export function SearchPage() {
       await writeClipboardText(selectedWallpapers.map((wallpaper) => wallpaper.shortUrl).join("\n"));
       setDownloadFeedback({
         tone: "success",
-        message: `Copied ${formatWallpaperCount(selectedWallpapers.length)} Wallhaven links to clipboard.`,
+        message: t("search:feedback.copiedLinks", { count: selectedWallpapers.length }),
       });
     } catch (error) {
       setDownloadFeedback({
@@ -452,7 +454,7 @@ export function SearchPage() {
     );
     setDownloadFeedback({
       tone: "success",
-      message: `${downloadRequest.fileName} 已开始下载，请前往 Downloads 查看进度。`,
+      message: t("search:feedback.singleDownloadStarted", { fileName: downloadRequest.fileName }),
     });
 
     try {
@@ -464,7 +466,7 @@ export function SearchPage() {
 
       setDownloadFeedback({
         tone: "success",
-        message: `${downloadRequest.fileName} 下载完成，请前往 Downloads 查看任务记录。`,
+        message: t("search:feedback.singleDownloadFinished", { fileName: downloadRequest.fileName }),
       });
     } catch (error) {
       if (!isActiveRef.current) {
@@ -500,7 +502,7 @@ export function SearchPage() {
     );
     setDownloadFeedback({
       tone: "success",
-      message: `Starting selected download for ${formatWallpaperCount(selectedWallpapersToDownload.length)}.`,
+      message: t("search:feedback.selectedStarting", { count: selectedWallpapersToDownload.length }),
     });
 
     try {
@@ -522,7 +524,10 @@ export function SearchPage() {
         if (isActiveRef.current) {
           setDownloadFeedback({
             tone: failedDownloads > 0 ? "error" : "success",
-            message: `Selected download progress: ${processedWallpapers} finished, ${failedDownloads} failed.`,
+            message: t("search:feedback.selectedProgress", {
+              processed: processedWallpapers,
+              failed: failedDownloads,
+            }),
           });
         }
       }
@@ -530,8 +535,11 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection. 前往 Downloads 查看任务记录。`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)} from the current selection; ${failedDownloads} failed. 前往 Downloads 查看任务记录。`;
+            ? t("search:feedback.selectedFinished", { count: successfulDownloads })
+            : t("search:feedback.selectedFinishedWithFailures", {
+                count: successfulDownloads,
+                failed: failedDownloads,
+              });
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -572,7 +580,10 @@ export function SearchPage() {
     );
     setDownloadFeedback({
       tone: "success",
-      message: `Starting bulk download from page ${activeFilters.page} for ${pagesToDownload} page${pagesToDownload === 1 ? "" : "s"}.`,
+      message: t("search:feedback.bulkStarting", {
+        page: activeFilters.page,
+        count: pagesToDownload,
+      }),
     });
 
     const firstPage = activeFilters.page ?? 1;
@@ -611,7 +622,10 @@ export function SearchPage() {
           if (isActiveRef.current) {
             setDownloadFeedback({
               tone: failedDownloads > 0 ? "error" : "success",
-              message: `Bulk download progress: ${processedWallpapers} finished, ${failedDownloads} failed.`,
+              message: t("search:feedback.bulkProgress", {
+                processed: processedWallpapers,
+                failed: failedDownloads,
+              }),
             });
           }
         }
@@ -620,8 +634,11 @@ export function SearchPage() {
       if (isActiveRef.current) {
         const summary =
           failedDownloads === 0
-            ? `Finished downloading ${formatWallpaperCount(successfulDownloads)}. 前往 Downloads 查看任务记录。`
-            : `Finished downloading ${formatWallpaperCount(successfulDownloads)}; ${failedDownloads} failed. 前往 Downloads 查看任务记录。`;
+            ? t("search:feedback.bulkFinished", { count: successfulDownloads })
+            : t("search:feedback.bulkFinishedWithFailures", {
+                count: successfulDownloads,
+                failed: failedDownloads,
+              });
 
         setDownloadFeedback({
           tone: failedDownloads > 0 ? "error" : "success",
@@ -645,47 +662,47 @@ export function SearchPage() {
     }
   };
   const headingBadge = formState.isSubmitting
-    ? { label: "Searching", tone: "info" as const }
+    ? { label: t("search:badge.searching"), tone: "info" as const }
     : searchError
-      ? { label: "Search error", tone: "error" as const }
+      ? { label: t("search:badge.error"), tone: "error" as const }
       : result
-        ? { label: "Results loaded", tone: "success" as const }
-        : { label: "Ready to search", tone: "info" as const };
+        ? { label: t("search:badge.loaded"), tone: "success" as const }
+        : { label: t("search:badge.ready"), tone: "info" as const };
 
   return (
     <section className="space-y-6">
       <PageHeading
         badge={headingBadge.label}
         badgeTone={headingBadge.tone}
-        description="Search and discover wallpapers from Wallhaven."
-        eyebrow="Wallpaper discovery"
-        title="Search"
+        description={t("search:description")}
+        eyebrow={t("search:eyebrow")}
+        title={t("search:title")}
       />
 
       <div className="wh-dense-bento grid grid-cols-1 items-start gap-[22px] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1440px]:gap-[26px]">
         <div className="min-w-0 space-y-6">
-          <section aria-label="Search filters">
+          <section aria-label={t("search:filtersSection")}>
             <form className="space-y-4" onSubmit={onSubmit}>
               <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-[minmax(0,1fr)_122px] sm:gap-[18px]">
                 <label className="relative block" htmlFor="search-query">
                   <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     aria-invalid={formState.errors.q ? true : undefined}
-                    aria-label="关键词"
+                    aria-label={t("search:filters.queryLabel")}
                     className="wh-control h-[42px] w-full pl-12 pr-4 text-[13px]"
                     id="search-query"
-                    placeholder="Search for wallpapers  (e.g. mountains, anime, space...)"
+                    placeholder={t("search:queryPlaceholder")}
                     {...register("q")}
                   />
                 </label>
                 <Button
-                  aria-label="搜索"
+                  aria-label={t("search:submit")}
                   className="h-[42px] rounded-[14px] text-[14px]"
                   disabled={formState.isSubmitting || isBulkDownloading}
                   type="submit"
                 >
                   {formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Search
+                  {t("search:submit")}
                 </Button>
               </div>
 
@@ -697,67 +714,67 @@ export function SearchPage() {
 
               <div className="grid grid-cols-1 gap-[12px] sm:grid-cols-2 lg:grid-cols-3 min-[1500px]:grid-cols-[repeat(5,minmax(0,1fr))_142px]">
                 <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-category">
-                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Category</span>
-                  <select aria-label="分类" className="bg-transparent text-[13px] font-semibold outline-none" id="search-category" {...register("category")}>
-                    <option value="all">All</option>
-                    <option value="general">General</option>
-                    <option value="anime">Anime</option>
-                    <option value="people">People</option>
-                    <option value="ga">General + Anime</option>
-                    <option value="gp">General + People</option>
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("search:filters.category")}</span>
+                  <select aria-label={t("search:filters.category")} className="bg-transparent text-[13px] font-semibold outline-none" id="search-category" {...register("category")}>
+                    <option value="all">{t("search:filters.categories.all")}</option>
+                    <option value="general">{t("search:filters.categories.general")}</option>
+                    <option value="anime">{t("search:filters.categories.anime")}</option>
+                    <option value="people">{t("search:filters.categories.people")}</option>
+                    <option value="ga">{t("search:filters.categories.ga")}</option>
+                    <option value="gp">{t("search:filters.categories.gp")}</option>
                   </select>
                 </label>
                 <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-purity">
-                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Purity</span>
-                  <select aria-label="纯净度" className="bg-transparent text-[13px] font-semibold outline-none" id="search-purity" {...register("purityPreset")}>
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("search:filters.purity")}</span>
+                  <select aria-label={t("search:filters.purity")} className="bg-transparent text-[13px] font-semibold outline-none" id="search-purity" {...register("purityPreset")}>
                     <option value="sfw">SFW</option>
-                    <option value="sketchy">Sketchy</option>
+                    <option value="sketchy">{t("search:filters.purityOptions.sketchy")}</option>
                     <option value="nsfw">NSFW</option>
-                    <option value="ws">SFW + Sketchy</option>
-                    <option value="wn">SFW + NSFW</option>
-                    <option value="sn">Sketchy + NSFW</option>
-                    <option value="all">All purity levels</option>
+                    <option value="ws">{t("search:filters.purityOptions.ws")}</option>
+                    <option value="wn">{t("search:filters.purityOptions.wn")}</option>
+                    <option value="sn">{t("search:filters.purityOptions.sn")}</option>
+                    <option value="all">{t("search:filters.purityOptions.all")}</option>
                   </select>
                 </label>
                 <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-sorting">
-                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Sorting</span>
-                  <select aria-label="排序" className="bg-transparent text-[13px] font-semibold outline-none" id="search-sorting" {...register("sorting")}>
-                    <option value="date_added">Date added</option>
-                    <option value="toplist">Toplist</option>
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("search:filters.sorting")}</span>
+                  <select aria-label={t("search:filters.sorting")} className="bg-transparent text-[13px] font-semibold outline-none" id="search-sorting" {...register("sorting")}>
+                    <option value="date_added">{t("search:filters.sortingOptions.dateAdded")}</option>
+                    <option value="toplist">{t("search:filters.sortingOptions.toplist")}</option>
                   </select>
                 </label>
                 <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-resolution">
-                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Resolution</span>
-                  <select aria-label="分辨率" className="bg-transparent text-[13px] font-semibold outline-none" id="search-resolution" {...register("resolution")}>
-                    <option value="all">All</option>
-                    <option value="1920x1080">1080p+</option>
-                    <option value="2560x1440">2K+</option>
-                    <option value="3840x2160">4K+</option>
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("search:filters.resolution")}</span>
+                  <select aria-label={t("search:filters.resolution")} className="bg-transparent text-[13px] font-semibold outline-none" id="search-resolution" {...register("resolution")}>
+                    <option value="all">{t("search:filters.resolutionOptions.all")}</option>
+                    <option value="1920x1080">{t("search:filters.resolutionOptions.fullHd")}</option>
+                    <option value="2560x1440">{t("search:filters.resolutionOptions.twoK")}</option>
+                    <option value="3840x2160">{t("search:filters.resolutionOptions.fourK")}</option>
                   </select>
                 </label>
                 <label className="wh-control flex h-[54px] flex-col justify-center px-4" htmlFor="search-aspect-ratio">
-                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">Aspect Ratio</span>
-                  <select aria-label="宽高比" className="bg-transparent text-[13px] font-semibold outline-none" id="search-aspect-ratio" {...register("aspectRatio")}>
-                    <option value="all">All</option>
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("search:filters.aspectRatio")}</span>
+                  <select aria-label={t("search:filters.aspectRatio")} className="bg-transparent text-[13px] font-semibold outline-none" id="search-aspect-ratio" {...register("aspectRatio")}>
+                    <option value="all">{t("search:filters.aspectRatioOptions.all")}</option>
                     <option value="16x9">16:9</option>
                     <option value="16x10">16:10</option>
                     <option value="21x9">21:9</option>
                     <option value="4x3">4:3</option>
-                    <option value="portrait">Portrait</option>
+                    <option value="portrait">{t("search:filters.aspectRatioOptions.portrait")}</option>
                   </select>
                 </label>
                 <div className="wh-control flex h-[54px] flex-col justify-center px-4">
-                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">More Filters</span>
+                  <span className="text-[9px] font-semibold uppercase leading-4 text-muted-foreground">{t("search:filters.moreFilters")}</span>
                   <span className="flex items-center justify-between gap-3">
                     {formValues.sorting === "toplist" ? (
-                      <select aria-label="热榜范围" className="min-w-0 bg-transparent text-[13px] font-semibold outline-none" id="search-top-range" {...register("topRange")}>
-                        <option value="1M">Past month</option>
-                        <option value="1d">Past day</option>
-                        <option value="3d">Past 3 days</option>
-                        <option value="1w">Past week</option>
-                        <option value="3M">Past 3 months</option>
-                        <option value="6M">Past 6 months</option>
-                        <option value="1y">Past year</option>
+                      <select aria-label={t("search:filters.topRange")} className="min-w-0 bg-transparent text-[13px] font-semibold outline-none" id="search-top-range" {...register("topRange")}>
+                        <option value="1M">{t("search:filters.topRangeOptions.1M")}</option>
+                        <option value="1d">{t("search:filters.topRangeOptions.1d")}</option>
+                        <option value="3d">{t("search:filters.topRangeOptions.3d")}</option>
+                        <option value="1w">{t("search:filters.topRangeOptions.1w")}</option>
+                        <option value="3M">{t("search:filters.topRangeOptions.3M")}</option>
+                        <option value="6M">{t("search:filters.topRangeOptions.6M")}</option>
+                        <option value="1y">{t("search:filters.topRangeOptions.1y")}</option>
                       </select>
                     ) : (
                       <button
@@ -767,7 +784,7 @@ export function SearchPage() {
                         }}
                         type="button"
                       >
-                        Use Toplist
+                        {t("search:filters.useToplist")}
                       </button>
                     )}
                     <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
@@ -777,15 +794,15 @@ export function SearchPage() {
             </form>
           </section>
 
-          <section aria-label="Search results" className="space-y-4">
+          <section aria-label={t("search:resultsSection")} className="space-y-4">
             <div className="flex min-h-[42px] flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <h3 className="text-[14px] font-semibold text-foreground">
-                  {resultSummaryLabel ?? "Start with a query"}
+                  {resultSummaryLabel ?? t("search:empty.startTitle")}
                 </h3>
                 {result ? (
                   <span className="text-[13px] font-medium text-muted-foreground">
-                    Page {result.meta.currentPage} of {result.meta.lastPage}
+                    {t("search:pageOf", { current: result.meta.currentPage, last: result.meta.lastPage })}
                   </span>
                 ) : null}
               </div>
@@ -804,10 +821,10 @@ export function SearchPage() {
                     <span className="sr-only">{bulkDownloadLabel}</span>
                   </Button>
                   <div className="inline-flex h-[42px] items-center rounded-[14px] border border-border bg-[var(--surface-deep)] px-4 text-[13px] font-semibold text-muted-foreground">
-                    {result.meta.perPage} per page
+                    {t("search:perPage", { count: result.meta.perPage })}
                   </div>
                   <button
-                    aria-label="Clear selection"
+                    aria-label={t("search:clearSelection")}
                     className="wh-icon-button h-[42px] w-[42px]"
                     disabled={selectedSearchIds.length === 0 || isSelectedDownloading}
                     onClick={clearSelectedSearchIds}
@@ -839,7 +856,7 @@ export function SearchPage() {
             ) : null}
 
             {formState.isSubmitting ? (
-              <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-3" aria-label="Loading search results">
+              <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-3" aria-label={t("search:loadingResults")}>
                 {Array.from({ length: 9 }, (_, index) => (
                   <div className="h-[156px] animate-pulse rounded-2xl border border-border bg-[var(--surface-deep)]" key={index} />
                 ))}
@@ -847,7 +864,7 @@ export function SearchPage() {
             ) : null}
 
             {!searchError && !formState.isSubmitting && result && result.data.length === 0 ? (
-              <EmptyState title="No wallpapers matched the current filters." />
+              <EmptyState title={t("search:empty.noMatch")} />
             ) : null}
 
             {!searchError && !formState.isSubmitting && result && result.data.length > 0 ? (
@@ -865,30 +882,30 @@ export function SearchPage() {
 
             {!searchError && !formState.isSubmitting && !result ? (
               <EmptyState
-                description="Try mountains, anime, city night, space, or 4K landscape."
-                title="Start with a query"
+                description={t("search:empty.startDescription")}
+                title={t("search:empty.startTitle")}
               />
             ) : null}
           </section>
         </div>
 
-        <aside className="app-panel space-y-6 p-6 min-[1180px]:min-h-[600px]" aria-label="Inspector">
+        <aside className="app-panel space-y-6 p-6 min-[1180px]:min-h-[600px]" aria-label={t("search:inspector")}>
           <div className="space-y-2">
-            <h3 className="text-[20px] font-semibold leading-7 text-foreground">Inspector</h3>
+            <h3 className="text-[20px] font-semibold leading-7 text-foreground">{t("search:inspector")}</h3>
             <p className="text-[13px] font-medium text-muted-foreground">
               {selectedWallpapers.length > 0
-                ? `Selected ${selectedWallpapers.length} wallpapers`
-                : "Start with a query"}
+                ? t("search:inspectorSelected", { count: selectedWallpapers.length })
+                : t("search:empty.startTitle")}
             </p>
           </div>
 
           {selectedWallpapers.length > 0 ? (
             <div className="space-y-4">
               <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] p-4">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Batch action</p>
-                <p className="mt-3 text-[16px] font-semibold text-foreground">Download selected</p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("search:batch.action")}</p>
+                <p className="mt-3 text-[16px] font-semibold text-foreground">{t("search:selectedDownload.ready")}</p>
                 <p className="mt-1 text-[12px] text-muted-foreground">
-                  已选择 {selectedWallpapers.length} 项 · {selectedWallpapers.length} files
+                  {t("search:batch.selectedItems", { count: selectedWallpapers.length })}
                 </p>
               </div>
               <Button
@@ -912,10 +929,10 @@ export function SearchPage() {
                 variant="outline"
               >
                 <Copy className="h-4 w-4" />
-                Copy links
+                {t("search:batch.copyLinks")}
               </Button>
               <Button
-                aria-label="清除选择"
+                aria-label={t("search:clearSelection")}
                 className="h-10 w-full rounded-[14px]"
                 disabled={isSelectedDownloading}
                 onClick={clearSelectedSearchIds}
@@ -923,13 +940,13 @@ export function SearchPage() {
                 variant="ghost"
               >
                 <X className="h-4 w-4" />
-                Clear selection
+                {t("search:clearSelection")}
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="rounded-[16px] border border-border bg-[var(--surface-deep)] p-4 text-[13px] leading-6 text-muted-foreground">
-                Search, then click the selection badge on cards to enable batch actions here.
+                {t("search:batch.helper")}
               </div>
               <Button
                 aria-label={bulkDownloadLabel}
@@ -944,8 +961,9 @@ export function SearchPage() {
                 {bulkDownloadLabel}
               </Button>
               <label className="block space-y-2 text-[12px] font-semibold text-muted-foreground">
-                起始页
+                {t("search:filters.startPage")}
                 <input
+                  aria-label={t("search:filters.startPage")}
                   className="wh-control h-10 w-full px-3 text-[13px] text-foreground"
                   min={1}
                   type="number"
@@ -953,8 +971,9 @@ export function SearchPage() {
                 />
               </label>
               <label className="block space-y-2 text-[12px] font-semibold text-muted-foreground">
-                批量页数
+                {t("search:filters.pagesToDownload")}
                 <input
+                  aria-label={t("search:filters.pagesToDownload")}
                   className="wh-control h-10 w-full px-3 text-[13px] text-foreground"
                   min={1}
                   type="number"

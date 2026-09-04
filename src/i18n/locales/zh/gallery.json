@@ -24,6 +24,61 @@
     "grid": "网格",
     "list": "列表视图"
   },
+  "timeline": {
+    "heading": "时间线",
+    "groups": {
+      "Today": "今天",
+      "Yesterday": "昨天",
+      "Last 7 days": "最近 7 天",
+      "This month": "本月"
+    },
+    "imported": "已导入 {{count}} 张",
+    "openGroup": "打开分组 {{group}}",
+    "openButton": "打开 {{group}}"
+  },
+  "detail": {
+    "heading": "壁纸详情",
+    "localAsset": "本地资源 · {{purity}} · {{category}}",
+    "favorite": "收藏",
+    "revealHint": "仅桌面应用支持在本地文件系统中显示文件。"
+  },
+  "actions": {
+    "download": "下载",
+    "queueing": "加入队列中",
+    "openSource": "打开来源",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏",
+    "copyPath": "复制路径",
+    "tags": "标签",
+    "editTags": "编辑图库标签",
+    "tagsPlaceholder": "nature, ultrawide, OLED",
+    "saveTags": "保存标签",
+    "savingTags": "保存标签中",
+    "reveal": "显示位置",
+    "revealing": "显示中",
+    "delete": "删除",
+    "deleting": "删除中"
+  },
+  "confirm": {
+    "deleteTitle": "删除壁纸？",
+    "deleteDescription": "这会从磁盘和本地图库归档中移除 {{fileName}}。",
+    "deleteLabel": "删除壁纸"
+  },
+  "toasts": {
+    "addedToFavorites": "已加入收藏",
+    "removedFromFavorites": "已取消收藏",
+    "favoriteFailed": "收藏更新失败",
+    "tagsSaved": "标签已保存",
+    "noCustomTags": "没有自定义标签",
+    "tagUpdateFailed": "标签更新失败",
+    "pathCopied": "路径已复制",
+    "copyFailed": "复制失败",
+    "downloadQueued": "已加入下载队列",
+    "downloadFailed": "下载失败",
+    "revealFailed": "显示文件失败",
+    "wallpaperDeleted": "壁纸已删除",
+    "deleteFailed": "删除失败"
+  },
   "loading": "正在加载已归档壁纸…",
   "countFiltered": "显示已加载 {{loaded}} 张中的 {{visible}} 张。",
   "countAll": "显示全部 {{total}} 张中的 {{loaded}} 张已归档壁纸。",
