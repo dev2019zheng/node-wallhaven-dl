@@ -126,7 +126,7 @@ index f32c2d4..1ae3c63 100644
 -                setActiveChip(chip)
 -                setActiveCollectionShortcut(null)
 -                setActiveImportGroup(null)
--              }
+-              }}
 -              type="button"
 -            >
 -              {chip}
