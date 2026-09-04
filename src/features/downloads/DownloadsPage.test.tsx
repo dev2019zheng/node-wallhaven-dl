@@ -256,9 +256,9 @@ describe("DownloadsPage", () => {
       })
     })
 
-    expect(screen.getByText(/已加入队列 · wallhaven-queue123.jpg/i)).toBeInTheDocument()
-    expect(screen.getByText(/下载进度 · wallhaven-queue123.jpg · 25%/i)).toBeInTheDocument()
-    expect(screen.getByText(/任务完成 · wallhaven-queue123.jpg/i)).toBeInTheDocument()
+    expect(screen.getByText(/Queued · wallhaven-queue123.jpg/i)).toBeInTheDocument()
+    expect(screen.getByText(/Progress · wallhaven-queue123.jpg · 25%/i)).toBeInTheDocument()
+    expect(screen.getByText(/Completed · wallhaven-queue123.jpg/i)).toBeInTheDocument()
   })
 
   it("filters the queue when switching tabs, including queued-only tasks", async () => {

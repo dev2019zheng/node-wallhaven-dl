@@ -23,7 +23,81 @@
   "directory": {
     "heading": "Download Directory",
     "description": "Changing this path affects future downloads only. Existing Gallery records keep their archived file paths.",
-    "path": "Download path"
+    "path": "Download path",
+    "placeholder": "/Users/you/Pictures/Wallhaven",
+    "choose": "Choose",
+    "choosing": "Choosing",
+    "useDefault": "Use app default directory"
+  },
+  "network": {
+    "heading": "Network Proxy",
+    "description": "Leave address empty for direct Wallhaven API access.",
+    "protocol": "Protocol",
+    "proxyAddress": "Proxy address",
+    "test": "Test",
+    "validationHint": "Proxy validation runs before future Search and Download requests use this setting.",
+    "fixProxyBeforeTesting": "Fix proxy settings before testing connectivity.",
+    "proxyConnected": "{{scheme}} proxy reached Wallhaven.",
+    "directConnectionSucceeded": "Direct Wallhaven connection succeeded."
+  },
+  "advanced": {
+    "heading": "Advanced",
+    "description": "Deletion prompts and the local cache estimate.",
+    "resetCacheMeter": "Reset cache meter",
+    "resetCacheTitle": "Reset cache estimate?",
+    "resetCacheDescription": "No cache deletion command exists yet. This only resets the displayed cache estimate; downloaded wallpaper originals stay in place.",
+    "resetEstimate": "Reset estimate",
+    "noOriginalsRemoved": "No downloaded wallpaper originals were removed."
+  },
+  "destination": {
+    "heading": "Effective Destination",
+    "nextDownloads": "Next downloads",
+    "mode": "Mode",
+    "modeDefault": "App default directory",
+    "modeCustom": "Custom directory",
+    "defaultAppDirectory": "Default app directory",
+    "galleryCompatibility": "Gallery compatibility",
+    "galleryCompatibilityValue": "Existing SQLite records keep their saved relative and absolute file paths.",
+    "proxy": "Proxy",
+    "directConnection": "Direct connection",
+    "cache": "Cache",
+    "cacheValue": "{{value}} · meter reset never removes downloaded wallpaper originals.",
+    "security": "Security",
+    "securityPreview": "Desktop settings storage is unavailable in this web preview; API key persistence is disabled until the app runs inside Tauri.",
+    "securityReady": "API key is masked in UI and persisted through the Tauri Store settings file.",
+    "copyPath": "Copy path",
+    "reveal": "Reveal",
+    "revealing": "Revealing"
+  },
+  "footer": {
+    "loading": "Loading saved configuration...",
+    "ready": "Settings affect future tasks immediately after save."
+  },
+  "errors": {
+    "directoryInvalid": "Folder does not exist or is not writable",
+    "proxyAddressInvalid": "Proxy address must be host:port without a scheme"
+  },
+  "apiKey": {
+    "fixProxyBeforeValidation": "Fix proxy settings before validating the API key.",
+    "clearedAfterSave": "API key will be cleared after saving settings.",
+    "validWithProxy": "Wallhaven accepted the request with this API key through the configured proxy.",
+    "validWithoutProxy": "Wallhaven accepted the request with this API key."
+  },
+  "previewTitle": "Desktop settings preview",
+  "save": "Save settings",
+  "toasts": {
+    "directoryPickerFailed": "Directory picker failed",
+    "revealFailed": "Reveal failed",
+    "effectivePathCopied": "Effective path copied",
+    "copyPathFailed": "Copy path failed",
+    "desktopStorageUnavailable": "Desktop storage unavailable",
+    "apiKeyChecked": "API key checked",
+    "apiKeyCheckFailed": "API key check failed",
+    "connectivityChecked": "Connectivity checked",
+    "connectivityCheckFailed": "Connectivity check failed",
+    "cacheEstimateReset": "Cache estimate reset",
+    "settingsSaved": "Settings saved",
+    "settingsSavedDescription": "Future searches, downloads, and local library reads now use this configuration."
   },
   "confirmBeforeDelete": {
     "label": "Ask before deleting",

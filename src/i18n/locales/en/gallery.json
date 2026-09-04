@@ -24,6 +24,61 @@
     "grid": "Grid",
     "list": "List view"
   },
+  "timeline": {
+    "heading": "Timeline",
+    "groups": {
+      "Today": "Today",
+      "Yesterday": "Yesterday",
+      "Last 7 days": "Last 7 days",
+      "This month": "This month"
+    },
+    "imported": "{{count}} imported",
+    "openGroup": "Open group {{group}}",
+    "openButton": "Open {{group}}"
+  },
+  "detail": {
+    "heading": "Wallpaper Detail",
+    "localAsset": "Local asset · {{purity}} · {{category}}",
+    "favorite": "Favorite",
+    "revealHint": "Revealing local files is available in the desktop app."
+  },
+  "actions": {
+    "download": "Download",
+    "queueing": "Queueing",
+    "openSource": "Open source",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite",
+    "copyPath": "Copy path",
+    "tags": "Tags",
+    "editTags": "Edit gallery tags",
+    "tagsPlaceholder": "nature, ultrawide, OLED",
+    "saveTags": "Save tags",
+    "savingTags": "Saving tags",
+    "reveal": "Reveal",
+    "revealing": "Revealing",
+    "delete": "Delete",
+    "deleting": "Deleting"
+  },
+  "confirm": {
+    "deleteTitle": "Delete wallpaper?",
+    "deleteDescription": "This removes {{fileName}} from disk and the local gallery archive.",
+    "deleteLabel": "Delete wallpaper"
+  },
+  "toasts": {
+    "addedToFavorites": "Added to favorites",
+    "removedFromFavorites": "Removed from favorites",
+    "favoriteFailed": "Favorite failed",
+    "tagsSaved": "Tags saved",
+    "noCustomTags": "No custom tags",
+    "tagUpdateFailed": "Tag update failed",
+    "pathCopied": "Path copied",
+    "copyFailed": "Copy failed",
+    "downloadQueued": "Download queued",
+    "downloadFailed": "Download failed",
+    "revealFailed": "Reveal failed",
+    "wallpaperDeleted": "Wallpaper deleted",
+    "deleteFailed": "Delete failed"
+  },
   "loading": "Loading archived wallpapers...",
   "countFiltered": "Showing {{visible}} of {{loaded}} loaded archived wallpapers.",
   "countAll": "Showing {{loaded}} of {{total}} archived wallpapers.",

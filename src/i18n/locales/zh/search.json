@@ -8,10 +8,96 @@
     "loaded": "结果已加载",
     "ready": "可以开始搜索"
   },
-  "filters": "搜索筛选",
-  "results": "搜索结果",
+  "filtersSection": "搜索筛选",
+  "resultsSection": "搜索结果",
   "queryPlaceholder": "搜索壁纸（例如：群山、动漫、太空…）",
   "submit": "搜索",
+  "resultCountLabel": "当前页已加载 {{count}} 张壁纸。",
+  "summary": {
+    "results": "{{total}} 条结果 · 第 {{current}} / {{last}} 页"
+  },
+  "selectedDownload": {
+    "loading": "正在下载选中项…",
+    "disabled": "选中项正在下载",
+    "ready": "下载选中"
+  },
+  "bulkDownload": {
+    "loading": "正在下载当前查询…",
+    "refreshRequired": "重新搜索后批量下载",
+    "multiplePages": "下载 {{count}} 页",
+    "currentQuery": "下载当前查询"
+  },
+  "inspectorSelected": "已选择 {{count}} 张壁纸",
+  "batch": {
+    "action": "批量操作",
+    "selectedItems": "已选择 {{count}} 项 · {{count}} 张壁纸",
+    "copyLinks": "复制链接",
+    "helper": "先搜索，然后点击卡片上的选择标记，即可在这里启用批量操作。"
+  },
+  "feedback": {
+    "copiedLinks": "已复制 {{count}} 个 Wallhaven 链接到剪贴板。",
+    "singleDownloadStarted": "{{fileName}} 已开始下载。请前往 Downloads 查看进度。",
+    "singleDownloadFinished": "{{fileName}} 下载完成。请前往 Downloads 查看任务记录。",
+    "selectedStarting": "开始下载选中的 {{count}} 张壁纸。",
+    "selectedProgress": "选中下载进度：已完成 {{processed}}，失败 {{failed}}。",
+    "selectedFinished": "已完成当前选中项中的 {{count}} 张壁纸下载。请前往 Downloads 查看任务记录。",
+    "selectedFinishedWithFailures": "已完成当前选中项中的 {{count}} 张壁纸下载；失败 {{failed}}。请前往 Downloads 查看任务记录。",
+    "bulkStarting": "开始从第 {{page}} 页批量下载，共 {{count}} 页。",
+    "bulkProgress": "批量下载进度：已完成 {{processed}}，失败 {{failed}}。",
+    "bulkFinished": "已完成 {{count}} 张壁纸下载。请前往 Downloads 查看任务记录。",
+    "bulkFinishedWithFailures": "已完成 {{count}} 张壁纸下载；失败 {{failed}}。请前往 Downloads 查看任务记录。"
+  },
+  "filters": {
+    "queryLabel": "关键词",
+    "category": "分类",
+    "purity": "纯净度",
+    "sorting": "排序",
+    "resolution": "分辨率",
+    "aspectRatio": "宽高比",
+    "moreFilters": "更多筛选",
+    "topRange": "热榜范围",
+    "useToplist": "切换到热榜",
+    "startPage": "起始页",
+    "pagesToDownload": "批量页数",
+    "categories": {
+      "all": "全部",
+      "general": "常规",
+      "anime": "动漫",
+      "people": "人物",
+      "ga": "常规 + 动漫",
+      "gp": "常规 + 人物"
+    },
+    "purityOptions": {
+      "sketchy": "Sketchy",
+      "ws": "SFW + Sketchy",
+      "wn": "SFW + NSFW",
+      "sn": "Sketchy + NSFW",
+      "all": "全部纯净度"
+    },
+    "sortingOptions": {
+      "dateAdded": "最新添加",
+      "toplist": "热榜"
+    },
+    "resolutionOptions": {
+      "all": "全部",
+      "fullHd": "1080p+",
+      "twoK": "2K+",
+      "fourK": "4K+"
+    },
+    "aspectRatioOptions": {
+      "all": "全部",
+      "portrait": "竖屏"
+    },
+    "topRangeOptions": {
+      "1M": "过去一个月",
+      "1d": "过去一天",
+      "3d": "过去 3 天",
+      "1w": "过去一周",
+      "3M": "过去 3 个月",
+      "6M": "过去 6 个月",
+      "1y": "过去一年"
+    }
+  },
   "empty": {
     "startTitle": "先输入关键词",
     "startDescription": "试试群山、动漫、城市夜景、太空或 4K 风景。",
