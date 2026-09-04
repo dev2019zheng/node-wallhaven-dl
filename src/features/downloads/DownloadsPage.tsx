@@ -31,6 +31,7 @@ import {
   isNativeShellAvailable,
   openNativePath,
 } from "@/infrastructure/tauri/native-shell"
+import { toUserFacingErrorMessage } from "@/infrastructure/tauri/runtime-errors"
 
 import { DownloadQueue } from "./components/DownloadQueue"
 import { QueueTabs } from "./components/QueueTabs"
@@ -46,11 +47,7 @@ type LiveEventItem = {
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallbackMessage
+  return toUserFacingErrorMessage(error, fallbackMessage)
 }
 
 function getParentDirectory(path: string): string {
@@ -111,7 +108,7 @@ function summarizeTransferProgress(
       ? `${formatBytes(downloadedBytes)} / ${formatBytes(knownTotalBytes)}`
       : downloadedBytes > 0
         ? `${formatBytes(downloadedBytes)} received`
-        : `${summary.activeCount} active transfers`
+        : `${summary.activeCount} active`
   const secondary =
     summary.activeCount > 0
       ? `${summary.runningCount} running · ${summary.queuedCount} queued`
@@ -511,7 +508,7 @@ export function DownloadsPage() {
           <div className="space-y-3">
             <p className="text-[14px] font-semibold text-foreground">Progress</p>
             <div className="wh-kinetic-card h-[120px] rounded-[18px] border border-border bg-[var(--surface-deep)] p-4">
-              <div className="truncate text-[22px] font-bold text-foreground">{transferProgress.primary}</div>
+              <div className="truncate text-[22px] font-bold text-foreground" title={transferProgress.primary}>{transferProgress.primary}</div>
               <div className="mt-1 text-[13px] font-medium text-muted-foreground">{transferProgress.secondary}</div>
               <div className="mt-5 h-2 overflow-hidden rounded-full bg-[var(--surface)]">
                 <div
@@ -625,7 +622,7 @@ export function DownloadsPage() {
 
           <div className="mt-auto flex items-center gap-2 rounded-full border border-border bg-[var(--surface-deep)] px-3 py-2 text-[12px] font-semibold text-muted-foreground">
             <Radio className="h-3.5 w-3.5 text-emerald-400" />
-            {summary.activeCount > 0 ? `${summary.activeCount} active transfers` : "Event stream idle"}
+            {summary.activeCount > 0 ? `${summary.activeCount} active` : "Event stream idle"}
           </div>
         </aside>
       </section>

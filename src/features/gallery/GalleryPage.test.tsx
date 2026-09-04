@@ -39,7 +39,7 @@ vi.mock("@/application/settings/settings-service", () => ({
 
 vi.mock("@/infrastructure/tauri/native-shell", () => ({
   DESKTOP_RUNTIME_UNAVAILABLE_MESSAGE:
-    "This action needs the Tauri desktop runtime and is unavailable in the web preview.",
+    "Desktop runtime unavailable. Open the Tauri desktop app to use this feature.",
   isNativeShellAvailable,
   revealPath,
 }))

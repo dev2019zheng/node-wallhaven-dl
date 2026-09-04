@@ -16,6 +16,7 @@ import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { useUiShellStore } from "@/features/shell/ui-shell-store";
 import { writeClipboardText } from "@/infrastructure/browser/clipboard";
+import { toUserFacingErrorMessage } from "@/infrastructure/tauri/runtime-errors";
 import {
   VALID_TOPLIST_RANGES,
   type WallhavenPurityFilter,
@@ -51,11 +52,7 @@ type DownloadFeedback = {
 type DownloadActivityCounts = Record<string, number>;
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallbackMessage;
+  return toUserFacingErrorMessage(error, fallbackMessage);
 }
 
 function buildPurityFilter(purityPreset: SearchPageFormValues["purityPreset"]): WallhavenPurityFilter {

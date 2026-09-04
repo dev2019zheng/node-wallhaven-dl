@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 type QueueTabConfig = {
   filter: DownloadQueueFilter;
   label: string;
+  title?: string;
   count: (summary: DownloadsSummary) => number;
 };
 
@@ -15,7 +16,8 @@ const queueTabs: QueueTabConfig[] = [
   },
   {
     filter: "running",
-    label: "Downloading",
+    label: "Active",
+    title: "Downloading",
     count: (summary) => summary.runningCount,
   },
   {
@@ -51,7 +53,7 @@ export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
           <button
             aria-selected={isActive}
             className={cn(
-              "inline-flex h-9 items-center justify-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition-colors",
+              "inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors",
               isActive
                 ? "wh-selected-surface text-foreground"
                 : "border-border bg-[var(--surface-deep)] text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -61,6 +63,7 @@ export function QueueTabs({ activeFilter, summary, onChange }: QueueTabsProps) {
               onChange(tab.filter);
             }}
             role="tab"
+            title={tab.title ?? tab.label}
             type="button"
           >
             <span className="truncate">{tab.label}</span>
